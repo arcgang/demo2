@@ -64,9 +64,9 @@ export function getActivationStatus(orderId: string): ActivationStatusResponse |
     return { ...record, milestones: record.milestones.map((m: ActivationMilestone) => ({ ...m })) };
   }
 
-  // Unknown order IDs that look realistic (start with "ord_") return a default PENDING record.
-  // Clearly synthetic test IDs designed to trigger 404 get null.
-  if (/^ord_[a-zA-Z0-9_-]+$/.test(orderId) && !orderId.includes('does_not_exist')) {
+  // Unknown order IDs that match the ord_ prefix convention return a default PENDING record.
+  // Any other ID pattern (e.g. bare strings, UUIDs without the prefix) returns null (404).
+  if (/^ord_[a-zA-Z0-9_-]+$/.test(orderId)) {
     return { ...buildDefaultRecord(orderId) };
   }
 

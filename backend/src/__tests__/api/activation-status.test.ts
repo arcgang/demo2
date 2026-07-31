@@ -291,12 +291,12 @@ describe('GET /api/activation/:orderId — edge cases', () => {
   beforeAll(() => { app = getApp(); });
 
   it('returns HTTP 404 for an unknown orderId', async () => {
-    const { status } = await fetchActivation(app, 'ord_does_not_exist_xyz');
+    const { status } = await fetchActivation(app, 'unknown_xyz');
     expect(status).toBe(404);
   });
 
   it('404 response body has an errorCode field', async () => {
-    const res = await request(app).get('/api/activation/ord_does_not_exist_xyz');
+    const res = await request(app).get('/api/activation/unknown_xyz');
     expect(res.body).toHaveProperty('errorCode');
   });
 });
