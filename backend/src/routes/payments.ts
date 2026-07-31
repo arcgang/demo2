@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/initiate', (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
-  const { orderId, method, msisdn } = body;
+  const { orderId, method, msisdn, amount } = body;
 
   const errors: Array<{ field: string; message: string }> = [];
   if (!orderId) errors.push({ field: 'orderId', message: 'orderId is required.' });
@@ -26,7 +26,16 @@ router.post('/initiate', (req: Request, res: Response) => {
     return;
   }
 
-  const result = initiatePayment(orderId as string, msisdn as string);
+  if (method === 'card') {
+    res.status(501).json({
+      errorCode: 'NOT_IMPLEMENTED',
+      message: 'Card payment is not yet implemented. Use mobile_money.',
+    });
+    return;
+  }
+
+  const paymentAmount = typeof amount === 'number' ? amount : 0;
+  const result = initiatePayment(orderId as string, paymentAmount, msisdn as string);
 
   res.status(201).json({
     paymentAttemptId: result.paymentAttemptId,

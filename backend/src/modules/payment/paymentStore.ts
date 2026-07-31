@@ -3,8 +3,9 @@ export interface PaymentAttempt {
   orderId: string;
   method: 'mobile_money' | 'card';
   provider: 'mpesa' | 'vodacom_wallet' | 'psp';
-  status: 'pending' | 'awaiting_customer_action' | 'success' | 'failed' | 'cancelled';
+  status: 'awaiting_customer_action' | 'success' | 'failed' | 'cancelled';
   providerReference: string | null;
+  amount?: number;
   initiatedAt: string;
   resolvedAt: string | null;
 }

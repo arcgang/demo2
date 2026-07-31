@@ -5,6 +5,8 @@ import { getPaymentAttemptByOrderId } from '../modules/payment/paymentStore';
 
 const router = Router();
 
+const orderStatusStore = new Map<string, string>();
+
 router.post('/:id/advance', (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -18,6 +20,7 @@ router.post('/:id/advance', (req: Request, res: Response) => {
     return;
   }
 
+  orderStatusStore.set(id, 'confirmed');
   res.status(200).json({ orderId: id, orderStatus: 'confirmed' });
 });
 

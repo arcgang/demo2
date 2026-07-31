@@ -5,6 +5,7 @@ import {
   persistActivationStatus,
   persistAuditEvent,
 } from './activationStore';
+import { getPaymentAttemptByOrderId } from '../payment/paymentStore';
 
 const SMDP_ADDRESS = 'smdp.vodacom.co.za';
 
@@ -43,19 +44,29 @@ function invokeActivationAdapter(_orderId: string): { esimReference: string; act
 
 export function issueEsim(orderId: string): IssueResult {
   const order = getOrder(orderId);
+  const liveAttempt = getPaymentAttemptByOrderId(orderId);
 
-  if (!order) {
+  // Require the order record OR a live payment attempt to exist.
+  if (!order && !liveAttempt) {
     writeAuditEvent(orderId, 'ESIM_ISSUE_ORDER_NOT_FOUND', { orderId });
     return { outcome: 'NOT_FOUND' };
   }
 
-  if (order.paymentStatus !== 'CONFIRMED') {
-    writeAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_PAYMENT', { paymentStatus: order.paymentStatus });
+  // Live PaymentAttempt takes precedence over the seeded order record.
+  const paymentConfirmed = liveAttempt
+    ? liveAttempt.status === 'success'
+    : order?.paymentStatus === 'CONFIRMED';
+
+  if (!paymentConfirmed) {
+    writeAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_PAYMENT', {
+      paymentStatus: liveAttempt ? liveAttempt.status : order?.paymentStatus,
+    });
     return { outcome: 'PAYMENT_PENDING' };
   }
 
-  if (order.verificationStatus !== 'COMPLETED') {
-    writeAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_VERIFICATION', { verificationStatus: order.verificationStatus });
+  const verificationStatus = order?.verificationStatus ?? 'PENDING';
+  if (verificationStatus !== 'COMPLETED') {
+    writeAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_VERIFICATION', { verificationStatus });
     return { outcome: 'VERIFICATION_PENDING' };
   }
 

@@ -21,12 +21,13 @@ export interface InitiateResult {
 
 export function initiatePayment(
   orderId: string,
+  amount: number,
   msisdn: string,
 ): InitiateResult {
   const id = `pay_${randomHex(12)}`;
   const providerReference = `mpesa_tx_${randomHex(16)}`;
-  const actionUrl = `https://pay.mpesa.vodacom.co.za/confirm?ref=${providerReference}`;
-  const instructions = `Approve the payment request sent to ${msisdn} on your M-Pesa app.`;
+  const actionUrl = `https://pay.mpesa.vodacom.co.za/confirm?ref=${providerReference}&amount=${amount}`;
+  const instructions = `Approve the payment request of ${amount} sent to ${msisdn} on your M-Pesa app.`;
 
   const attempt: PaymentAttempt = {
     id,
@@ -35,6 +36,7 @@ export function initiatePayment(
     provider: 'mpesa',
     status: 'awaiting_customer_action',
     providerReference,
+    amount,
     initiatedAt: new Date().toISOString(),
     resolvedAt: null,
   };
@@ -58,9 +60,6 @@ export function handleCallback(
 
   const attempt = getPaymentAttemptByProviderRef(providerReference);
   if (!attempt) {
-    if (!VALID_OUTCOMES.has(outcome)) {
-      return { outcome: 'INVALID_OUTCOME' };
-    }
     return { outcome: 'NOT_FOUND' };
   }
 
