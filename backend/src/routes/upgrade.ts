@@ -77,6 +77,11 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
     body.condition as string,
   );
 
+  if ('errorCode' in quote) {
+    res.status(422).json(quote);
+    return;
+  }
+
   res.status(200).json(quote);
 });
 
@@ -106,9 +111,8 @@ router.put('/session', (req: Request, res: Response) => {
   }
 
   const hasKnownKey = ALLOWED_KEYS.some((k) => Object.prototype.hasOwnProperty.call(body, k));
-  const hasUnknownKey = Object.keys(body).some((k) => !ALLOWED_KEYS.includes(k as keyof UpgradeSessionState));
 
-  if (!hasKnownKey && hasUnknownKey) {
+  if (!hasKnownKey) {
     res.status(422).json({ errorCode: 'VALIDATION_ERROR', message: 'Body must contain at least one of: eligibility, financing, tradeIn.' });
     return;
   }

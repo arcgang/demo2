@@ -16,17 +16,26 @@ const BASE_CREDITS: Record<string, number> = {
   Samsung: 2500,
 };
 
+const VALID_CONDITIONS = Object.keys(CONDITION_MULTIPLIERS);
+
 export function getTradeInQuote(
   brand: string,
   _model: string,
   _storageGb: number,
   condition: string,
-): TradeInQuote {
+): TradeInQuote | { errorCode: string; message: string } {
+  if (!VALID_CONDITIONS.includes(condition)) {
+    return {
+      errorCode: 'VALIDATION_ERROR',
+      message: `condition must be one of: ${VALID_CONDITIONS.join(', ')}.`,
+    };
+  }
   const base = BASE_CREDITS[brand] ?? 1000;
-  const multiplier = CONDITION_MULTIPLIERS[condition] ?? 0.25;
+  const multiplier = CONDITION_MULTIPLIERS[condition];
+  const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   return {
     estimatedCredit: Math.round(base * multiplier),
-    validUntil: '2026-08-08T23:59:59Z',
+    validUntil,
     asyncPending: true,
   };
 }
