@@ -82,7 +82,7 @@ describe('HEADING – single H1 per page', () => {
 
 describe('HEADING – no H3/H4 without a preceding H2 on the same page', () => {
   // Verifies that H3 only appears below an H2 (no level-skip from H1→H3).
-  // We check that at least one H2 is present whenever an H3/H4 is.
+  // Checks that the first H2 appears before the first H3/H4 in document order.
   for (const screen of SCREENS) {
     it(`[${screen.name}] every H3/H4 is preceded by an H2`, async () => {
       const res = await request(app).get(screen.url);
@@ -92,6 +92,15 @@ describe('HEADING – no H3/H4 without a preceding H2 on the same page', () => {
       const h4Count = countHeadings(html, 4);
       if (h3Count > 0 || h4Count > 0) {
         expect(countHeadings(html, 2)).toBeGreaterThan(0);
+        const firstH2Index = html.search(/<h2[\s>]/i);
+        const firstH3Index = html.search(/<h3[\s>]/i);
+        const firstH4Index = html.search(/<h4[\s>]/i);
+        if (firstH3Index !== -1) {
+          expect(firstH2Index).toBeLessThan(firstH3Index);
+        }
+        if (firstH4Index !== -1) {
+          expect(firstH2Index).toBeLessThan(firstH4Index);
+        }
       }
     });
   }

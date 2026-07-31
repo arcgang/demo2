@@ -147,6 +147,7 @@ wireframesRouter.get('/cart', (_req: Request, res: Response) => {
     <h1>Your Cart</h1>
     <p>3 items</p>
 
+    <h2>Items in your cart</h2>
     <div class="cart-items">
       <article>
         <h3>iPhone 15 Pro</h3>

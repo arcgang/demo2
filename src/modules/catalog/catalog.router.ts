@@ -45,7 +45,7 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 <body>
   <header class="header">
     <a href="/">Vodacom</a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="/catalog">Devices</a>
       <a href="/plans">Plans</a>
       <a href="/accessories">Accessories</a>
@@ -53,7 +53,7 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
     </nav>
   </header>
 
-  <nav class="breadcrumb">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
     <a href="/product/iphone-15-pro">iPhone 15 Pro 256GB</a> &rsaquo;
@@ -140,7 +140,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 <body>
   <header class="header">
     <a href="/">Vodacom</a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="/catalog">Devices</a>
       <a href="/plans">Plans</a>
       <a href="/accessories">Accessories</a>
@@ -148,7 +148,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     </nav>
   </header>
 
-  <nav class="breadcrumb">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
     <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
@@ -179,8 +179,8 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     </div>
 
     <div class="quantity-selector">
-      <label>Quantity</label>
-      <input type="number" value="1" min="1">
+      <label for="quantity">Quantity</label>
+      <input type="number" id="quantity" value="1" min="1">
     </div>
 
     <button class="btn-add-to-cart">Add to Cart</button>
