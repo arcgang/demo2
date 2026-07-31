@@ -102,10 +102,17 @@ router.get('/products/:id', (req: Request, res: Response) => {
   }
 
   const market = getMarket(product.marketCode);
-  const currency = market ? market.currency : 'ZAR';
-  const vatRate = market ? market.vatRate : 0.15;
-  const taxLabel = market ? market.taxLabel : 'VAT';
-  const paymentMethods = market ? market.paymentMethods : ['CARD_TOKEN'];
+  if (!market) {
+    res.status(500).json({
+      errorCode: 'MARKET_CONFIG_MISSING',
+      message: `Product "${id}" references market "${product.marketCode}" which has no configuration.`,
+    });
+    return;
+  }
+  const currency = market.currency;
+  const vatRate = market.vatRate;
+  const taxLabel = market.taxLabel;
+  const paymentMethods = market.paymentMethods;
 
   const plans = getPlansForMarket(product.marketCode);
   const compatibleOffers = plans
