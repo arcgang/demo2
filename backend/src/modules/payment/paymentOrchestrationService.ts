@@ -3,7 +3,7 @@ import { persistPaymentAttempt, PaymentAttemptRecord } from './paymentStore';
 
 export interface InitiatePaymentInput {
   orderId: string;
-  method: string;
+  method: 'card' | 'mobile_money';
   token?: string;
   walletRef?: string;
 }

@@ -53,14 +53,17 @@ router.post('/initiate-payment', (req: Request, res: Response) => {
     return;
   }
 
-  if (containsRawPan(body)) {
+  const paymentFields: Record<string, unknown> = {};
+  if (token !== undefined) paymentFields.token = token;
+  if (walletRef !== undefined) paymentFields.walletRef = walletRef;
+  if (containsRawPan(paymentFields)) {
     res.status(400).json({ errorCode: 'RAW_PAN_REJECTED', message: 'Raw card numbers are not accepted. Use a PSP-issued token.' });
     return;
   }
 
   const result = initiatePayment({
     orderId,
-    method: method as 'card' | 'mobile_money',
+    method,
     token: typeof token === 'string' ? token : undefined,
     walletRef: typeof walletRef === 'string' ? walletRef : undefined,
   });

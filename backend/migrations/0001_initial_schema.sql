@@ -129,25 +129,6 @@ CREATE TABLE verification_case (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- PCI-DSS: no pan, cvv, card_number, expiry, or card_expiry column.
--- Raw card data is never accepted; only PSP-issued token_reference and
--- provider_reference are stored.
-CREATE TABLE payment_attempt (
-    payment_attempt_id UUID PRIMARY KEY,
-    cart_id UUID NOT NULL REFERENCES cart(cart_id),
-    payment_method VARCHAR(32) NOT NULL,
-    provider_name VARCHAR(64) NOT NULL,
-    provider_reference VARCHAR(128),
-    token_reference VARCHAR(128),
-    wallet_reference VARCHAR(128),
-    payment_status VARCHAR(32) NOT NULL,
-    amount NUMERIC(12,2) NOT NULL,
-    currency_code VARCHAR(8) NOT NULL,
-    callback_payload_json JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE shop_order (
     order_id UUID PRIMARY KEY,
     cart_id UUID NOT NULL REFERENCES cart(cart_id),
@@ -161,6 +142,25 @@ CREATE TABLE shop_order (
     activation_status VARCHAR(32),
     total_amount NUMERIC(12,2) NOT NULL,
     currency_code VARCHAR(8) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- PCI-DSS: no pan, cvv, card_number, expiry, or card_expiry column.
+-- Raw card data is never accepted; only PSP-issued token_reference and
+-- provider_reference are stored.
+CREATE TABLE payment_attempt (
+    payment_attempt_id UUID PRIMARY KEY,
+    order_id UUID NOT NULL REFERENCES shop_order(order_id),
+    payment_method VARCHAR(32) NOT NULL,
+    provider_name VARCHAR(64) NOT NULL,
+    provider_reference VARCHAR(128),
+    token_reference VARCHAR(128),
+    wallet_reference VARCHAR(128),
+    payment_status VARCHAR(32) NOT NULL,
+    amount NUMERIC(12,2) NOT NULL,
+    currency_code VARCHAR(8) NOT NULL,
+    callback_payload_json JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
