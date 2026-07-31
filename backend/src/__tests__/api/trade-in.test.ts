@@ -26,15 +26,19 @@ import { Application } from 'express';
  *   estimatedCredit, validUntil, cartId).
  */
 
-// Redirect the store to a temp file so each test run is isolated and the
-// shared backend/data/trade_in_quotes.json does not accumulate state.
+// Redirect stores to temp files so each test run is isolated.
 const TEST_DB_PATH = path.join(os.tmpdir(), `trade_in_quotes_test_${process.pid}.json`);
+const TEST_CART_DB_PATH = path.join(os.tmpdir(), `carts_test_${process.pid}.json`);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const tradeInStore = require('../../modules/trade-in/tradeInStore');
 tradeInStore.setDbPath(TEST_DB_PATH);
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cartStore = require('../../modules/cart/cartStore');
+cartStore.setCartDbPath(TEST_CART_DB_PATH);
 
 afterAll(() => {
   try { fs.unlinkSync(TEST_DB_PATH); } catch { /* already gone */ }
+  try { fs.unlinkSync(TEST_CART_DB_PATH); } catch { /* already gone */ }
 });
 
 interface TradeInQuote {
@@ -263,8 +267,9 @@ describe('POST /api/cart/trade-in — response shape', () => {
   let app: Application;
   let quoteId: string;
 
-  beforeAll(async () => {
-    app = getApp();
+  beforeAll(() => { app = getApp(); });
+
+  beforeEach(async () => {
     const { body } = await postQuote(app, VALID_QUOTE_BODY);
     quoteId = body.id as string;
   });
@@ -342,6 +347,57 @@ describe('POST /api/cart/trade-in — credit subtraction', () => {
       (body.vat as number) -
       (body.tradeInCredit as number);
     expect(body.total as number).toBeCloseTo(expected, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5b POST /api/cart/trade-in — dynamic subtotal from real cart
+// ---------------------------------------------------------------------------
+
+describe('POST /api/cart/trade-in — dynamic cart subtotal', () => {
+  let app: Application;
+
+  beforeAll(() => { app = getApp(); });
+
+  it('uses real cart once-off subtotal when a cartId with items is provided', async () => {
+    const cart = await cartStore.createCart('ZA');
+    await cartStore.addCartItem(cart.cartId, {
+      lineType: 'DEVICE',
+      name: 'Samsung Galaxy S23',
+      onceOffAmount: 15000,
+      recurringAmount: 0,
+    });
+
+    const { body: quoteBody } = await postQuote(app, { ...VALID_QUOTE_BODY, condition: 'POOR' });
+    const { status, body } = await applyTradeIn(app, { quoteId: quoteBody.id, cartId: cart.cartId });
+
+    expect(status).toBe(200);
+    expect(body.onceOffSubtotal).toBe(15000);
+    const expectedVat = Math.round(15000 * 0.15 * 100) / 100;
+    expect(body.vat).toBeCloseTo(expectedVat, 2);
+  });
+
+  it('total is never negative when tradeInCredit exceeds subtotal + vat', async () => {
+    // Create a cart with a very small item so credit > subtotal+vat
+    const cart = await cartStore.createCart('ZA');
+    await cartStore.addCartItem(cart.cartId, {
+      lineType: 'ACCESSORY',
+      name: 'Cheap Accessory',
+      onceOffAmount: 50,
+      recurringAmount: 0,
+    });
+
+    // iPhone 15 EXCELLENT yields 8000 credit; subtotal+vat = 50 + 7.50 = 57.50
+    const { body: quoteBody } = await postQuote(app, {
+      brand: 'Apple',
+      model: 'iPhone 15',
+      storage: 256,
+      condition: 'EXCELLENT',
+    });
+    const { status, body } = await applyTradeIn(app, { quoteId: quoteBody.id, cartId: cart.cartId });
+
+    expect(status).toBe(200);
+    expect(body.total as number).toBe(0);
   });
 });
 

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { VALID_CONDITIONS, getEstimatedCredit, TradeInCondition } from '../modules/trade-in/tradeInAdapter';
 import { saveQuote, findQuote, attachCartToQuote } from '../modules/trade-in/tradeInStore';
+import { getOnceOffSubtotal } from '../modules/cart/cartStore';
 
 const tradeInRouter = Router();
 const cartTradeInRouter = Router();
@@ -65,17 +66,13 @@ tradeInRouter.post('/quote', async (req: Request, res: Response) => {
   });
 });
 
-// POST /api/cart/trade-in
-//
-// onceOffSubtotal is a fixed stub (R18 999) because the request body carries
-// only { quoteId } with no cartId, so there are no per-cart line items to
-// aggregate.  AC partially satisfied: credit subtraction arithmetic is correct;
-// live cart aggregation requires cartId in the request and per-cart item storage.
-const ONCE_OFF_SUBTOTAL = 18999.00;
 const VAT_RATE = 0.15;
+// Fallback subtotal used when no cartId is supplied or the cart has no items.
+const FALLBACK_ONCE_OFF_SUBTOTAL = 18999.00;
 
+// POST /api/cart/trade-in
 cartTradeInRouter.post('/trade-in', async (req: Request, res: Response) => {
-  const { quoteId } = req.body as Record<string, unknown>;
+  const { quoteId, cartId } = req.body as Record<string, unknown>;
 
   if (typeof quoteId !== 'string' || quoteId.trim() === '') {
     res.status(400).json({ errorCode: 'MISSING_FIELD', message: 'quoteId is required.' });
@@ -93,19 +90,32 @@ cartTradeInRouter.post('/trade-in', async (req: Request, res: Response) => {
     return;
   }
 
+  // Use the supplied cartId when present; fall back to a quote-scoped sentinel
+  // so the TOCTOU guard still works when cartId is absent.
+  const resolvedCartId = (typeof cartId === 'string' && cartId.trim() !== '')
+    ? cartId.trim()
+    : `cart_${quoteId.trim()}`;
+
   // Atomic check-and-attach: returns false if already attached, preventing
   // double-spend under concurrent requests (TOCTOU fix).
-  const cartId = `cart_${quoteId.trim()}`;
-  const attached = await attachCartToQuote(quote.id, cartId);
+  const attached = await attachCartToQuote(quote.id, resolvedCartId);
   if (!attached) {
     res.status(409).json({ errorCode: 'QUOTE_ALREADY_USED', message: 'This trade-in quote has already been applied to a cart.' });
     return;
   }
 
+  // Derive the once-off subtotal from real cart line items when a cartId is
+  // provided and the cart has items; otherwise fall back to the stub value.
+  const cartSubtotal = (typeof cartId === 'string' && cartId.trim() !== '')
+    ? getOnceOffSubtotal(cartId.trim())
+    : null;
+  const onceOffSubtotal = (cartSubtotal !== null && cartSubtotal > 0)
+    ? cartSubtotal
+    : FALLBACK_ONCE_OFF_SUBTOTAL;
+
   const tradeInCredit = quote.estimatedCredit;
-  const onceOffSubtotal = ONCE_OFF_SUBTOTAL;
   const vat = Math.round(onceOffSubtotal * VAT_RATE * 100) / 100;
-  const total = Math.round((onceOffSubtotal + vat - tradeInCredit) * 100) / 100;
+  const total = Math.max(0, Math.round((onceOffSubtotal + vat - tradeInCredit) * 100) / 100);
 
   res.status(200).json({
     tradeInCredit,
