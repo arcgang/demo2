@@ -171,7 +171,7 @@ export function getProductsForMarket(
   const products = BY_MARKET.get(marketCode.toUpperCase()) ?? [];
   if (!category) return products;
   const productType = CATEGORY_TYPE_MAP[category.toLowerCase()];
-  if (!productType) return products;
+  if (!productType) return [];
   return products.filter(p => p.productType === productType);
 }
 

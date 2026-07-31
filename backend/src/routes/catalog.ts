@@ -9,24 +9,25 @@ import {
 
 const router = Router();
 
-function computeTax(priceOnceOff: number, priceRecurring: number, vatRate: number) {
+function computeTax(priceOnceOff: number, priceRecurring: number, vatRate: number, taxLabel: string) {
   const taxableAmount = priceOnceOff > 0 ? priceOnceOff : priceRecurring;
   return {
-    taxLabel: 'VAT',
+    taxLabel,
     taxAmount: parseFloat((taxableAmount * vatRate).toFixed(2)),
     taxRate: vatRate,
   };
 }
 
 function isPurchasable(product: ProductSeed, paymentMethods: string[]): boolean {
+  if (product.availabilityStatus !== 'AVAILABLE') return false;
   if (product.requiresPaymentMethod) {
     return paymentMethods.includes(product.requiresPaymentMethod);
   }
-  return product.availabilityStatus === 'AVAILABLE';
+  return true;
 }
 
-function buildCatalogItem(product: ProductSeed, currency: string, vatRate: number, paymentMethods: string[]) {
-  const tax = computeTax(product.priceOnceOff, product.priceRecurring, vatRate);
+function buildCatalogItem(product: ProductSeed, currency: string, vatRate: number, taxLabel: string, paymentMethods: string[]) {
+  const tax = computeTax(product.priceOnceOff, product.priceRecurring, vatRate, taxLabel);
   return {
     productId: product.productId,
     productType: product.productType,
@@ -73,7 +74,7 @@ router.get('/products', (req: Request, res: Response) => {
       currency: market.currency,
     },
     catalog: products.map(p =>
-      buildCatalogItem(p, market.currency, market.vatRate, market.paymentMethods),
+      buildCatalogItem(p, market.currency, market.vatRate, market.taxLabel, market.paymentMethods),
     ),
   });
 });
@@ -92,10 +93,18 @@ router.get('/products/:id', (req: Request, res: Response) => {
     return;
   }
 
-  const resolvedMarketCode = marketCode ?? product.marketCode;
-  const market = getMarket(resolvedMarketCode);
+  if (marketCode && marketCode.toUpperCase() !== product.marketCode.toUpperCase()) {
+    res.status(404).json({
+      errorCode: 'PRODUCT_NOT_IN_MARKET',
+      message: `Product "${id}" is not available in market "${marketCode}".`,
+    });
+    return;
+  }
+
+  const market = getMarket(product.marketCode);
   const currency = market ? market.currency : 'ZAR';
   const vatRate = market ? market.vatRate : 0.15;
+  const taxLabel = market ? market.taxLabel : 'VAT';
   const paymentMethods = market ? market.paymentMethods : ['CARD_TOKEN'];
 
   const plans = getPlansForMarket(product.marketCode);
@@ -110,7 +119,7 @@ router.get('/products/:id', (req: Request, res: Response) => {
       },
     }));
 
-  const tax = computeTax(product.priceOnceOff, product.priceRecurring, vatRate);
+  const tax = computeTax(product.priceOnceOff, product.priceRecurring, vatRate, taxLabel);
 
   res.status(200).json({
     productId: product.productId,
@@ -122,11 +131,12 @@ router.get('/products/:id', (req: Request, res: Response) => {
       currency,
     },
     tax: {
-      taxLabel: market ? market.taxLabel : 'VAT',
+      taxLabel,
       taxAmount: tax.taxAmount,
       taxRate: tax.taxRate,
       inclusive: false,
     },
+    spec: product.metadata,
     marketAvailability: [product.marketCode],
     compatibleOffers,
     onboardingRequirements: product.onboardingRequirements,
