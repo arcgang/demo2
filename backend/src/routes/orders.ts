@@ -33,7 +33,7 @@ router.post('/:id/esim/issue', (req: Request, res: Response) => {
       res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: 'Order not found.' });
       return;
     case 'PAYMENT_PENDING':
-      res.status(403).json({ errorCode: 'PAYMENT_PENDING', message: 'Payment has not been confirmed. eSIM issuance requires a confirmed payment.' });
+      res.status(402).json({ errorCode: 'PAYMENT_PENDING', message: 'Payment has not been confirmed. eSIM issuance requires a confirmed payment.' });
       return;
     case 'VERIFICATION_PENDING':
       res.status(403).json({ errorCode: 'VERIFICATION_PENDING', message: 'Identity verification has not been completed. eSIM issuance requires passed KYC/RICA verification.' });

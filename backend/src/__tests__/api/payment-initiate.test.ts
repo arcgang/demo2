@@ -58,6 +58,7 @@ const VALID_INITIATE_PAYLOAD = {
   orderId: 'ord_pay_test_001',
   method: 'mobile_money',
   msisdn: '27835550001',
+  amount: 199.99,
 };
 
 // ---------------------------------------------------------------------------
