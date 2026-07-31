@@ -23,10 +23,17 @@ export function getPaymentAttempt(paymentAttemptId: string): PaymentAttemptRecor
   return attempts.get(paymentAttemptId);
 }
 
-export function updatePaymentAttemptStatus(paymentAttemptId: string, status: string): PaymentAttemptRecord | undefined {
+export function updatePaymentAttemptStatus(
+  paymentAttemptId: string,
+  status: string,
+  providerReference?: string,
+): PaymentAttemptRecord | undefined {
   const record = attempts.get(paymentAttemptId);
   if (!record) return undefined;
   record.status = status;
+  if (providerReference !== undefined) {
+    record.providerReference = providerReference;
+  }
   record.updatedAt = new Date().toISOString();
   return record;
 }

@@ -14,13 +14,6 @@ function randomId(): string {
   return randomBytes(8).toString('hex');
 }
 
-function derivePaymentAttemptId(orderId: string): string {
-  // Strip the 'ord_seed_' prefix used by test seeders so the paymentAttemptId
-  // is predictable in callback-flow tests (ord_seed_pay_X → pay_X).
-  // For real order IDs without that prefix the orderId itself becomes the key.
-  return orderId.replace(/^ord_seed_/, '');
-}
-
 function invokePspAdapter(token: string): string {
   return `psp_ref_${randomId()}_${token.slice(0, 8)}`;
 }
@@ -32,11 +25,14 @@ function invokeMobileMoneyAdapter(_walletRef: string): string {
 export function initiatePayment(input: InitiatePaymentInput): PaymentAttemptResult {
   const { orderId, method, token, walletRef } = input;
 
-  const paymentAttemptId = derivePaymentAttemptId(orderId);
+  const paymentAttemptId = `pay_${randomId()}`;
   const now = new Date().toISOString();
 
   if (method === 'card') {
-    const providerReference = invokePspAdapter(token ?? '');
+    if (!token) {
+      throw new Error('token is required for card payment');
+    }
+    const providerReference = invokePspAdapter(token);
     const record: PaymentAttemptRecord = {
       paymentAttemptId,
       orderId,

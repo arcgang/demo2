@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { getPaymentMethodsForMarket } from '../modules/payment/marketPaymentConfig';
 import { containsRawPan } from '../modules/payment/panGuard';
@@ -42,6 +43,11 @@ router.post('/initiate-payment', (req: Request, res: Response) => {
     return;
   }
 
+  if (method === 'card' && (!token || typeof token !== 'string')) {
+    res.status(422).json({ errorCode: 'MISSING_TOKEN', message: 'token is required for card payment.' });
+    return;
+  }
+
   if (containsRawPan(body)) {
     res.status(400).json({ errorCode: 'RAW_PAN_REJECTED', message: 'Raw card numbers are not accepted. Use a PSP-issued token.' });
     return;
@@ -64,7 +70,18 @@ router.post('/initiate-payment', (req: Request, res: Response) => {
 // POST /api/checkout/payment-callback
 router.post('/payment-callback', (req: Request, res: Response) => {
   const secret = req.headers['x-callback-secret'];
-  if (!secret || secret !== CALLBACK_SECRET) {
+  if (!secret || typeof secret !== 'string') {
+    res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Invalid or missing callback secret.' });
+    return;
+  }
+
+  const secretBuf = Buffer.from(secret);
+  const expectedBuf = Buffer.from(CALLBACK_SECRET);
+  const secretsMatch =
+    secretBuf.length === expectedBuf.length &&
+    timingSafeEqual(secretBuf, expectedBuf);
+
+  if (!secretsMatch) {
     res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Invalid or missing callback secret.' });
     return;
   }
@@ -94,7 +111,7 @@ router.post('/payment-callback', (req: Request, res: Response) => {
     return;
   }
 
-  const updated = updatePaymentAttemptStatus(paymentAttemptId, status);
+  const updated = updatePaymentAttemptStatus(paymentAttemptId, status, providerReference);
 
   res.status(200).json({
     paymentAttemptId: updated!.paymentAttemptId,
