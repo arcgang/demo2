@@ -6,9 +6,9 @@ export interface OrderRecord {
 export interface ActivationStatusRecord {
   orderId: string;
   activationState: string;
-  esimReference?: string;
-  activationCode?: string;
-  smdpAddress?: string;
+  esimReference: string;
+  activationCode: string;
+  smdpAddress: string;
   updatedAt: string;
 }
 

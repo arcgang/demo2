@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import {
   getOrder,
   getActivationStatusForOrder,
@@ -15,11 +16,7 @@ export type IssueResult =
   | { outcome: 'ISSUED'; activationCode: string; smdpAddress: string; activationState: string; orderId: string };
 
 function randomHex(length: number): string {
-  let result = '';
-  while (result.length < length) {
-    result += Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
-  }
-  return result.slice(0, length).toUpperCase();
+  return randomBytes(Math.ceil(length / 2)).toString('hex').toUpperCase().slice(0, length);
 }
 
 function writeAuditEvent(orderId: string, eventType: string, payload: Record<string, unknown>): void {
@@ -48,6 +45,7 @@ export function issueEsim(orderId: string): IssueResult {
   const order = getOrder(orderId);
 
   if (!order) {
+    writeAuditEvent(orderId, 'ESIM_ISSUE_ORDER_NOT_FOUND', { orderId });
     return { outcome: 'NOT_FOUND' };
   }
 
@@ -63,10 +61,11 @@ export function issueEsim(orderId: string): IssueResult {
 
   const existing = getActivationStatusForOrder(orderId);
   if (existing) {
+    writeAuditEvent(orderId, 'ESIM_ALREADY_ISSUED', { activationCode: existing.activationCode });
     return {
       outcome: 'ALREADY_ISSUED',
-      activationCode: existing.activationCode!,
-      smdpAddress: existing.smdpAddress!,
+      activationCode: existing.activationCode,
+      smdpAddress: existing.smdpAddress,
       activationState: existing.activationState,
       orderId,
     };
