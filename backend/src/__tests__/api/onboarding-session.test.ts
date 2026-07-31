@@ -172,7 +172,7 @@ describe('POST /api/onboarding/session — progressive disclosure of requiredFie
     expect(body.requiredFields).not.toContain('lastName');
   });
 
-  it('requiredFields is a subset relevant to the next stage, not the complete field set', async () => {
+  it('requiredFields after personal stage contains address fields, not RICA fields', async () => {
     const { body } = await postOnboarding(app, {
       stage: 'personal',
       data: { firstName: 'Amina', lastName: 'Dlamini' },
@@ -186,6 +186,12 @@ describe('POST /api/onboarding/session — progressive disclosure of requiredFie
     ];
     // requiredFields must be a proper subset, not the entire set of all fields
     expect(body.requiredFields.length).toBeLessThan(allKnownFields.length);
+    // Must contain address fields (next stage after personal)
+    expect(body.requiredFields).toContain('addressLine1');
+    expect(body.requiredFields).toContain('city');
+    // Must not contain RICA fields (two stages ahead)
+    expect(body.requiredFields).not.toContain('msisdn');
+    expect(body.requiredFields).not.toContain('ownershipConfirmed');
   });
 });
 

@@ -25,8 +25,9 @@ router.post('/session', (req: Request, res: Response) => {
     return;
   }
 
-  const result = processOnboardingSession(body);
-  res.status(200).json(result);
+  processOnboardingSession(body)
+    .then((result) => res.status(200).json(result))
+    .catch(() => res.status(500).json({ errorCode: 'INTERNAL_ERROR', message: 'Unexpected error.' }));
 });
 
 export default router;
