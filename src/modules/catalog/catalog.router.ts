@@ -62,7 +62,7 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
   <main>
     <h1>Configure Your Bundle</h1>
-    <h3>iPhone 15 Pro 256GB</h3>
+    <h2>iPhone 15 Pro 256GB</h2>
     <p>Natural Titanium &mdash; R 24,999.00</p>
     <p>This plan is compatible with your device</p>
 
@@ -73,19 +73,19 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
       <div class="base-plan-list">
         <div class="plan-card" data-plan-id="plan_red_5gb">
-          <h4>Vodacom Red 5GB</h4>
+          <h3>Vodacom Red 5GB</h3>
           <p>5GB Data + Unlimited Calls &amp; SMS</p>
           <p class="plan-price">R 299/month</p>
           <button class="btn-select-plan">Select Plan</button>
         </div>
         <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-          <h4>Vodacom Unlimited 20GB</h4>
+          <h3>Vodacom Unlimited 20GB</h3>
           <p>20GB Data + Unlimited Calls &amp; SMS</p>
           <p class="plan-price">R 799/month</p>
           <button class="btn-select-plan">Select Plan</button>
         </div>
         <div class="plan-card" data-plan-id="plan_red_premium">
-          <h4>Vodacom Red Premium</h4>
+          <h3>Vodacom Red Premium</h3>
           <p>50GB Data + Unlimited Calls &amp; SMS</p>
           <p class="plan-price">R 1,299/month</p>
           <button class="btn-select-plan">Select Plan</button>
@@ -95,9 +95,9 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
     <section class="bundle-addons">
       <h2>Optional Add-Ons</h2>
-      <label><input type="checkbox" name="addon-data"> Extra 10GB Data &mdash; + R 199/month</label>
-      <label><input type="checkbox" name="addon-international" checked> International Calling &mdash; + R 149/month</label>
-      <label><input type="checkbox" name="addon-roaming"> Roaming Bundle &mdash; + R 299/month</label>
+      <label for="addon-data"><input type="checkbox" id="addon-data" name="addon-data"> Extra 10GB Data &mdash; + R 199/month</label>
+      <label for="addon-international"><input type="checkbox" id="addon-international" name="addon-international" checked> International Calling &mdash; + R 149/month</label>
+      <label for="addon-roaming"><input type="checkbox" id="addon-roaming" name="addon-roaming"> Roaming Bundle &mdash; + R 299/month</label>
     </section>
   </main>
 
@@ -115,6 +115,10 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
     <p>Total Monthly: R 948.00</p>
     <button>Continue to Cart</button>
   </aside>
+
+  <footer>
+    <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
+  </footer>
 </body>
 </html>`;
 
@@ -151,6 +155,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     iPhone 15 Pro 256GB
   </nav>
 
+  <main>
   <section class="product-hero">
     <h1>iPhone 15 Pro 256GB</h1>
     <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
@@ -189,19 +194,19 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
     <div class="base-plan-list">
       <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
+        <h3>Vodacom Red 5GB</h3>
         <p>5GB Data + Unlimited Calls &amp; SMS</p>
         <p class="plan-price">R 299/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
       <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-        <h4>Vodacom Unlimited 20GB</h4>
+        <h3>Vodacom Unlimited 20GB</h3>
         <p>20GB Data + Unlimited Calls &amp; SMS</p>
         <p class="plan-price">R 799/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
       <div class="plan-card" data-plan-id="plan_red_premium">
-        <h4>Vodacom Red Premium</h4>
+        <h3>Vodacom Red Premium</h3>
         <p>50GB Data + Unlimited Calls &amp; SMS</p>
         <p class="plan-price">R 1,299/month</p>
         <button class="btn-select-plan">Select Plan</button>
@@ -212,6 +217,11 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <section class="product-details">
     <h2>Complete your purchase</h2>
   </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
+  </footer>
 </body>
 </html>`;
 
