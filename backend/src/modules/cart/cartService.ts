@@ -15,6 +15,8 @@ export interface CartItem {
   tax_inclusive: boolean;
   is_optional: boolean;
   parent_item_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CartTotals {
@@ -32,12 +34,31 @@ export interface Cart {
   currency: string;
   items: CartItem[];
   totals: CartTotals;
+  created_at: string;
+  updated_at: string;
 }
 
-const VAT_RATE = 0.15;
+// VAT rates by market code; env var VAT_RATE_<MARKET> overrides at runtime.
+const MARKET_VAT_RATES: Record<string, number> = {
+  ZA: 0.15,
+  TZ: 0.18,
+  MZ: 0.17,
+};
 
-function calcTotals(items: CartItem[]): CartTotals {
+function getVatRate(market: string): number {
+  const envKey = `VAT_RATE_${market.toUpperCase()}`;
+  const envVal = process.env[envKey];
+  if (envVal !== undefined) {
+    const parsed = parseFloat(envVal);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return MARKET_VAT_RATES[market.toUpperCase()] ?? 0.15;
+}
+
+function calcTotals(items: CartItem[], market: string): CartTotals {
+  const vatRate = getVatRate(market);
   let once_off_subtotal = 0;
+  let taxable_base = 0;
   let recurring_subtotal = 0;
   let credits = 0;
 
@@ -45,12 +66,17 @@ function calcTotals(items: CartItem[]): CartTotals {
     if (item.item_type === 'credit') {
       credits += item.once_off_price_cents * item.qty;
     } else {
-      once_off_subtotal += item.once_off_price_cents * item.qty;
+      const lineTotal = item.once_off_price_cents * item.qty;
+      once_off_subtotal += lineTotal;
+      // tax_inclusive items already embed VAT — exclude from the taxable base.
+      if (!item.tax_inclusive) {
+        taxable_base += lineTotal;
+      }
       recurring_subtotal += item.recurring_price_cents * item.qty;
     }
   }
 
-  const tax_amount = Math.round(once_off_subtotal * VAT_RATE);
+  const tax_amount = Math.round(taxable_base * vatRate);
   const total_once_off = once_off_subtotal + tax_amount + credits;
   const total_monthly = recurring_subtotal;
 
@@ -63,12 +89,15 @@ const carts = new Map<string, Cart>();
 function getOrCreateCart(sessionId: string): Cart {
   let cart = carts.get(sessionId);
   if (!cart) {
+    const now = new Date().toISOString();
     cart = {
       id: randomUUID(),
       market: 'ZA',
       currency: 'ZAR',
       items: [],
-      totals: calcTotals([]),
+      totals: calcTotals([], 'ZA'),
+      created_at: now,
+      updated_at: now,
     };
     carts.set(sessionId, cart);
   }
@@ -100,6 +129,11 @@ export function addItem(sessionId: string, input: AddItemInput): CartItem {
     throw new Error('INVALID_ITEM_TYPE');
   }
 
+  if (!Number.isInteger(input.qty) || input.qty <= 0) {
+    throw new Error('INVALID_QTY');
+  }
+
+  const now = new Date().toISOString();
   const item: CartItem = {
     id: randomUUID(),
     cart_id: cart.id,
@@ -113,10 +147,13 @@ export function addItem(sessionId: string, input: AddItemInput): CartItem {
     tax_inclusive: input.tax_inclusive ?? false,
     is_optional: input.is_optional ?? false,
     parent_item_id: input.parent_item_id ?? null,
+    created_at: now,
+    updated_at: now,
   };
 
   cart.items.push(item);
-  cart.totals = calcTotals(cart.items);
+  cart.totals = calcTotals(cart.items, cart.market);
+  cart.updated_at = now;
   return item;
 }
 
@@ -134,10 +171,18 @@ export function updateItem(
   const item = cart.items.find((i) => i.id === itemId);
   if (!item) return null;
 
-  if (patch.qty !== undefined) item.qty = patch.qty;
+  if (patch.qty !== undefined) {
+    if (!Number.isInteger(patch.qty) || patch.qty <= 0) {
+      throw new Error('INVALID_QTY');
+    }
+    item.qty = patch.qty;
+  }
   if ('variant_label' in patch) item.variant_label = patch.variant_label ?? null;
 
-  cart.totals = calcTotals(cart.items);
+  const now = new Date().toISOString();
+  item.updated_at = now;
+  cart.totals = calcTotals(cart.items, cart.market);
+  cart.updated_at = now;
   return item;
 }
 
@@ -145,21 +190,29 @@ export type DeleteResult =
   | { ok: true }
   | { ok: false; errorCode: string; message: string };
 
+function collectDependentIds(items: CartItem[], parentId: string): string[] {
+  const directChildren = items.filter((i) => i.parent_item_id === parentId).map((i) => i.id);
+  const all = [...directChildren];
+  for (const childId of directChildren) {
+    all.push(...collectDependentIds(items, childId));
+  }
+  return all;
+}
+
 export function deleteItem(
   sessionId: string,
   itemId: string,
   force: boolean,
 ): DeleteResult {
   const cart = getOrCreateCart(sessionId);
-  const idx = cart.items.findIndex((i) => i.id === itemId);
-  if (idx === -1) {
+  const target = cart.items.find((i) => i.id === itemId);
+  if (!target) {
     return { ok: false, errorCode: 'ITEM_NOT_FOUND', message: 'Item not found in cart.' };
   }
 
-  const item = cart.items[idx];
-  const hasDependents = cart.items.some((i) => i.parent_item_id === itemId);
+  const dependentIds = collectDependentIds(cart.items, itemId);
 
-  if (!item.is_optional && !force) {
+  if (!target.is_optional && !force) {
     return {
       ok: false,
       errorCode: 'ITEM_NOT_REMOVABLE',
@@ -167,7 +220,7 @@ export function deleteItem(
     };
   }
 
-  if (hasDependents && !force) {
+  if (dependentIds.length > 0 && !force) {
     return {
       ok: false,
       errorCode: 'ITEM_HAS_DEPENDENTS',
@@ -175,7 +228,9 @@ export function deleteItem(
     };
   }
 
-  cart.items.splice(idx, 1);
-  cart.totals = calcTotals(cart.items);
+  const removeIds = new Set([itemId, ...dependentIds]);
+  cart.items = cart.items.filter((i) => !removeIds.has(i.id));
+  cart.totals = calcTotals(cart.items, cart.market);
+  cart.updated_at = new Date().toISOString();
   return { ok: true };
 }

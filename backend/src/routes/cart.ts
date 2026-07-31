@@ -30,7 +30,7 @@ function getSessionId(req: Request, res: Response): string {
   let sessionId = cookies[SESSION_COOKIE];
   if (!sessionId) {
     sessionId = randomUUID();
-    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${sessionId}; HttpOnly; Path=/`);
+    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${sessionId}; HttpOnly; SameSite=Lax; Path=/`);
   }
   return sessionId;
 }
@@ -44,7 +44,14 @@ router.post('/items', (req: Request, res: Response) => {
   const sessionId = getSessionId(req, res);
   const body = req.body as AddItemInput;
 
-  if (!body.item_type || !body.product_id || !body.product_name || body.qty == null) {
+  if (
+    !body.item_type ||
+    !body.product_id ||
+    !body.product_name ||
+    body.qty == null ||
+    typeof body.once_off_price_cents !== 'number' ||
+    typeof body.recurring_price_cents !== 'number'
+  ) {
     res.status(400).json({ errorCode: 'VALIDATION_ERROR', message: 'Missing required fields.' });
     return;
   }
@@ -56,6 +63,8 @@ router.post('/items', (req: Request, res: Response) => {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === 'INVALID_ITEM_TYPE') {
       res.status(400).json({ errorCode: 'INVALID_ITEM_TYPE', message: 'Unknown item_type value.' });
+    } else if (msg === 'INVALID_QTY') {
+      res.status(400).json({ errorCode: 'INVALID_QTY', message: 'qty must be a positive integer.' });
     } else {
       res.status(500).json({ errorCode: 'INTERNAL_ERROR', message: 'Unexpected error.' });
     }
@@ -67,13 +76,21 @@ router.put('/items/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const patch = req.body as { qty?: number; variant_label?: string | null };
 
-  const item = updateItem(sessionId, id, patch);
-  if (!item) {
-    res.status(404).json({ errorCode: 'ITEM_NOT_FOUND', message: 'Item not found in cart.' });
-    return;
+  try {
+    const item = updateItem(sessionId, id, patch);
+    if (!item) {
+      res.status(404).json({ errorCode: 'ITEM_NOT_FOUND', message: 'Item not found in cart.' });
+      return;
+    }
+    res.status(200).json(item);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === 'INVALID_QTY') {
+      res.status(400).json({ errorCode: 'INVALID_QTY', message: 'qty must be a positive integer.' });
+    } else {
+      res.status(500).json({ errorCode: 'INTERNAL_ERROR', message: 'Unexpected error.' });
+    }
   }
-
-  res.status(200).json(item);
 });
 
 router.delete('/items/:id', (req: Request, res: Response) => {
