@@ -1,0 +1,36 @@
+// Prisma schema for the Vodacom Shop backend demo.
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VerificationCaseType {
+  KYC
+  RICA
+}
+
+enum VerificationCaseStatus {
+  pending
+  verified
+  failed
+}
+
+model VerificationCase {
+  id             String                 @id @default(uuid())
+  orderId        String
+  customerId     String
+  type           VerificationCaseType
+  status         VerificationCaseStatus @default(pending)
+  submittedAt    DateTime               @default(now())
+  resolvedAt     DateTime?
+  identityFields Json
+  auditRef       String
+
+  @@map("verification_case")
+}
