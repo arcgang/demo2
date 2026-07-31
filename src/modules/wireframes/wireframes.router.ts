@@ -352,7 +352,7 @@ wireframesRouter.get('/checkout', (_req: Request, res: Response) => {
   </main>
 
   <aside class="summary-card">
-    <h3>Order Summary</h3>
+    <h2>Order Summary</h2>
     <ul>
       <li>iPhone 15 Pro 256GB &mdash; Qty: 1 &mdash; R 18,999</li>
       <li>Silicone Case &mdash; Qty: 1 &mdash; R 599</li>
@@ -399,7 +399,7 @@ wireframesRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
       <h2 id="eligibility-status-heading">You&apos;re eligible for an upgrade!</h2>
       <p>Your contract has reached the upgrade window. Choose from our latest devices and plans.</p>
 
-      <h2>Your Current Plan</h2>
+      <h3>Your Current Plan</h3>
       <dl>
         <dt>Plan Name</dt><dd>Vodacom Red 10GB</dd>
         <dt>Monthly Cost</dt><dd>R 499.00</dd>
@@ -670,37 +670,6 @@ wireframesRouter.get('/catalog', (_req: Request, res: Response) => {
     <a href="/">Home</a> &rsaquo; <a href="/catalog">Devices</a> &rsaquo; Smartphones
   </nav>
 
-  <aside class="filter-sidebar">
-    <fieldset>
-      <legend>Brand</legend>
-      <label for="brand-apple"><input type="checkbox" id="brand-apple" name="brand-apple" checked> Apple</label>
-      <label for="brand-samsung"><input type="checkbox" id="brand-samsung" name="brand-samsung" checked> Samsung</label>
-      <label for="brand-huawei"><input type="checkbox" id="brand-huawei" name="brand-huawei"> Huawei</label>
-      <label for="brand-xiaomi"><input type="checkbox" id="brand-xiaomi" name="brand-xiaomi"> Xiaomi</label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Price Range</legend>
-      <label for="price-1"><input type="checkbox" id="price-1" name="price-1"> Under R 5,000</label>
-      <label for="price-2"><input type="checkbox" id="price-2" name="price-2" checked> R 5,000 - R 15,000</label>
-      <label for="price-3"><input type="checkbox" id="price-3" name="price-3" checked> R 15,000 - R 25,000</label>
-      <label for="price-4"><input type="checkbox" id="price-4" name="price-4"> Over R 25,000</label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Storage</legend>
-      <label for="storage-128"><input type="checkbox" id="storage-128" name="storage-128"> 128GB</label>
-      <label for="storage-256"><input type="checkbox" id="storage-256" name="storage-256" checked> 256GB</label>
-      <label for="storage-512"><input type="checkbox" id="storage-512" name="storage-512"> 512GB</label>
-    </fieldset>
-
-    <fieldset>
-      <legend>Availability</legend>
-      <label for="avail-stock"><input type="checkbox" id="avail-stock" name="avail-stock" checked> In Stock</label>
-      <label for="avail-preorder"><input type="checkbox" id="avail-preorder" name="avail-preorder"> Pre-Order</label>
-    </fieldset>
-  </aside>
-
   <main class="product-listing">
     <h1>Smartphones</h1>
     <p>Lite Mode Active - Optimized for faster browsing</p>
@@ -757,6 +726,37 @@ wireframesRouter.get('/catalog', (_req: Request, res: Response) => {
       <a href="#">Next</a>
     </nav>
   </main>
+
+  <aside class="filter-sidebar">
+    <fieldset>
+      <legend>Brand</legend>
+      <label for="brand-apple"><input type="checkbox" id="brand-apple" name="brand-apple" checked> Apple</label>
+      <label for="brand-samsung"><input type="checkbox" id="brand-samsung" name="brand-samsung" checked> Samsung</label>
+      <label for="brand-huawei"><input type="checkbox" id="brand-huawei" name="brand-huawei"> Huawei</label>
+      <label for="brand-xiaomi"><input type="checkbox" id="brand-xiaomi" name="brand-xiaomi"> Xiaomi</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Price Range</legend>
+      <label for="price-1"><input type="checkbox" id="price-1" name="price-1"> Under R 5,000</label>
+      <label for="price-2"><input type="checkbox" id="price-2" name="price-2" checked> R 5,000 - R 15,000</label>
+      <label for="price-3"><input type="checkbox" id="price-3" name="price-3" checked> R 15,000 - R 25,000</label>
+      <label for="price-4"><input type="checkbox" id="price-4" name="price-4"> Over R 25,000</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Storage</legend>
+      <label for="storage-128"><input type="checkbox" id="storage-128" name="storage-128"> 128GB</label>
+      <label for="storage-256"><input type="checkbox" id="storage-256" name="storage-256" checked> 256GB</label>
+      <label for="storage-512"><input type="checkbox" id="storage-512" name="storage-512"> 512GB</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Availability</legend>
+      <label for="avail-stock"><input type="checkbox" id="avail-stock" name="avail-stock" checked> In Stock</label>
+      <label for="avail-preorder"><input type="checkbox" id="avail-preorder" name="avail-preorder"> Pre-Order</label>
+    </fieldset>
+  </aside>
 
   ${renderSiteFooter()}
 </body>
@@ -865,8 +865,8 @@ wireframesRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
       <p>Final credit amount will be confirmed after device inspection. This valuation is valid for 7 days.</p>
     </section>
 
-    <section>
-      <h2>Trade-In Terms &amp; Conditions</h2>
+    <section aria-labelledby="terms-heading">
+      <h2 id="terms-heading">Trade-In Terms &amp; Conditions</h2>
       <ul>
         <li>Device must be in working condition with no activation locks</li>
         <li>Final valuation subject to physical inspection upon receipt</li>
