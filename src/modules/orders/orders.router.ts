@@ -1,6 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse, Milestone } from './order-status-scenarios';
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export const ordersRouter = Router();
 
 const MILESTONE_LABELS: Record<string, string> = {
@@ -102,7 +111,7 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
     <a href="/">Home</a> &rsaquo;
     <a href="/account">Account</a> &rsaquo;
     <a href="/orders">Orders</a> &rsaquo;
-    ${id}
+    ${escapeHtml(id)}
   </nav>
 
   <main class="main-content">
@@ -110,7 +119,7 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
 
     <section class="order-meta">
       <dl>
-        <dt>Order Reference</dt><dd>${id}</dd>
+        <dt>Order Reference</dt><dd>${escapeHtml(id)}</dd>
         <dt>Status</dt><dd>${overallState}</dd>
         <dt>Order Date</dt><dd>28 July 2026, 10:00 AM</dd>
         <dt>Customer</dt><dd>Amina Dlamini</dd>
@@ -209,12 +218,19 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
         <strong>Verification blocked — action required</strong>
         <p>Your identity verification could not be completed. Please resubmit your documents to proceed.</p>
       </div>`;
-  } else {
+  } else if (verificationPending) {
     statusValue = 'Verification Pending';
     statusBannerHtml = `
       <div class="esim-status-banner esim-status-banner--pending">
         <strong>Verification pending</strong>
         <p>Your identity verification is under review. eSIM activation will be available once verification is complete.</p>
+      </div>`;
+  } else {
+    statusValue = 'Payment Pending';
+    statusBannerHtml = `
+      <div class="esim-status-banner esim-status-banner--pending">
+        <strong>Payment not yet confirmed</strong>
+        <p>Your payment is being processed. eSIM activation will be available once payment and verification are complete.</p>
       </div>`;
   }
 
@@ -269,7 +285,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
   <nav class="breadcrumb">
     <a href="/">Home</a> &rsaquo;
     <a href="/orders">Orders</a> &rsaquo;
-    <a href="/orders/${id}">${id}</a> &rsaquo;
+    <a href="/orders/${escapeHtml(id)}">${escapeHtml(id)}</a> &rsaquo;
     eSIM Activation
   </nav>
 
@@ -293,7 +309,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
   <aside class="reference-card">
     <h3>Order Reference</h3>
     <dl>
-      <dt>Order Number</dt><dd>${id}</dd>
+      <dt>Order Number</dt><dd>${escapeHtml(id)}</dd>
       <dt>Order Date</dt><dd>28 July 2026</dd>
       <dt>Customer</dt><dd>Amina Dlamini</dd>
       <dt>eSIM Reference</dt><dd>ESIM-7001-2026</dd>
