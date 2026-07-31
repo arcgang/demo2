@@ -1,12 +1,14 @@
 import express, { Application } from 'express';
 import ordersRouter from './routes/orders';
 import onboardingRouter from './routes/onboarding';
+import upgradeRouter from './routes/upgrade';
 
 export function createApp(): Application {
   const app = express();
   app.use(express.json());
   app.use('/api/orders', ordersRouter);
   app.use('/api/onboarding', onboardingRouter);
+  app.use('/api/upgrade', upgradeRouter);
   return app;
 }
 
