@@ -25,28 +25,28 @@ function renderSiteFooter(): string {
   return `
   <footer class="footer">
     <nav aria-label="About Vodacom">
-      <h4>About Vodacom</h4>
+      <p>About Vodacom</p>
       <a href="#">About Us</a>
       <a href="#">Careers</a>
       <a href="#">Press</a>
       <a href="#">Investors</a>
     </nav>
     <nav aria-label="Support links">
-      <h4>Support</h4>
+      <p>Support</p>
       <a href="#">Contact Us</a>
       <a href="#">FAQs</a>
       <a href="#">Store Locator</a>
       <a href="#">Coverage Map</a>
     </nav>
     <nav aria-label="Legal">
-      <h4>Legal</h4>
+      <p>Legal</p>
       <a href="#">Terms &amp; Conditions</a>
       <a href="#">Privacy Policy</a>
       <a href="#">Cookie Policy</a>
       <a href="#">Accessibility</a>
     </nav>
     <nav aria-label="Social media">
-      <h4>Connect</h4>
+      <p>Connect</p>
       <a href="#">Facebook</a>
       <a href="#">Twitter</a>
       <a href="#">Instagram</a>
@@ -249,43 +249,43 @@ wireframesRouter.get('/checkout', (_req: Request, res: Response) => {
         <label for="first-name">First Name</label>
         <input type="text" id="first-name" name="first-name" required value="Amina"
                aria-describedby="first-name-error">
-        <span id="first-name-error" role="alert" aria-live="assertive"></span>
+        <span id="first-name-error" role="alert"></span>
       </div>
       <div class="form-group">
         <label for="last-name">Last Name</label>
         <input type="text" id="last-name" name="last-name" required value="Dlamini"
                aria-describedby="last-name-error">
-        <span id="last-name-error" role="alert" aria-live="assertive"></span>
+        <span id="last-name-error" role="alert"></span>
       </div>
       <div class="form-group">
         <label for="email">Email Address</label>
         <input type="email" id="email" name="email" required value="amina.dlamini@example.com"
                aria-describedby="email-error">
-        <span id="email-error" role="alert" aria-live="assertive"></span>
+        <span id="email-error" role="alert"></span>
       </div>
       <div class="form-group">
         <label for="phone">Phone Number</label>
         <input type="tel" id="phone" name="phone" required value="+27 83 555 0123"
                aria-describedby="phone-error">
-        <span id="phone-error" role="alert" aria-live="assertive"></span>
+        <span id="phone-error" role="alert"></span>
       </div>
       <div class="form-group">
         <label for="address">Street Address</label>
         <input type="text" id="address" name="address" required value="10 Palm Street"
                aria-describedby="address-error">
-        <span id="address-error" role="alert" aria-live="assertive"></span>
+        <span id="address-error" role="alert"></span>
       </div>
       <div class="form-group">
         <label for="city">City</label>
         <input type="text" id="city" name="city" required value="Johannesburg"
                aria-describedby="city-error">
-        <span id="city-error" role="alert" aria-live="assertive"></span>
+        <span id="city-error" role="alert"></span>
       </div>
       <div class="form-group">
         <label for="postal-code">Postal Code</label>
         <input type="text" id="postal-code" name="postal-code" required value="2001"
                aria-describedby="postal-code-error">
-        <span id="postal-code-error" role="alert" aria-live="assertive"></span>
+        <span id="postal-code-error" role="alert"></span>
       </div>
     </section>
 
@@ -309,26 +309,26 @@ wireframesRouter.get('/checkout', (_req: Request, res: Response) => {
           <label for="card-number">Card Number</label>
           <input type="text" id="card-number" name="card-number" required maxlength="19"
                  placeholder="1234 5678 9012 3456" aria-describedby="card-number-error">
-          <span id="card-number-error" role="alert" aria-live="assertive"></span>
+          <span id="card-number-error" role="alert"></span>
           <p>Your card details are encrypted and never stored</p>
         </div>
         <div class="form-group">
           <label for="expiry">Expiry Date</label>
           <input type="text" id="expiry" name="expiry" required maxlength="5"
                  placeholder="MM/YY" aria-describedby="expiry-error">
-          <span id="expiry-error" role="alert" aria-live="assertive"></span>
+          <span id="expiry-error" role="alert"></span>
         </div>
         <div class="form-group">
           <label for="cvv">CVV</label>
           <input type="text" id="cvv" name="cvv" required maxlength="4"
                  placeholder="123" aria-describedby="cvv-error">
-          <span id="cvv-error" role="alert" aria-live="assertive"></span>
+          <span id="cvv-error" role="alert"></span>
         </div>
         <div class="form-group">
           <label for="cardholder-name">Cardholder Name</label>
           <input type="text" id="cardholder-name" name="cardholder-name" required
                  placeholder="Name as it appears on card" aria-describedby="cardholder-name-error">
-          <span id="cardholder-name-error" role="alert" aria-live="assertive"></span>
+          <span id="cardholder-name-error" role="alert"></span>
         </div>
       </div>
     </section>
@@ -803,7 +803,7 @@ wireframesRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
       <h2 id="device-details-heading">Device Details</h2>
       <div class="form-group">
         <label for="device-brand">Device Brand</label>
-        <select id="device-brand" name="device-brand">
+        <select id="device-brand" name="device-brand" aria-describedby="trade-in-validation-error">
           <option>Select brand</option>
           <option selected>Apple</option>
           <option>Samsung</option>
@@ -814,7 +814,7 @@ wireframesRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
       </div>
       <div class="form-group">
         <label for="device-model">Device Model</label>
-        <select id="device-model" name="device-model">
+        <select id="device-model" name="device-model" aria-describedby="trade-in-validation-error">
           <option>Select model</option>
           <option selected>iPhone 12</option>
           <option>iPhone 12 Pro</option>
@@ -825,7 +825,7 @@ wireframesRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
       </div>
       <div class="form-group">
         <label for="device-storage">Storage Capacity</label>
-        <select id="device-storage" name="device-storage">
+        <select id="device-storage" name="device-storage" aria-describedby="trade-in-validation-error">
           <option>Select storage</option>
           <option>64GB</option>
           <option selected>128GB</option>

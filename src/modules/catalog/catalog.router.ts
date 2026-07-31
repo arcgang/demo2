@@ -163,19 +163,23 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     <p>or from R 899/month with a plan</p>
 
     <div class="color-selector">
-      <span>Color</span>
-      <button>Natural Titanium</button>
-      <button>Blue Titanium</button>
-      <button>White Titanium</button>
-      <button>Black Titanium</button>
+      <span id="color-label">Color</span>
+      <div role="radiogroup" aria-labelledby="color-label">
+        <button role="radio" aria-checked="true">Natural Titanium</button>
+        <button role="radio" aria-checked="false">Blue Titanium</button>
+        <button role="radio" aria-checked="false">White Titanium</button>
+        <button role="radio" aria-checked="false">Black Titanium</button>
+      </div>
     </div>
 
     <div class="storage-selector">
-      <span>Storage</span>
-      <button>128GB</button>
-      <button>256GB</button>
-      <button>512GB</button>
-      <button>1TB</button>
+      <span id="storage-label">Storage</span>
+      <div role="radiogroup" aria-labelledby="storage-label">
+        <button role="radio" aria-checked="false">128GB</button>
+        <button role="radio" aria-checked="true">256GB</button>
+        <button role="radio" aria-checked="false">512GB</button>
+        <button role="radio" aria-checked="false">1TB</button>
+      </div>
     </div>
 
     <div class="quantity-selector">
