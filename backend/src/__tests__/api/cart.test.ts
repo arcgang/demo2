@@ -345,10 +345,9 @@ describe('POST /api/cart/items — add device + plan', () => {
     expect(planRes.status).toBe(201);
 
     // Snapshot cart after device-only, then after plan
-    const afterDevice = await addItem(makeAgent(app), DEVICE_ITEM);
-    deviceItemId = (afterDevice.body as AddItemResponse).id;
     const freshAgent = makeAgent(app);
-    await addItem(freshAgent, DEVICE_ITEM);
+    const freshDeviceRes = await addItem(freshAgent, DEVICE_ITEM);
+    deviceItemId = (freshDeviceRes.body as AddItemResponse).id;
     cartAfterDevice = (await getCart(freshAgent)).body;
 
     await addItem(freshAgent, { ...PLAN_ITEM, parent_item_id: deviceItemId });

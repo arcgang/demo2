@@ -6,6 +6,8 @@ import {
   updateItem,
   deleteItem,
   AddItemInput,
+  Cart,
+  CartItem,
 } from '../modules/cart/cartService';
 
 const router = Router();
@@ -35,9 +37,41 @@ function getSessionId(req: Request, res: Response): string {
   return sessionId;
 }
 
+type ItemType = CartItem['item_type'];
+
+function groupItemsByType(items: CartItem[]): Record<ItemType, CartItem[]> {
+  const groups: Record<ItemType, CartItem[]> = {
+    device: [],
+    plan: [],
+    bundle: [],
+    accessory: [],
+    sim: [],
+    credit: [],
+  };
+  for (const item of items) {
+    groups[item.item_type].push(item);
+  }
+  return groups;
+}
+
+function buildCartResponse(cart: Cart) {
+  return {
+    id: cart.id,
+    session_id: cart.session_id,
+    market: cart.market,
+    currency: cart.currency,
+    items: cart.items,
+    grouped_items: groupItemsByType(cart.items),
+    totals: cart.totals,
+    created_at: cart.created_at,
+    updated_at: cart.updated_at,
+  };
+}
+
 router.get('/', (req: Request, res: Response) => {
   const sessionId = getSessionId(req, res);
-  res.status(200).json(getCart(sessionId));
+  const market = typeof req.query.market === 'string' ? req.query.market : undefined;
+  res.status(200).json(buildCartResponse(getCart(sessionId, market)));
 });
 
 router.post('/items', (req: Request, res: Response) => {
@@ -57,7 +91,8 @@ router.post('/items', (req: Request, res: Response) => {
   }
 
   try {
-    const item = addItem(sessionId, body);
+    const market = typeof req.query.market === 'string' ? req.query.market : undefined;
+    const item = addItem(sessionId, body, market);
     res.status(201).json({ id: item.id, cart_id: item.cart_id, item_type: item.item_type });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -65,6 +100,10 @@ router.post('/items', (req: Request, res: Response) => {
       res.status(400).json({ errorCode: 'INVALID_ITEM_TYPE', message: 'Unknown item_type value.' });
     } else if (msg === 'INVALID_QTY') {
       res.status(400).json({ errorCode: 'INVALID_QTY', message: 'qty must be a positive integer.' });
+    } else if (msg === 'INVALID_PRICE_CENTS') {
+      res.status(400).json({ errorCode: 'INVALID_PRICE_CENTS', message: 'Price fields must be integers; non-credit prices must be >= 0.' });
+    } else if (msg === 'INVALID_PARENT_ITEM_ID') {
+      res.status(400).json({ errorCode: 'INVALID_PARENT_ITEM_ID', message: 'parent_item_id does not reference an existing item in this cart.' });
     } else {
       res.status(500).json({ errorCode: 'INTERNAL_ERROR', message: 'Unexpected error.' });
     }

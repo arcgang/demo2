@@ -30,6 +30,7 @@ export interface CartTotals {
 
 export interface Cart {
   id: string;
+  session_id: string;
   market: string;
   currency: string;
   items: CartItem[];
@@ -43,6 +44,13 @@ const MARKET_VAT_RATES: Record<string, number> = {
   ZA: 0.15,
   TZ: 0.18,
   MZ: 0.17,
+};
+
+// Default currency per market.
+const MARKET_CURRENCIES: Record<string, string> = {
+  ZA: 'ZAR',
+  TZ: 'TZS',
+  MZ: 'MZN',
 };
 
 function getVatRate(market: string): number {
@@ -83,29 +91,49 @@ function calcTotals(items: CartItem[], market: string): CartTotals {
   return { once_off_subtotal, recurring_subtotal, tax_amount, credits, total_once_off, total_monthly };
 }
 
-// Per-session cart store keyed by session id
-const carts = new Map<string, Cart>();
+// Demo in-memory store — replace with a PostgreSQL CartRepository once a DB layer is wired in.
+class InMemoryCartStore {
+  private readonly carts = new Map<string, Cart>();
 
-function getOrCreateCart(sessionId: string): Cart {
-  let cart = carts.get(sessionId);
+  findBySessionId(sessionId: string): Cart | undefined {
+    return this.carts.get(sessionId);
+  }
+
+  save(sessionId: string, cart: Cart): void {
+    this.carts.set(sessionId, cart);
+  }
+}
+
+const store = new InMemoryCartStore();
+
+function resolveMarketContext(market?: string): { market: string; currency: string } {
+  const m = (market ?? process.env.DEFAULT_MARKET ?? 'ZA').toUpperCase();
+  const currency = MARKET_CURRENCIES[m] ?? 'ZAR';
+  return { market: m, currency };
+}
+
+function getOrCreateCart(sessionId: string, market?: string): Cart {
+  let cart = store.findBySessionId(sessionId);
   if (!cart) {
     const now = new Date().toISOString();
+    const resolved = resolveMarketContext(market);
     cart = {
       id: randomUUID(),
-      market: 'ZA',
-      currency: 'ZAR',
+      session_id: sessionId,
+      market: resolved.market,
+      currency: resolved.currency,
       items: [],
-      totals: calcTotals([], 'ZA'),
+      totals: calcTotals([], resolved.market),
       created_at: now,
       updated_at: now,
     };
-    carts.set(sessionId, cart);
+    store.save(sessionId, cart);
   }
   return cart;
 }
 
-export function getCart(sessionId: string): Cart {
-  return getOrCreateCart(sessionId);
+export function getCart(sessionId: string, market?: string): Cart {
+  return getOrCreateCart(sessionId, market);
 }
 
 export interface AddItemInput {
@@ -121,8 +149,8 @@ export interface AddItemInput {
   parent_item_id?: string | null;
 }
 
-export function addItem(sessionId: string, input: AddItemInput): CartItem {
-  const cart = getOrCreateCart(sessionId);
+export function addItem(sessionId: string, input: AddItemInput, market?: string): CartItem {
+  const cart = getOrCreateCart(sessionId, market);
 
   const validTypes: ItemType[] = ['device', 'plan', 'bundle', 'accessory', 'sim', 'credit'];
   if (!validTypes.includes(input.item_type as ItemType)) {
@@ -131,6 +159,27 @@ export function addItem(sessionId: string, input: AddItemInput): CartItem {
 
   if (!Number.isInteger(input.qty) || input.qty <= 0) {
     throw new Error('INVALID_QTY');
+  }
+
+  if (!Number.isInteger(input.once_off_price_cents) || !Number.isInteger(input.recurring_price_cents)) {
+    throw new Error('INVALID_PRICE_CENTS');
+  }
+
+  // Only credit items may carry a negative once_off price.
+  if (input.item_type !== 'credit' && input.once_off_price_cents < 0) {
+    throw new Error('INVALID_PRICE_CENTS');
+  }
+
+  if (input.recurring_price_cents < 0) {
+    throw new Error('INVALID_PRICE_CENTS');
+  }
+
+  // Validate parent_item_id references an existing item in the same cart.
+  if (input.parent_item_id != null) {
+    const parentExists = cart.items.some((i) => i.id === input.parent_item_id);
+    if (!parentExists) {
+      throw new Error('INVALID_PARENT_ITEM_ID');
+    }
   }
 
   const now = new Date().toISOString();
@@ -167,7 +216,10 @@ export function updateItem(
   itemId: string,
   patch: UpdateItemInput,
 ): CartItem | null {
-  const cart = getOrCreateCart(sessionId);
+  // Read-only lookup — do not create an empty cart for an unknown session.
+  const cart = store.findBySessionId(sessionId);
+  if (!cart) return null;
+
   const item = cart.items.find((i) => i.id === itemId);
   if (!item) return null;
 
@@ -204,7 +256,12 @@ export function deleteItem(
   itemId: string,
   force: boolean,
 ): DeleteResult {
-  const cart = getOrCreateCart(sessionId);
+  // Read-only lookup — do not create an empty cart for an unknown session.
+  const cart = store.findBySessionId(sessionId);
+  if (!cart) {
+    return { ok: false, errorCode: 'ITEM_NOT_FOUND', message: 'Item not found in cart.' };
+  }
+
   const target = cart.items.find((i) => i.id === itemId);
   if (!target) {
     return { ok: false, errorCode: 'ITEM_NOT_FOUND', message: 'Item not found in cart.' };
