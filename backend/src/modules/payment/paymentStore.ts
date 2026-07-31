@@ -37,12 +37,22 @@ export function getPaymentAttemptByProviderRef(ref: string): PaymentAttempt | un
 }
 
 export function getPaymentAttemptByOrderId(orderId: string): PaymentAttempt | undefined {
-  return paymentAttempts.find((a) => a.orderId === orderId);
+  return [...paymentAttempts].reverse().find((a) => a.orderId === orderId);
+}
+
+const TERMINAL_STATUSES = new Set<PaymentAttempt['status']>(['success', 'failed', 'cancelled']);
+
+export function isTerminalStatus(status: PaymentAttempt['status']): boolean {
+  return TERMINAL_STATUSES.has(status);
 }
 
 export function updatePaymentAttempt(id: string, update: Partial<PaymentAttempt>): void {
   const idx = paymentAttempts.findIndex((a) => a.id === id);
   if (idx !== -1) {
-    paymentAttempts[idx] = { ...paymentAttempts[idx], ...update };
+    const current = paymentAttempts[idx];
+    if (TERMINAL_STATUSES.has(current.status) && 'status' in update && update.status !== current.status) {
+      return;
+    }
+    paymentAttempts[idx] = { ...current, ...update };
   }
 }

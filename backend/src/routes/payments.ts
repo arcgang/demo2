@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { initiatePayment, handleCallback } from '../modules/payment/mobileMoneyAdapter';
-import { getPaymentAttemptById } from '../modules/payment/paymentStore';
+import { getPaymentAttemptById, getPaymentAttemptByOrderId, isTerminalStatus } from '../modules/payment/paymentStore';
 
 const router = Router();
 
@@ -31,6 +31,17 @@ router.post('/initiate', (req: Request, res: Response) => {
     res.status(501).json({
       errorCode: 'NOT_IMPLEMENTED',
       message: 'Card payment is not yet implemented. Use mobile_money.',
+    });
+    return;
+  }
+
+  const existing = getPaymentAttemptByOrderId(orderId as string);
+  if (existing && !isTerminalStatus(existing.status)) {
+    res.status(409).json({
+      errorCode: 'ACTIVE_PAYMENT_EXISTS',
+      message: 'An active payment attempt already exists for this order.',
+      paymentAttemptId: existing.id,
+      status: existing.status,
     });
     return;
   }

@@ -10,7 +10,7 @@ function randomHex(length: number): string {
   return randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
 }
 
-const TERMINAL_STATUSES = new Set<string>(['success', 'failed', 'cancelled']);
+const TERMINAL_STATUSES = new Set<string>(['success', 'failed']);
 
 export interface InitiateResult {
   paymentAttemptId: string;
@@ -65,11 +65,12 @@ export function handleCallback(
 
   if (TERMINAL_STATUSES.has(attempt.status)) {
     if (attempt.status === outcome) {
+      const resolvedAt = attempt.resolvedAt ?? attempt.initiatedAt;
       return {
         outcome: 'UPDATED',
         paymentAttemptId: attempt.id,
         status: attempt.status,
-        resolvedAt: attempt.resolvedAt as string,
+        resolvedAt,
       };
     }
     return { outcome: 'TERMINAL_CONFLICT', currentStatus: attempt.status };
