@@ -46,7 +46,7 @@ const PURCHASE_FIELDS: FieldDefinition[] = [
     label: 'Phone Number',
     inputType: 'tel',
     required: true,
-    businessPurpose: 'RICA identification and delivery contact number.',
+    businessPurpose: 'Contact number for order confirmation and delivery coordination.',
     collectionStep: 1,
   },
   {
@@ -251,5 +251,5 @@ export function getJourneyFields(journeyType: string): FieldDefinition[] | null 
   if (!Object.prototype.hasOwnProperty.call(REGISTRY, journeyType)) {
     return null;
   }
-  return REGISTRY[journeyType as JourneyType];
+  return [...REGISTRY[journeyType as JourneyType]];
 }

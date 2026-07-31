@@ -313,7 +313,7 @@ describe('GET /api/journeys/onboarding/fields — onboarding journey constraints
 
   it('onboarding journey contains at least three distinct collectionStep values', () => {
     const steps = new Set(fields.map((f) => f.collectionStep));
-    expect(steps.size).toBeGreaterThanOrEqual(2);
+    expect(steps.size).toBeGreaterThanOrEqual(3);
   });
 
   it('mandatory identity fields in onboarding have businessPurpose referencing RICA or identity or regulatory', () => {
