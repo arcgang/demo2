@@ -21,8 +21,8 @@ tradeInRouter.post('/quote', (req: Request, res: Response) => {
     res.status(400).json({ errorCode: 'MISSING_FIELD', message: 'storage is required.' });
     return;
   }
-  if (typeof storage !== 'number' || !isFinite(storage)) {
-    res.status(400).json({ errorCode: 'INVALID_FIELD', message: 'storage must be a finite number.' });
+  if (typeof storage !== 'number' || !isFinite(storage) || storage <= 0) {
+    res.status(400).json({ errorCode: 'INVALID_FIELD', message: 'storage must be a positive number.' });
     return;
   }
   if (condition === undefined || condition === null) {
@@ -77,6 +77,16 @@ cartTradeInRouter.post('/trade-in', (req: Request, res: Response) => {
   const quote = findQuote(quoteId.trim());
   if (!quote) {
     res.status(404).json({ errorCode: 'QUOTE_NOT_FOUND', message: `No trade-in quote found for id: ${quoteId}` });
+    return;
+  }
+
+  if (new Date(quote.validUntil) < new Date()) {
+    res.status(410).json({ errorCode: 'QUOTE_EXPIRED', message: 'This trade-in quote has expired.' });
+    return;
+  }
+
+  if (quote.cartId !== null) {
+    res.status(409).json({ errorCode: 'QUOTE_ALREADY_USED', message: 'This trade-in quote has already been applied to a cart.' });
     return;
   }
 
