@@ -51,18 +51,20 @@ function parseCookies(cookieHeader: string | undefined): Record<string, string> 
   return result;
 }
 
-export function resolveSession(req: Request, res: Response): string {
+export function resolveSession(req: Request, res: Response): { sessionId: string; state: UpgradeSessionState } {
   const cookies = parseCookies(req.headers.cookie);
   const existing = cookies[SESSION_COOKIE];
   const store = loadStore();
   if (existing && Object.prototype.hasOwnProperty.call(store, existing)) {
-    return existing;
+    return { sessionId: existing, state: store[existing] };
   }
+  // Unrecognised or absent cookie: always issue a fresh session rather than re-using the unrecognised value.
   const sessionId = randomUUID();
-  store[sessionId] = emptyState();
+  const state = emptyState();
+  store[sessionId] = state;
   saveStore(store);
   res.cookie(SESSION_COOKIE, sessionId, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-  return sessionId;
+  return { sessionId, state };
 }
 
 export function getState(sessionId: string): UpgradeSessionState {

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
 import { getFinancingQuotes } from '../modules/upgrade/financingAdapter';
 import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
-import { resolveSession, getState, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
+import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
 
 const router = Router();
 
@@ -97,8 +97,8 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 router.get('/session', (req: Request, res: Response) => {
-  const sessionId = resolveSession(req, res);
-  res.status(200).json(getState(sessionId));
+  const { state } = resolveSession(req, res);
+  res.status(200).json(state);
 });
 
 // ---------------------------------------------------------------------------
@@ -109,12 +109,24 @@ router.put('/session', (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
   const ALLOWED_KEYS: Array<keyof UpgradeSessionState> = ['eligibility', 'financing', 'tradeIn'];
   const patch: Partial<UpgradeSessionState> = {};
+  const errors: Array<{ field: string; message: string }> = [];
 
   for (const key of ALLOWED_KEYS) {
     if (Object.prototype.hasOwnProperty.call(body, key)) {
       const v = body[key];
-      patch[key] = (v !== null && typeof v === 'object' && !Array.isArray(v)) ? (v as Record<string, unknown>) : null;
+      if (Array.isArray(v)) {
+        errors.push({ field: key, message: `${key} must be a plain object or null, not an array.` });
+      } else if (v !== null && typeof v !== 'object') {
+        errors.push({ field: key, message: `${key} must be a plain object or null.` });
+      } else {
+        patch[key] = v as Record<string, unknown> | null;
+      }
     }
+  }
+
+  if (errors.length > 0) {
+    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    return;
   }
 
   const hasKnownKey = ALLOWED_KEYS.some((k) => Object.prototype.hasOwnProperty.call(body, k));
@@ -124,7 +136,7 @@ router.put('/session', (req: Request, res: Response) => {
     return;
   }
 
-  const sessionId = resolveSession(req, res);
+  const { sessionId } = resolveSession(req, res);
   const updated = patchState(sessionId, patch);
   res.status(200).json(updated);
 });
