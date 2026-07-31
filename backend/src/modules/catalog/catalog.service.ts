@@ -1,4 +1,4 @@
-import { PRODUCTS, PRODUCT_MARKETS } from '../../data/seed';
+import { MARKETS, PRODUCTS, PRODUCT_MARKETS } from '../../data/seed';
 import { MarketContext } from '../market/market-context.service';
 
 export interface ProductListItem {
@@ -64,7 +64,9 @@ export class CatalogService {
       if (filters.priceMin !== undefined && price < filters.priceMin) return false;
       if (filters.priceMax !== undefined && price > filters.priceMax) return false;
 
-      if (filters.inStock === true && !pm.purchasable) return false;
+      if (filters.storage && !product.name.toLowerCase().includes(filters.storage.toLowerCase())) {
+        return false;
+      }
 
       return true;
     }).map((product) => {
@@ -120,9 +122,10 @@ export class CatalogService {
     marketCode: string,
   ): Map<string, { price: number; available: boolean; purchasable: boolean }> {
     const index = new Map<string, { price: number; available: boolean; purchasable: boolean }>();
-    const marketId = `market_${marketCode}`;
+    const market = MARKETS.find((m) => m.code === marketCode.toUpperCase());
+    if (!market) return index;
     for (const pm of PRODUCT_MARKETS) {
-      if (pm.marketId === marketId) {
+      if (pm.marketId === market.id) {
         index.set(pm.productId, {
           price: pm.price,
           available: pm.available,

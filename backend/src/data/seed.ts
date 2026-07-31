@@ -125,12 +125,32 @@ export const PRODUCTS: ProductSeed[] = [
     plans: SHARED_PLANS,
     recommendedAccessories: SHARED_ACCESSORIES,
   },
+  {
+    id: 'prod_nokia_g42',
+    name: 'Nokia G42',
+    category: 'smartphones',
+    basePrice: 4999,
+    imageUrl: '/images/nokia-g42.jpg',
+    badges: [],
+    plans: SHARED_PLANS,
+    recommendedAccessories: SHARED_ACCESSORIES,
+  },
 ];
 
-export const PRODUCT_MARKETS: ProductMarketSeed[] = PRODUCTS.map((p) => ({
-  productId: p.id,
-  marketId: 'market_ZA',
-  price: p.basePrice,
-  available: true,
-  purchasable: true,
-}));
+// prod_nokia_g42 is seeded as unavailable to exercise the availability-filter code path.
+export const PRODUCT_MARKETS: ProductMarketSeed[] = [
+  ...PRODUCTS.slice(0, 6).map((p) => ({
+    productId: p.id,
+    marketId: 'market_ZA',
+    price: p.basePrice,
+    available: true,
+    purchasable: true,
+  })),
+  {
+    productId: 'prod_nokia_g42',
+    marketId: 'market_ZA',
+    price: 4999,
+    available: false,
+    purchasable: false,
+  },
+];

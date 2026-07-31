@@ -21,16 +21,17 @@ model Market {
 }
 
 model Product {
-  id        String          @id @default(cuid())
-  name      String
-  category  String
-  basePrice Float
-  imageUrl  String?
-  badges    String[]
-  markets   ProductMarket[]
-  plans     Plan[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id          String             @id @default(cuid())
+  name        String
+  category    String
+  basePrice   Float
+  imageUrl    String?
+  badges      String[]
+  markets     ProductMarket[]
+  plans       Plan[]
+  accessories ProductAccessory[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 }
 
 model ProductMarket {
@@ -57,6 +58,17 @@ model Plan {
 }
 
 model Accessory {
-  id   String @id @default(cuid())
-  name String
+  id       String             @id @default(cuid())
+  name     String
+  products ProductAccessory[]
+}
+
+model ProductAccessory {
+  id          String    @id @default(cuid())
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   String
+  accessory   Accessory @relation(fields: [accessoryId], references: [id])
+  accessoryId String
+
+  @@unique([productId, accessoryId])
 }
