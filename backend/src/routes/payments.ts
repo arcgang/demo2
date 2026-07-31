@@ -12,6 +12,7 @@ router.post('/initiate', (req: Request, res: Response) => {
   if (!orderId) errors.push({ field: 'orderId', message: 'orderId is required.' });
   if (!method) errors.push({ field: 'method', message: 'method is required.' });
   if (!msisdn) errors.push({ field: 'msisdn', message: 'msisdn is required.' });
+  if (typeof amount !== 'number' || amount <= 0) errors.push({ field: 'amount', message: 'amount must be a positive number.' });
 
   if (errors.length > 0) {
     res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
@@ -34,8 +35,7 @@ router.post('/initiate', (req: Request, res: Response) => {
     return;
   }
 
-  const paymentAmount = typeof amount === 'number' ? amount : 0;
-  const result = initiatePayment(orderId as string, paymentAmount, msisdn as string);
+  const result = initiatePayment(orderId as string, amount as number, msisdn as string);
 
   res.status(201).json({
     paymentAttemptId: result.paymentAttemptId,

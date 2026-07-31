@@ -63,6 +63,10 @@ export function handleCallback(
     return { outcome: 'NOT_FOUND' };
   }
 
+  if (!VALID_OUTCOMES.has(outcome)) {
+    return { outcome: 'INVALID_OUTCOME' };
+  }
+
   if (TERMINAL_STATUSES.has(attempt.status)) {
     if (attempt.status === outcome) {
       return {
@@ -73,10 +77,6 @@ export function handleCallback(
       };
     }
     return { outcome: 'TERMINAL_CONFLICT', currentStatus: attempt.status };
-  }
-
-  if (!VALID_OUTCOMES.has(outcome)) {
-    return { outcome: 'INVALID_OUTCOME' };
   }
 
   const resolvedAt = new Date().toISOString();
