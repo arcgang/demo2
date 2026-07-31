@@ -58,6 +58,8 @@ describe('GET /api/markets', () => {
     expect(res.status).toBe(200);
     const codes = (res.body as Record<string, unknown>[]).map((m) => m['code']);
     expect(codes).not.toContain('XX');
+
+    await db.query(`DELETE FROM markets WHERE code = 'XX'`);
   });
 
   it('each item has required fields: code, name, currencyCode, currencySymbol, taxLabel, taxRate, languageCode, enabledPaymentMethods', async () => {
