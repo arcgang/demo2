@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
 import { getFinancingQuotes } from '../modules/upgrade/financingAdapter';
-import { getTradeInQuote } from '../modules/upgrade/tradeInAdapter';
+import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
 import { resolveSession, getState, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
 
 const router = Router();
@@ -51,17 +51,24 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
   const errors: Array<{ field: string; message: string }> = [];
 
-  for (const field of ['brand', 'model', 'condition'] as const) {
+  for (const field of ['brand', 'model'] as const) {
     const v = body[field];
     if (v === undefined || v === null || v === '') {
       errors.push({ field, message: `${field} is required and must not be empty.` });
     }
   }
 
+  const condition = body.condition;
+  if (condition === undefined || condition === null || condition === '') {
+    errors.push({ field: 'condition', message: 'condition is required and must not be empty.' });
+  } else if (!VALID_CONDITIONS.includes(condition as string)) {
+    errors.push({ field: 'condition', message: `condition must be one of: ${VALID_CONDITIONS.join(', ')}.` });
+  }
+
   const storage = body.storage;
   if (storage === undefined || storage === null) {
     errors.push({ field: 'storage', message: 'storage is required and must not be empty.' });
-  } else if (typeof storage !== 'number' || storage < 0) {
+  } else if (typeof storage !== 'number' || !Number.isFinite(storage) || storage < 0) {
     errors.push({ field: 'storage', message: 'storage must be a non-negative number.' });
   }
 
@@ -74,13 +81,8 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
     body.brand as string,
     body.model as string,
     body.storage as number,
-    body.condition as string,
+    condition as string,
   );
-
-  if ('errorCode' in quote) {
-    res.status(422).json(quote);
-    return;
-  }
 
   res.status(200).json(quote);
 });

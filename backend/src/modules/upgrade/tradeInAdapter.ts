@@ -16,7 +16,7 @@ const BASE_CREDITS: Record<string, number> = {
   Samsung: 2500,
 };
 
-const VALID_CONDITIONS = Object.keys(CONDITION_MULTIPLIERS);
+export const VALID_CONDITIONS = Object.keys(CONDITION_MULTIPLIERS);
 
 export function getTradeInQuote(
   brand: string,
