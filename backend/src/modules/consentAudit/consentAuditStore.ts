@@ -1,5 +1,12 @@
 import { randomUUID } from 'crypto';
 
+export type AuditEventType =
+  | 'consent_capture'
+  | 'payment_outcome'
+  | 'verification_outcome'
+  | 'order_created'
+  | 'activation_status_change';
+
 export interface StoredConsentRecord {
   id: string;
   orderId: string;
@@ -12,7 +19,7 @@ export interface StoredConsentRecord {
 
 export interface StoredAuditEvent {
   id: string;
-  eventType: string;
+  eventType: AuditEventType;
   orderId: string;
   journeyRef?: string;
   actorRef?: string;

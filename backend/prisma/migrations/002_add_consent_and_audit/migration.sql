@@ -1,5 +1,11 @@
 -- Migration: 002_add_consent_and_audit
 -- Adds consent_records and audit_events tables for POPIA consent capture and business event logging.
+--
+-- KNOWN LIMITATION: The spec requires order_id FK constraints on both tables.
+-- In this demo the orders table does not exist in PostgreSQL (orders live in the in-memory store
+-- in orderStore.ts). A proper FK cannot therefore be enforced at the database level.
+-- This is tracked as a known limitation: once orders are migrated to the relational layer,
+-- the orderId columns should be changed to UUID REFERENCES shop_order(order_id).
 
 CREATE TYPE "ConsentPurpose" AS ENUM ('terms', 'marketing');
 

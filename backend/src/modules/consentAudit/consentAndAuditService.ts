@@ -4,16 +4,12 @@ import {
   getAuditEventsForOrder,
   type StoredConsentRecord,
   type StoredAuditEvent,
+  type AuditEventType,
 } from './consentAuditStore';
 
-export type ConsentPurpose = 'terms' | 'marketing';
+export type { AuditEventType };
 
-export type AuditEventType =
-  | 'consent_capture'
-  | 'payment_outcome'
-  | 'verification_outcome'
-  | 'order_created'
-  | 'activation_status_change';
+export type ConsentPurpose = 'terms' | 'marketing';
 
 export interface ConsentRecord {
   id: string;
@@ -50,7 +46,7 @@ function toConsentRecord(stored: StoredConsentRecord): ConsentRecord {
 function toAuditEvent(stored: StoredAuditEvent): AuditEvent {
   return {
     id: stored.id,
-    eventType: stored.eventType as AuditEventType,
+    eventType: stored.eventType,
     orderId: stored.orderId,
     journeyRef: stored.journeyRef,
     actorRef: stored.actorRef,
