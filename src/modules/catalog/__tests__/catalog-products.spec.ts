@@ -68,7 +68,9 @@ interface ProductDetail {
     fromPricePerMonth?: number | null;
   };
   availability: 'in-stock' | 'pre-order';
+  badges: string[];
   financingEligible: boolean;
+  tradeInEligible: boolean;
   attachablePlans: AttachablePlan[];
   attachableBundles: AttachableBundle[];
   verificationRequired?: boolean;
@@ -326,6 +328,16 @@ describe('GET /api/catalog/products/:slug — smartphone detail', () => {
   it('returns financingEligible boolean', async () => {
     const { body } = await getProductDetail(IPHONE_SLUG);
     expect(typeof body.financingEligible).toBe('boolean');
+  });
+
+  it('returns tradeInEligible boolean', async () => {
+    const { body } = await getProductDetail(IPHONE_SLUG);
+    expect(typeof body.tradeInEligible).toBe('boolean');
+  });
+
+  it('returns badges array', async () => {
+    const { body } = await getProductDetail(IPHONE_SLUG);
+    expect(Array.isArray(body.badges)).toBe(true);
   });
 
   it('returns attachablePlans array with at least one plan', async () => {

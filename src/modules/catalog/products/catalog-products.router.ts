@@ -6,8 +6,8 @@ export const catalogProductsRouter = Router();
 
 catalogProductsRouter.get('/products', (req: Request, res: Response) => {
   const category = typeof req.query['category'] === 'string' ? req.query['category'] : undefined;
-  const page = 1;
-  const pageSize = 50;
+  const page = Math.max(1, parseInt(typeof req.query['page'] === 'string' ? req.query['page'] : '1', 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(typeof req.query['pageSize'] === 'string' ? req.query['pageSize'] : '50', 10) || 50));
 
   const products = listProducts(category);
 
@@ -38,7 +38,9 @@ catalogProductsRouter.get('/products/:slug', (req: Request, res: Response) => {
     productType: product.productType,
     price: product.price,
     availability: product.availability,
+    badges: product.badges,
     financingEligible: product.financingEligible,
+    tradeInEligible: product.tradeInEligible,
     attachablePlans: product.attachablePlans,
     attachableBundles: product.attachableBundles,
   };
