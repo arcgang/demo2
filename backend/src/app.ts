@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import ordersRouter from './routes/orders';
 import onboardingRouter from './routes/onboarding';
 import upgradeRouter from './routes/upgrade';
+import journeysRouter from './routes/journeys';
 
 export function createApp(): Application {
   const app = express();
@@ -9,6 +10,7 @@ export function createApp(): Application {
   app.use('/api/orders', ordersRouter);
   app.use('/api/onboarding', onboardingRouter);
   app.use('/api/upgrade', upgradeRouter);
+  app.use('/api/journeys', journeysRouter);
   return app;
 }
 
