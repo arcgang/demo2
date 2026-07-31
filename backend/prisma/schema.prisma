@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Market {
+  id              String          @id @default(cuid())
+  code            String          @unique
+  name            String
+  currency        String
+  taxRate         Float
+  taxLabel        String
+  defaultLanguage String
+  products        ProductMarket[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Product {
+  id          String             @id @default(cuid())
+  name        String
+  category    String
+  basePrice   Float
+  imageUrl    String?
+  badges      String[]
+  markets     ProductMarket[]
+  plans       Plan[]
+  accessories ProductAccessory[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model ProductMarket {
+  id          String  @id @default(cuid())
+  product     Product @relation(fields: [productId], references: [id])
+  productId   String
+  market      Market  @relation(fields: [marketId], references: [id])
+  marketId    String
+  price       Float
+  available   Boolean @default(true)
+  purchasable Boolean @default(true)
+
+  @@unique([productId, marketId])
+}
+
+model Plan {
+  id            String  @id @default(cuid())
+  name          String
+  dataAllowance String?
+  monthlyPrice  Float
+  currency      String
+  product       Product @relation(fields: [productId], references: [id])
+  productId     String
+}
+
+model Accessory {
+  id       String             @id @default(cuid())
+  name     String
+  products ProductAccessory[]
+}
+
+model ProductAccessory {
+  id          String    @id @default(cuid())
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   String
+  accessory   Accessory @relation(fields: [accessoryId], references: [id])
+  accessoryId String
+
+  @@unique([productId, accessoryId])
+}
