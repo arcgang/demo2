@@ -21,6 +21,14 @@ tradeInRouter.post('/quote', (req: Request, res: Response) => {
     res.status(400).json({ errorCode: 'MISSING_FIELD', message: 'storage is required.' });
     return;
   }
+  if (typeof storage !== 'number' || !isFinite(storage)) {
+    res.status(400).json({ errorCode: 'INVALID_FIELD', message: 'storage must be a finite number.' });
+    return;
+  }
+  if (condition === undefined || condition === null) {
+    res.status(400).json({ errorCode: 'MISSING_FIELD', message: 'condition is required.' });
+    return;
+  }
   if (typeof condition !== 'string' || !VALID_CONDITIONS.has(condition)) {
     res.status(400).json({
       errorCode: 'INVALID_FIELD',
@@ -40,7 +48,7 @@ tradeInRouter.post('/quote', (req: Request, res: Response) => {
   const quote = saveQuote({
     brand: (brand as string).trim(),
     model: (model as string).trim(),
-    storage: Number(storage),
+    storage: storage as number,
     condition: condition as TradeInCondition,
     estimatedCredit,
     validUntil,
