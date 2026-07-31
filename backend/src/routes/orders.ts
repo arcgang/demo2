@@ -1,8 +1,25 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse } from '../modules/activation/statusScenarios';
 import { issueEsim } from '../modules/activation/activationOrchestrationService';
+import { getPaymentAttemptByOrderId } from '../modules/payment/paymentStore';
 
 const router = Router();
+
+router.post('/:id/advance', (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const attempt = getPaymentAttemptByOrderId(id);
+
+  if (!attempt || attempt.status !== 'success') {
+    res.status(402).json({
+      errorCode: 'PAYMENT_REQUIRED',
+      message: 'Payment must be successfully completed before the order can advance.',
+    });
+    return;
+  }
+
+  res.status(200).json({ orderId: id, orderStatus: 'confirmed' });
+});
 
 router.post('/:id/esim/issue', (req: Request, res: Response) => {
   const { id } = req.params;
