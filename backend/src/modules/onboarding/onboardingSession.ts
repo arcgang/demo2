@@ -5,7 +5,7 @@ import {
   VerificationStatus,
 } from '../../types/shared';
 
-// In-memory store simulating PostgreSQL VerificationCase persistence for demo
+// In-memory VerificationCase store — demo only; not backed by PostgreSQL
 interface VerificationCase {
   sessionId: string;
   completedStages: OnboardingStage[];
@@ -78,7 +78,7 @@ export function processOnboardingSession(
 
   const currentStage = deriveCurrentStage(session.completedStages);
   const nextStage = deriveNextStage(currentStage);
-  const requiredFields = deriveRequiredFields(incomingStage);
+  const requiredFields = deriveRequiredFields(currentStage);
   const verificationStatus = deriveVerificationStatus(session.completedStages);
 
   return {

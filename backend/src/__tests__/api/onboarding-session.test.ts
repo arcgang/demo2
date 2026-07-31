@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { Application } from 'express';
+import { clearSessions } from '../../modules/onboarding/onboardingSession';
 
 /**
  * Acceptance tests for POST /api/onboarding/session
@@ -79,6 +80,7 @@ describe('POST /api/onboarding/session — initiate session', () => {
   let app: Application;
 
   beforeAll(() => { app = getApp(); });
+  beforeEach(() => { clearSessions(); });;
 
   it('returns HTTP 200 when personal data is submitted', async () => {
     const { status } = await postOnboarding(app, {
@@ -153,6 +155,7 @@ describe('POST /api/onboarding/session — progressive disclosure of requiredFie
   let app: Application;
 
   beforeAll(() => { app = getApp(); });
+  beforeEach(() => { clearSessions(); });;
 
   it('requiredFields after personal stage does not include personal stage fields already submitted', async () => {
     const { body } = await postOnboarding(app, {
@@ -194,9 +197,11 @@ describe('POST /api/onboarding/session — state advances across calls', () => {
   let app: Application;
   let sessionId: string;
 
-  beforeAll(async () => {
-    app = getApp();
-    // First call: personal stage
+  beforeAll(() => { app = getApp(); });
+
+  beforeEach(async () => {
+    clearSessions();
+    // Establish a fresh personal-stage session for each test
     const { body } = await postOnboarding(app, {
       stage: 'personal',
       data: {
@@ -297,6 +302,7 @@ describe('POST /api/onboarding/session — state advances across calls', () => {
 describe('POST /api/onboarding/session — validation', () => {
   let app: Application;
   beforeAll(() => { app = getApp(); });
+  beforeEach(() => { clearSessions(); });;
 
   it('returns HTTP 400 when request body has no data field', async () => {
     const res = await request(app)
@@ -322,6 +328,7 @@ describe('POST /api/onboarding/session — validation', () => {
 describe('POST /api/onboarding/session — verificationStatus values', () => {
   let app: Application;
   beforeAll(() => { app = getApp(); });
+  beforeEach(() => { clearSessions(); });;
 
   const KNOWN_STATUSES = ['INCOMPLETE', 'PENDING_REVIEW', 'VERIFIED', 'REJECTED'];
 
