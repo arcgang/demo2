@@ -73,6 +73,7 @@ function calcTotals(items: CartItem[], market: string): CartTotals {
   for (const item of items) {
     if (item.item_type === 'credit') {
       credits += item.once_off_price_cents * item.qty;
+      recurring_subtotal += item.recurring_price_cents * item.qty;
     } else {
       const lineTotal = item.once_off_price_cents * item.qty;
       once_off_subtotal += lineTotal;

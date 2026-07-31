@@ -71,7 +71,16 @@ function buildCartResponse(cart: Cart) {
 router.get('/', (req: Request, res: Response) => {
   const sessionId = getSessionId(req, res);
   const market = typeof req.query.market === 'string' ? req.query.market : undefined;
-  res.status(200).json(buildCartResponse(getCart(sessionId, market)));
+  try {
+    res.status(200).json(buildCartResponse(getCart(sessionId, market)));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.startsWith('UNKNOWN_MARKET')) {
+      res.status(400).json({ errorCode: 'UNKNOWN_MARKET', message: 'Unrecognised market code.' });
+    } else {
+      res.status(500).json({ errorCode: 'INTERNAL_ERROR', message: 'Unexpected error.' });
+    }
+  }
 });
 
 router.post('/items', (req: Request, res: Response) => {
@@ -104,6 +113,8 @@ router.post('/items', (req: Request, res: Response) => {
       res.status(400).json({ errorCode: 'INVALID_PRICE_CENTS', message: 'Price fields must be integers; non-credit prices must be >= 0.' });
     } else if (msg === 'INVALID_PARENT_ITEM_ID') {
       res.status(400).json({ errorCode: 'INVALID_PARENT_ITEM_ID', message: 'parent_item_id does not reference an existing item in this cart.' });
+    } else if (msg.startsWith('UNKNOWN_MARKET')) {
+      res.status(400).json({ errorCode: 'UNKNOWN_MARKET', message: 'Unrecognised market code.' });
     } else {
       res.status(500).json({ errorCode: 'INTERNAL_ERROR', message: 'Unexpected error.' });
     }
