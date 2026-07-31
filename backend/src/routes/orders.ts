@@ -1,20 +1,14 @@
 import { Router, Request, Response } from 'express';
-import { buildStatusResponse } from '../modules/activation/statusScenarios';
+import { getActivationStatus } from '../modules/activation/activationStatus';
 
 const router = Router();
 
 router.get('/:id/status', (req: Request, res: Response) => {
   const { id } = req.params;
-  const scenario = req.query.scenario as string | undefined;
 
-  if (!scenario) {
-    res.status(404).json({ errorCode: 'SCENARIO_REQUIRED', message: 'Query parameter ?scenario is required for stub responses.' });
-    return;
-  }
-
-  const response = buildStatusResponse(id, scenario);
+  const response = getActivationStatus(id);
   if (!response) {
-    res.status(404).json({ errorCode: 'SCENARIO_NOT_FOUND', message: `Unknown scenario: ${scenario}` });
+    res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: `No activation record found for order: ${id}` });
     return;
   }
 

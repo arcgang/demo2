@@ -78,7 +78,7 @@ export function processOnboardingSession(
 
   const currentStage = deriveCurrentStage(session.completedStages);
   const nextStage = deriveNextStage(currentStage);
-  const requiredFields = deriveRequiredFields(currentStage);
+  const requiredFields = deriveRequiredFields(incomingStage);
   const verificationStatus = deriveVerificationStatus(session.completedStages);
 
   return {
