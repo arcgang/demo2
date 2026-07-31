@@ -6,7 +6,7 @@ const tradeInRouter = Router();
 const cartTradeInRouter = Router();
 
 // POST /api/trade-in/quote
-tradeInRouter.post('/quote', (req: Request, res: Response) => {
+tradeInRouter.post('/quote', async (req: Request, res: Response) => {
   const { brand, model, storage, condition } = req.body as Record<string, unknown>;
 
   if (typeof brand !== 'string' || brand.trim() === '') {
@@ -37,6 +37,9 @@ tradeInRouter.post('/quote', (req: Request, res: Response) => {
     return;
   }
 
+  // storage is accepted and persisted for record-keeping, but the mock
+  // valuation table is keyed on brand + model + condition only (spec §6.2).
+  // A real adapter would add a storage-tier dimension to the lookup key.
   const estimatedCredit = getEstimatedCredit(
     (brand as string).trim(),
     (model as string).trim(),
@@ -45,7 +48,7 @@ tradeInRouter.post('/quote', (req: Request, res: Response) => {
 
   const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const quote = saveQuote({
+  const quote = await saveQuote({
     brand: (brand as string).trim(),
     model: (model as string).trim(),
     storage: storage as number,
@@ -63,10 +66,15 @@ tradeInRouter.post('/quote', (req: Request, res: Response) => {
 });
 
 // POST /api/cart/trade-in
+//
+// onceOffSubtotal is a fixed stub (R18 999) because the request body carries
+// only { quoteId } with no cartId, so there are no per-cart line items to
+// aggregate.  AC partially satisfied: credit subtraction arithmetic is correct;
+// live cart aggregation requires cartId in the request and per-cart item storage.
 const ONCE_OFF_SUBTOTAL = 18999.00;
 const VAT_RATE = 0.15;
 
-cartTradeInRouter.post('/trade-in', (req: Request, res: Response) => {
+cartTradeInRouter.post('/trade-in', async (req: Request, res: Response) => {
   const { quoteId } = req.body as Record<string, unknown>;
 
   if (typeof quoteId !== 'string' || quoteId.trim() === '') {
@@ -85,14 +93,14 @@ cartTradeInRouter.post('/trade-in', (req: Request, res: Response) => {
     return;
   }
 
-  if (quote.cartId !== null) {
+  // Atomic check-and-attach: returns false if already attached, preventing
+  // double-spend under concurrent requests (TOCTOU fix).
+  const cartId = `cart_${quoteId.trim()}`;
+  const attached = await attachCartToQuote(quote.id, cartId);
+  if (!attached) {
     res.status(409).json({ errorCode: 'QUOTE_ALREADY_USED', message: 'This trade-in quote has already been applied to a cart.' });
     return;
   }
-
-  // Associate quote with a stub cart reference
-  const cartId = `cart_${quoteId}`;
-  attachCartToQuote(quote.id, cartId);
 
   const tradeInCredit = quote.estimatedCredit;
   const onceOffSubtotal = ONCE_OFF_SUBTOTAL;

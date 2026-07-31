@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import request from 'supertest';
 import { Application } from 'express';
 
@@ -22,6 +25,17 @@ import { Application } from 'express';
  *   Persists to trade_in_quotes table (id, brand, model, storage, condition,
  *   estimatedCredit, validUntil, cartId).
  */
+
+// Redirect the store to a temp file so each test run is isolated and the
+// shared backend/data/trade_in_quotes.json does not accumulate state.
+const TEST_DB_PATH = path.join(os.tmpdir(), `trade_in_quotes_test_${process.pid}.json`);
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const tradeInStore = require('../../modules/trade-in/tradeInStore');
+tradeInStore.setDbPath(TEST_DB_PATH);
+
+afterAll(() => {
+  try { fs.unlinkSync(TEST_DB_PATH); } catch { /* already gone */ }
+});
 
 interface TradeInQuote {
   id: string;

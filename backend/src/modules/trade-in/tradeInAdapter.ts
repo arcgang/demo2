@@ -19,6 +19,10 @@ const DEFAULT_VALUATION: Record<TradeInCondition, number> = {
   EXCELLENT: 2000, GOOD: 1500, FAIR: 1000, POOR: 600,
 };
 
+// storage is intentionally absent from this signature: the mock lookup table
+// is keyed on brand + model + condition only, per spec §6.2.  Storage is
+// accepted and persisted in the DB record for future adapter evolution, but
+// does not influence the credit value in this mock implementation.
 export function getEstimatedCredit(
   brand: string,
   model: string,
