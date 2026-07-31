@@ -1,5 +1,7 @@
-import { randomUUID } from 'crypto';
+import { PrismaClient } from '@prisma/client';
 import { runKycRicaCheck } from './kycRicaAdapter';
+
+const prisma = new PrismaClient();
 
 export type VerificationType = 'KYC' | 'RICA';
 export type VerificationStatus = 'pending' | 'verified' | 'failed';
@@ -31,31 +33,47 @@ export interface CreateVerificationInput {
   identityFields: IdentityFields;
 }
 
-// In-memory store indexed by orderId for GET lookups.
-const storeById = new Map<string, VerificationCaseRecord>();
-const storeByOrderId = new Map<string, VerificationCaseRecord>();
-
-export function createVerificationCase(input: CreateVerificationInput): VerificationCaseRecord {
-  const submittedAt = new Date();
+export async function createVerificationCase(input: CreateVerificationInput): Promise<VerificationCaseRecord> {
   const adapterResult = runKycRicaCheck(input.identityFields.idNumber);
 
-  const record: VerificationCaseRecord = {
-    id: randomUUID(),
-    orderId: input.orderId,
-    customerId: input.customerId,
-    type: input.type,
-    status: adapterResult.status,
-    submittedAt,
-    resolvedAt: adapterResult.resolvedAt,
-    identityFields: input.identityFields,
-    auditRef: adapterResult.auditRef,
-  };
+  const row = await prisma.verificationCase.create({
+    data: {
+      orderId: input.orderId,
+      customerId: input.customerId,
+      type: input.type,
+      status: adapterResult.status,
+      resolvedAt: adapterResult.resolvedAt,
+      identityFields: input.identityFields as object,
+      auditRef: adapterResult.auditRef,
+    },
+  });
 
-  storeById.set(record.id, record);
-  storeByOrderId.set(record.orderId, record);
-  return record;
+  return {
+    id: row.id,
+    orderId: row.orderId,
+    customerId: row.customerId,
+    type: row.type as VerificationType,
+    status: row.status as VerificationStatus,
+    submittedAt: row.submittedAt,
+    resolvedAt: row.resolvedAt,
+    identityFields: row.identityFields as unknown as IdentityFields,
+    auditRef: row.auditRef,
+  };
 }
 
-export function getVerificationCaseByOrderId(orderId: string): VerificationCaseRecord | undefined {
-  return storeByOrderId.get(orderId);
+export async function getVerificationCaseByOrderId(orderId: string): Promise<VerificationCaseRecord | null> {
+  const row = await prisma.verificationCase.findFirst({ where: { orderId } });
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    orderId: row.orderId,
+    customerId: row.customerId,
+    type: row.type as VerificationType,
+    status: row.status as VerificationStatus,
+    submittedAt: row.submittedAt,
+    resolvedAt: row.resolvedAt,
+    identityFields: row.identityFields as unknown as IdentityFields,
+    auditRef: row.auditRef,
+  };
 }

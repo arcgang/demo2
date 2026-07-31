@@ -46,7 +46,7 @@ router.post('/porting', (req: Request, res: Response) => {
   });
 });
 
-router.post('/verification', (req: Request, res: Response) => {
+router.post('/verification', async (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
 
   const errors = validateVerificationInput(body);
@@ -55,7 +55,7 @@ router.post('/verification', (req: Request, res: Response) => {
     return;
   }
 
-  const record = createVerificationCase({
+  const record = await createVerificationCase({
     orderId: body.orderId as string,
     customerId: body.customerId as string,
     type: body.type as VerificationType,
@@ -75,9 +75,9 @@ router.post('/verification', (req: Request, res: Response) => {
   });
 });
 
-router.get('/verification/:orderId', (req: Request, res: Response) => {
+router.get('/verification/:orderId', async (req: Request, res: Response) => {
   const { orderId } = req.params;
-  const record = getVerificationCaseByOrderId(orderId);
+  const record = await getVerificationCaseByOrderId(orderId);
 
   if (!record) {
     res.status(404).json({
