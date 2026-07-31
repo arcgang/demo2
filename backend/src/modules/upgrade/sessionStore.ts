@@ -61,7 +61,7 @@ export function resolveSession(req: Request, res: Response): string {
   const sessionId = randomUUID();
   store[sessionId] = emptyState();
   saveStore(store);
-  res.cookie(SESSION_COOKIE, sessionId, { httpOnly: true, sameSite: 'lax' });
+  res.cookie(SESSION_COOKIE, sessionId, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
   return sessionId;
 }
 

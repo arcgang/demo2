@@ -84,6 +84,11 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
     condition as string,
   );
 
+  if ('errorCode' in quote) {
+    res.status(422).json(quote);
+    return;
+  }
+
   res.status(200).json(quote);
 });
 
@@ -108,7 +113,7 @@ router.put('/session', (req: Request, res: Response) => {
   for (const key of ALLOWED_KEYS) {
     if (Object.prototype.hasOwnProperty.call(body, key)) {
       const v = body[key];
-      patch[key] = (v !== null && typeof v === 'object') ? (v as Record<string, unknown>) : null;
+      patch[key] = (v !== null && typeof v === 'object' && !Array.isArray(v)) ? (v as Record<string, unknown>) : null;
     }
   }
 
