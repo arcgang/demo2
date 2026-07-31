@@ -93,7 +93,7 @@ router.post('/items', (req: Request, res: Response) => {
   try {
     const market = typeof req.query.market === 'string' ? req.query.market : undefined;
     const item = addItem(sessionId, body, market);
-    res.status(201).json({ id: item.id, cart_id: item.cart_id, item_type: item.item_type });
+    res.status(201).json(item);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === 'INVALID_ITEM_TYPE') {

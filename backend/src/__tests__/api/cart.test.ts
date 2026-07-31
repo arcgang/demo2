@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { Application } from 'express';
+import { resetStore } from '../../modules/cart/cartService';
 
 /**
  * Acceptance tests for the Cart API
@@ -17,9 +18,10 @@ import { Application } from 'express';
  *   tax_inclusive (bool), is_optional (bool), parent_item_id (nullable)
  *
  * Totals calculation (ZAR, 15% VAT):
- *   once_off_subtotal = sum(once_off_price_cents * qty)
+ *   once_off_subtotal = sum(once_off_price_cents * qty)  [non-credit items only]
  *   recurring_subtotal = sum(recurring_price_cents * qty)
- *   tax_amount = round(once_off_subtotal * 0.15)  [integer cents, ZAR convention]
+ *   tax_amount = round(taxable_base * 0.15) where taxable_base excludes tax_inclusive items
+ *               [equals round(once_off_subtotal * 0.15) only when all items have tax_inclusive=false]
  *   credits = sum of once_off_price_cents * qty for items where item_type='credit'
  *   total_once_off = once_off_subtotal + tax_amount + credits
  *   total_monthly = recurring_subtotal
@@ -83,11 +85,8 @@ interface AddItemRequest {
   parent_item_id?: string | null;
 }
 
-interface AddItemResponse {
-  id: string;
-  cart_id: string;
-  item_type: string;
-}
+// POST /api/cart/items now returns the full CartItem
+type AddItemResponse = CartItem;
 
 interface ErrorResponse {
   errorCode: string;
@@ -233,6 +232,11 @@ const CREDIT_ITEM: AddItemRequest = {
   is_optional: true,
   parent_item_id: null,
 };
+
+// Reset the in-memory store between every test so each one starts clean.
+beforeEach(() => {
+  resetStore();
+});
 
 // ---------------------------------------------------------------------------
 // AC-1  GET /api/cart — response shape
@@ -880,5 +884,74 @@ describe('Totals — recalculated on every mutation', () => {
     await addItem(agent, PLAN_ITEM);
     const { body } = await getCart(agent);
     expect(body.totals.total_monthly).toBe(body.totals.recurring_subtotal);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-10  tax_inclusive items excluded from taxable_base
+// ---------------------------------------------------------------------------
+
+describe('Totals — tax_inclusive items excluded from taxable_base', () => {
+  it('tax_inclusive item contributes to once_off_subtotal but not to tax_amount', async () => {
+    const agent = makeAgent(getApp());
+    // 10000 cents with tax already included — should not be taxed again
+    const inclusiveItem: AddItemRequest = {
+      item_type: 'accessory',
+      product_id: 'prod_inclusive',
+      product_name: 'Tax-Inclusive Accessory',
+      variant_label: null,
+      qty: 1,
+      once_off_price_cents: 10000,
+      recurring_price_cents: 0,
+      tax_inclusive: true,
+      is_optional: true,
+      parent_item_id: null,
+    };
+    await addItem(agent, inclusiveItem);
+    const { body } = await getCart(agent);
+    const { totals } = body;
+
+    // once_off_subtotal includes the item; taxable_base does not → tax_amount = 0
+    expect(totals.once_off_subtotal).toBe(10000);
+    expect(totals.tax_amount).toBe(0);
+    expect(totals.total_once_off).toBe(totals.once_off_subtotal + totals.tax_amount + totals.credits);
+  });
+
+  it('mixed cart: only non-inclusive items contribute to tax_amount', async () => {
+    const agent = makeAgent(getApp());
+    // 10000 tax-inclusive + 10000 taxable = only 10000 is taxed at 15%
+    const inclusiveItem: AddItemRequest = {
+      item_type: 'accessory',
+      product_id: 'prod_inclusive',
+      product_name: 'Tax-Inclusive Accessory',
+      variant_label: null,
+      qty: 1,
+      once_off_price_cents: 10000,
+      recurring_price_cents: 0,
+      tax_inclusive: true,
+      is_optional: true,
+      parent_item_id: null,
+    };
+    const taxableItem: AddItemRequest = {
+      item_type: 'accessory',
+      product_id: 'prod_taxable',
+      product_name: 'Taxable Accessory',
+      variant_label: null,
+      qty: 1,
+      once_off_price_cents: 10000,
+      recurring_price_cents: 0,
+      tax_inclusive: false,
+      is_optional: true,
+      parent_item_id: null,
+    };
+    await addItem(agent, inclusiveItem);
+    await addItem(agent, taxableItem);
+    const { body } = await getCart(agent);
+    const { totals } = body;
+
+    expect(totals.once_off_subtotal).toBe(20000);
+    // Only 10000 (taxable item) taxed: round(10000 * 0.15) = 1500
+    expect(totals.tax_amount).toBe(1500);
+    expect(totals.total_once_off).toBe(totals.once_off_subtotal + totals.tax_amount + totals.credits);
   });
 });

@@ -39,28 +39,28 @@ export interface Cart {
   updated_at: string;
 }
 
-// VAT rates by market code; env var VAT_RATE_<MARKET> overrides at runtime.
-const MARKET_VAT_RATES: Record<string, number> = {
-  ZA: 0.15,
-  TZ: 0.18,
-  MZ: 0.17,
+// In-memory market config — mirrors the market_config table (Section 7.3 DDL).
+// In production this row would be fetched from the DB; env VAT_RATE_<MARKET> overrides at runtime.
+const MARKET_CONFIG: Record<string, { currency: string; vatRate: number }> = {
+  ZA: { currency: 'ZAR', vatRate: 0.15 },
+  TZ: { currency: 'TZS', vatRate: 0.18 },
+  MZ: { currency: 'MZN', vatRate: 0.17 },
 };
 
-// Default currency per market.
-const MARKET_CURRENCIES: Record<string, string> = {
-  ZA: 'ZAR',
-  TZ: 'TZS',
-  MZ: 'MZN',
-};
-
+// Throws UNKNOWN_MARKET for any code absent from MARKET_CONFIG and not overridden by env.
 function getVatRate(market: string): number {
-  const envKey = `VAT_RATE_${market.toUpperCase()}`;
+  const key = market.toUpperCase();
+  const envKey = `VAT_RATE_${key}`;
   const envVal = process.env[envKey];
   if (envVal !== undefined) {
     const parsed = parseFloat(envVal);
     if (!isNaN(parsed)) return parsed;
   }
-  return MARKET_VAT_RATES[market.toUpperCase()] ?? 0.15;
+  const config = MARKET_CONFIG[key];
+  if (!config) {
+    throw new Error(`UNKNOWN_MARKET: ${market}`);
+  }
+  return config.vatRate;
 }
 
 function calcTotals(items: CartItem[], market: string): CartTotals {
@@ -76,7 +76,7 @@ function calcTotals(items: CartItem[], market: string): CartTotals {
     } else {
       const lineTotal = item.once_off_price_cents * item.qty;
       once_off_subtotal += lineTotal;
-      // tax_inclusive items already embed VAT — exclude from the taxable base.
+      // tax_inclusive items already embed VAT — exclude from the taxable base to avoid double-taxation.
       if (!item.tax_inclusive) {
         taxable_base += lineTotal;
       }
@@ -84,6 +84,8 @@ function calcTotals(items: CartItem[], market: string): CartTotals {
     }
   }
 
+  // tax_amount is computed on taxable_base (non-inclusive items only), not on once_off_subtotal.
+  // When all items have tax_inclusive=false the two values are equal.
   const tax_amount = Math.round(taxable_base * vatRate);
   const total_once_off = once_off_subtotal + tax_amount + credits;
   const total_monthly = recurring_subtotal;
@@ -91,9 +93,10 @@ function calcTotals(items: CartItem[], market: string): CartTotals {
   return { once_off_subtotal, recurring_subtotal, tax_amount, credits, total_once_off, total_monthly };
 }
 
-// Demo in-memory store — replace with a PostgreSQL CartRepository once a DB layer is wired in.
+// Demo in-memory store — mirrors the PostgreSQL cart/cart_item tables (Section 7.3 DDL).
+// Replace with a real CartRepository backed by pg/TypeORM once a DB layer is wired in.
 class InMemoryCartStore {
-  private readonly carts = new Map<string, Cart>();
+  private carts = new Map<string, Cart>();
 
   findBySessionId(sessionId: string): Cart | undefined {
     return this.carts.get(sessionId);
@@ -102,14 +105,26 @@ class InMemoryCartStore {
   save(sessionId: string, cart: Cart): void {
     this.carts.set(sessionId, cart);
   }
+
+  reset(): void {
+    this.carts = new Map();
+  }
 }
 
 const store = new InMemoryCartStore();
 
+// Exported for test isolation — clears all in-memory state between test runs.
+export function resetStore(): void {
+  store.reset();
+}
+
 function resolveMarketContext(market?: string): { market: string; currency: string } {
-  const m = (market ?? process.env.DEFAULT_MARKET ?? 'ZA').toUpperCase();
-  const currency = MARKET_CURRENCIES[m] ?? 'ZAR';
-  return { market: m, currency };
+  const key = (market ?? process.env.DEFAULT_MARKET ?? 'ZA').toUpperCase();
+  const config = MARKET_CONFIG[key];
+  if (!config) {
+    throw new Error(`UNKNOWN_MARKET: ${market ?? key}`);
+  }
+  return { market: key, currency: config.currency };
 }
 
 function getOrCreateCart(sessionId: string, market?: string): Cart {
@@ -170,7 +185,8 @@ export function addItem(sessionId: string, input: AddItemInput, market?: string)
     throw new Error('INVALID_PRICE_CENTS');
   }
 
-  if (input.recurring_price_cents < 0) {
+  // Credit items may carry a negative recurring price (e.g. a monthly credit offset).
+  if (input.item_type !== 'credit' && input.recurring_price_cents < 0) {
     throw new Error('INVALID_PRICE_CENTS');
   }
 
