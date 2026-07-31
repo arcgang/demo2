@@ -1,7 +1,4 @@
-import { PrismaClient } from '@prisma/client';
 import { runKycRicaCheck } from './kycRicaAdapter';
-
-const prisma = new PrismaClient();
 
 export type VerificationType = 'KYC' | 'RICA';
 export type VerificationStatus = 'pending' | 'verified' | 'failed';
@@ -33,47 +30,30 @@ export interface CreateVerificationInput {
   identityFields: IdentityFields;
 }
 
+const store = new Map<string, VerificationCaseRecord>();
+let counter = 1;
+
 export async function createVerificationCase(input: CreateVerificationInput): Promise<VerificationCaseRecord> {
   const adapterResult = runKycRicaCheck(input.identityFields.idNumber);
 
-  const row = await prisma.verificationCase.create({
-    data: {
-      orderId: input.orderId,
-      customerId: input.customerId,
-      type: input.type,
-      status: adapterResult.status,
-      resolvedAt: adapterResult.resolvedAt,
-      identityFields: input.identityFields as object,
-      auditRef: adapterResult.auditRef,
-    },
-  });
-
-  return {
-    id: row.id,
-    orderId: row.orderId,
-    customerId: row.customerId,
-    type: row.type as VerificationType,
-    status: row.status as VerificationStatus,
-    submittedAt: row.submittedAt,
-    resolvedAt: row.resolvedAt,
-    identityFields: row.identityFields as unknown as IdentityFields,
-    auditRef: row.auditRef,
+  const record: VerificationCaseRecord = {
+    id: `ver_${counter++}`,
+    orderId: input.orderId,
+    customerId: input.customerId,
+    type: input.type,
+    status: adapterResult.status as VerificationStatus,
+    submittedAt: new Date(),
+    resolvedAt: adapterResult.resolvedAt ?? null,
+    identityFields: input.identityFields,
+    auditRef: adapterResult.auditRef,
   };
+
+  store.set(record.id, record);
+  store.set(`order:${input.orderId}`, record);
+
+  return record;
 }
 
 export async function getVerificationCaseByOrderId(orderId: string): Promise<VerificationCaseRecord | null> {
-  const row = await prisma.verificationCase.findFirst({ where: { orderId } });
-  if (!row) return null;
-
-  return {
-    id: row.id,
-    orderId: row.orderId,
-    customerId: row.customerId,
-    type: row.type as VerificationType,
-    status: row.status as VerificationStatus,
-    submittedAt: row.submittedAt,
-    resolvedAt: row.resolvedAt,
-    identityFields: row.identityFields as unknown as IdentityFields,
-    auditRef: row.auditRef,
-  };
+  return store.get(`order:${orderId}`) ?? null;
 }
