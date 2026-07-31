@@ -48,6 +48,11 @@ router.post('/initiate-payment', (req: Request, res: Response) => {
     return;
   }
 
+  if (method === 'mobile_money' && (!walletRef || typeof walletRef !== 'string')) {
+    res.status(422).json({ errorCode: 'MISSING_WALLET_REF', message: 'walletRef is required for mobile_money payment.' });
+    return;
+  }
+
   if (containsRawPan(body)) {
     res.status(400).json({ errorCode: 'RAW_PAN_REJECTED', message: 'Raw card numbers are not accepted. Use a PSP-issued token.' });
     return;

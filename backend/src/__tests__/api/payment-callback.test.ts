@@ -30,30 +30,6 @@ const VALID_SECRET = 'test-callback-secret';
 const WRONG_SECRET = 'wrong-secret-value';
 
 // ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
-const VALID_SUCCESS_CALLBACK = {
-  paymentAttemptId: 'pay_callback_001',
-  providerReference: 'mpesa_tx_12345',
-  status: 'SUCCESS',
-  walletReference: '27835550000',
-  confirmedAt: '2026-07-28T10:05:00Z',
-};
-
-const VALID_FAILED_CALLBACK = {
-  paymentAttemptId: 'pay_callback_002',
-  providerReference: 'mpesa_tx_99999',
-  status: 'FAILED',
-};
-
-const UNKNOWN_ATTEMPT_CALLBACK = {
-  paymentAttemptId: 'pay_does_not_exist',
-  providerReference: 'mpesa_tx_x',
-  status: 'SUCCESS',
-};
-
-// ---------------------------------------------------------------------------
 // Response type shapes
 // ---------------------------------------------------------------------------
 
@@ -65,6 +41,12 @@ interface CallbackAcceptedResponse {
 interface ErrorResponse {
   errorCode: string;
   message?: string;
+}
+
+interface InitiatePaymentResponse {
+  paymentAttemptId: string;
+  method: string;
+  status: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,22 +74,22 @@ async function postCallback(
   return { status: res.status, body: res.body };
 }
 
-// Seed a payment attempt before running callback tests.
-// The implementation must expose a way to create attempts (via initiate-payment).
+// Seeds a payment attempt via initiate-payment and returns the generated paymentAttemptId.
 async function seedPaymentAttempt(
   app: Application,
-  attemptId: string,
   method: 'card' | 'mobile_money',
-): Promise<void> {
+): Promise<string> {
   const payload =
     method === 'card'
-      ? { orderId: `ord_seed_${attemptId}`, method: 'card', token: 'psp_tok_seed_abc' }
-      : { orderId: `ord_seed_${attemptId}`, method: 'mobile_money', walletRef: '27835550000' };
+      ? { orderId: `ord_seed_card_${Date.now()}`, method: 'card', token: 'psp_tok_seed_abc' }
+      : { orderId: `ord_seed_mm_${Date.now()}`, method: 'mobile_money', walletRef: '27835550000' };
 
-  await request(app)
+  const res = await request(app)
     .post('/api/checkout/initiate-payment')
     .set('Content-Type', 'application/json')
     .send(payload);
+
+  return (res.body as InitiatePaymentResponse).paymentAttemptId;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,27 +98,34 @@ async function seedPaymentAttempt(
 
 describe('POST /api/checkout/payment-callback — shared-secret validation', () => {
   let app: Application;
+  // A well-formed callback payload; the attempt may not exist — we only care about 401 here.
+  const anyCallbackPayload = {
+    paymentAttemptId: 'pay_does_not_matter',
+    providerReference: 'mpesa_tx_12345',
+    status: 'SUCCESS',
+  };
+
   beforeAll(() => { app = getApp(); });
 
   it('returns HTTP 401 when x-callback-secret header is absent', async () => {
-    const res = await postCallback(app, VALID_SUCCESS_CALLBACK, null);
+    const res = await postCallback(app, anyCallbackPayload, null);
     expect(res.status).toBe(401);
   });
 
   it('401 response has an errorCode', async () => {
-    const res = await postCallback(app, VALID_SUCCESS_CALLBACK, null);
+    const res = await postCallback(app, anyCallbackPayload, null);
     const body = res.body as ErrorResponse;
     expect(typeof body.errorCode).toBe('string');
     expect(body.errorCode.length).toBeGreaterThan(0);
   });
 
   it('returns HTTP 401 when x-callback-secret header is present but wrong', async () => {
-    const res = await postCallback(app, VALID_SUCCESS_CALLBACK, WRONG_SECRET);
+    const res = await postCallback(app, anyCallbackPayload, WRONG_SECRET);
     expect(res.status).toBe(401);
   });
 
   it('does NOT return 401 when the correct shared-secret is supplied', async () => {
-    const res = await postCallback(app, VALID_SUCCESS_CALLBACK, VALID_SECRET);
+    const res = await postCallback(app, anyCallbackPayload, VALID_SECRET);
     // May be 200, 404 (attempt not found), or 422 — but NOT 401
     expect(res.status).not.toBe(401);
   });
@@ -152,10 +141,14 @@ describe('POST /api/checkout/payment-callback — valid SUCCESS callback', () =>
 
   beforeAll(async () => {
     app = getApp();
-    // Seed an attempt so the callback can find it.
-    // The implementation must register the attempt by paymentAttemptId.
-    await seedPaymentAttempt(app, 'pay_callback_001', 'mobile_money');
-    result = await postCallback(app, VALID_SUCCESS_CALLBACK, VALID_SECRET);
+    const paymentAttemptId = await seedPaymentAttempt(app, 'mobile_money');
+    result = await postCallback(app, {
+      paymentAttemptId,
+      providerReference: 'mpesa_tx_12345',
+      status: 'SUCCESS',
+      walletReference: '27835550000',
+      confirmedAt: '2026-07-28T10:05:00Z',
+    }, VALID_SECRET);
   });
 
   it('returns HTTP 200', () => {
@@ -180,8 +173,12 @@ describe('POST /api/checkout/payment-callback — valid FAILED callback', () => 
 
   beforeAll(async () => {
     app = getApp();
-    await seedPaymentAttempt(app, 'pay_callback_002', 'mobile_money');
-    result = await postCallback(app, VALID_FAILED_CALLBACK, VALID_SECRET);
+    const paymentAttemptId = await seedPaymentAttempt(app, 'mobile_money');
+    result = await postCallback(app, {
+      paymentAttemptId,
+      providerReference: 'mpesa_tx_99999',
+      status: 'FAILED',
+    }, VALID_SECRET);
   });
 
   it('returns HTTP 200', () => {
@@ -200,14 +197,20 @@ describe('POST /api/checkout/payment-callback — valid FAILED callback', () => 
 
 describe('POST /api/checkout/payment-callback — idempotency', () => {
   let app: Application;
+
   beforeAll(() => { app = getApp(); });
 
   it('returns 200 on a repeated callback for the same attempt', async () => {
-    await seedPaymentAttempt(app, 'pay_callback_001', 'mobile_money');
+    const paymentAttemptId = await seedPaymentAttempt(app, 'mobile_money');
+    const callbackPayload = {
+      paymentAttemptId,
+      providerReference: 'mpesa_tx_idempotent',
+      status: 'SUCCESS',
+    };
     // First call
-    await postCallback(app, VALID_SUCCESS_CALLBACK, VALID_SECRET);
+    await postCallback(app, callbackPayload, VALID_SECRET);
     // Second identical call
-    const res = await postCallback(app, VALID_SUCCESS_CALLBACK, VALID_SECRET);
+    const res = await postCallback(app, callbackPayload, VALID_SECRET);
     expect(res.status).toBe(200);
   });
 });
@@ -219,6 +222,12 @@ describe('POST /api/checkout/payment-callback — idempotency', () => {
 describe('POST /api/checkout/payment-callback — unknown attempt', () => {
   let app: Application;
   beforeAll(() => { app = getApp(); });
+
+  const UNKNOWN_ATTEMPT_CALLBACK = {
+    paymentAttemptId: 'pay_does_not_exist',
+    providerReference: 'mpesa_tx_x',
+    status: 'SUCCESS',
+  };
 
   it('returns HTTP 404 when paymentAttemptId does not exist', async () => {
     const res = await postCallback(app, UNKNOWN_ATTEMPT_CALLBACK, VALID_SECRET);
@@ -241,29 +250,37 @@ describe('POST /api/checkout/payment-callback — missing required fields', () =
   let app: Application;
   beforeAll(() => { app = getApp(); });
 
+  const VALID_SHAPE = {
+    paymentAttemptId: 'pay_does_not_matter',
+    providerReference: 'mpesa_tx_12345',
+    status: 'SUCCESS',
+    walletReference: '27835550000',
+    confirmedAt: '2026-07-28T10:05:00Z',
+  };
+
   it('returns 422 when paymentAttemptId is missing', async () => {
-    const { paymentAttemptId: _omit, ...payload } = VALID_SUCCESS_CALLBACK as Record<string, unknown>;
+    const { paymentAttemptId: _omit, ...payload } = VALID_SHAPE as Record<string, unknown>;
     void _omit;
     const res = await postCallback(app, payload, VALID_SECRET);
     expect(res.status).toBe(422);
   });
 
   it('returns 422 when providerReference is missing', async () => {
-    const { providerReference: _omit, ...payload } = VALID_SUCCESS_CALLBACK as Record<string, unknown>;
+    const { providerReference: _omit, ...payload } = VALID_SHAPE as Record<string, unknown>;
     void _omit;
     const res = await postCallback(app, payload, VALID_SECRET);
     expect(res.status).toBe(422);
   });
 
   it('returns 422 when status is missing', async () => {
-    const { status: _omit, ...payload } = VALID_SUCCESS_CALLBACK as Record<string, unknown>;
+    const { status: _omit, ...payload } = VALID_SHAPE as Record<string, unknown>;
     void _omit;
     const res = await postCallback(app, payload, VALID_SECRET);
     expect(res.status).toBe(422);
   });
 
   it('returns 422 when status has an invalid value', async () => {
-    const res = await postCallback(app, { ...VALID_SUCCESS_CALLBACK, status: 'BOGUS' }, VALID_SECRET);
+    const res = await postCallback(app, { ...VALID_SHAPE, status: 'BOGUS' }, VALID_SECRET);
     expect(res.status).toBe(422);
   });
 });
