@@ -34,3 +34,40 @@ model VerificationCase {
 
   @@map("verification_case")
 }
+
+enum ConsentPurpose {
+  terms
+  marketing
+}
+
+enum AuditEventType {
+  consent_capture
+  payment_outcome
+  verification_outcome
+  order_created
+  activation_status_change
+}
+
+model ConsentRecord {
+  id         String         @id @default(uuid())
+  orderId    String
+  sessionId  String
+  purpose    ConsentPurpose
+  accepted   Boolean
+  capturedAt DateTime       @default(now())
+  ipAddress  String?
+
+  @@map("consent_records")
+}
+
+model AuditEvent {
+  id         String         @id @default(uuid())
+  eventType  AuditEventType
+  orderId    String
+  journeyRef String?
+  actorRef   String?
+  payload    Json           @default("{}")
+  occurredAt DateTime       @default(now())
+
+  @@map("audit_events")
+}
