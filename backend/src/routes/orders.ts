@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { buildStatusResponse } from '../modules/activation/statusScenarios';
 import { issueEsim } from '../modules/activation/activationOrchestrationService';
 import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
+import { getOrderByReference } from '../modules/order/orderStore';
+import { getJourneyAuditTrail } from '../modules/consentAudit/consentAndAuditService';
 
 const router = Router();
 
@@ -65,6 +67,37 @@ router.post('/:id/esim/issue', (req: Request, res: Response) => {
       });
       return;
   }
+});
+
+router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
+  const sessionToken = req.headers['x-session-token'];
+  const operatorToken = req.headers['x-operator-token'];
+  if (!sessionToken && !operatorToken) {
+    res.status(401).json({ errorCode: 'UNAUTHENTICATED', message: 'Authentication required.' });
+    return;
+  }
+
+  const { ref } = req.params;
+  const order = getOrderByReference(ref);
+  if (!order) {
+    res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: `No order found for reference "${ref}".` });
+    return;
+  }
+
+  // Audit events are keyed by orderReference (the public ref)
+  const events = await getJourneyAuditTrail(order.orderReference);
+  res.status(200).json({
+    orderId: order.orderReference,
+    events: events.map((e) => ({
+      id: e.id,
+      eventType: e.eventType,
+      occurredAt: e.occurredAt,
+      payload: e.payload,
+      orderId: e.orderId,
+      journeyRef: e.journeyRef,
+      actorRef: e.actorRef,
+    })),
+  });
 });
 
 router.get('/:id/status', (req: Request, res: Response) => {

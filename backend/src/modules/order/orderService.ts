@@ -5,6 +5,7 @@ import {
   persistOrderAuditEvent,
 } from './orderStore';
 import { seedOrder } from '../activation/activationStore';
+import { insertAuditEvent } from '../consentAudit/consentAuditStore';
 
 export interface LineItemInput {
   name: string;
@@ -104,6 +105,19 @@ export function createOrder(input: CreateOrderInput): OrderConfirmation {
       orderReference,
       cartId: input.cartId,
       paymentAttemptId: input.paymentAttemptId,
+      paymentStatus: input.paymentStatus,
+    },
+  });
+
+  // Emit into ConsentAuditModule so the audit-trail endpoint can serve it
+  insertAuditEvent({
+    eventType: 'order_created',
+    orderId: orderReference,
+    actorRef: input.customerId,
+    payload: {
+      orderId,
+      orderReference,
+      cartId: input.cartId,
       paymentStatus: input.paymentStatus,
     },
   });
