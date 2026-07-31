@@ -1,8 +1,38 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse } from '../modules/activation/statusScenarios';
 import { issueEsim } from '../modules/activation/activationOrchestrationService';
+import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
 
 const router = Router();
+
+router.post('/', (req: Request, res: Response) => {
+  const body = req.body as Record<string, unknown>;
+
+  const errors = validateCreateOrderInput(body);
+  if (errors.length > 0) {
+    res.status(422).json({
+      errorCode: 'VALIDATION_ERROR',
+      message: 'Required fields are missing or invalid.',
+      errors,
+    });
+    return;
+  }
+
+  const confirmation = createOrder({
+    cartId: body.cartId as string,
+    paymentAttemptId: body.paymentAttemptId as string,
+    paymentStatus: body.paymentStatus as string,
+    verificationCaseId: body.verificationCaseId as string | undefined,
+    verificationStatus: body.verificationStatus as string | undefined,
+    customerId: body.customerId as string | undefined,
+    lineItems: body.lineItems as Array<{ name: string; qty: number; unitPrice: number }>,
+    onceOffTotal: body.onceOffTotal as number,
+    monthlyTotal: body.monthlyTotal as number,
+    consents: body.consents as Array<{ purpose: string; granted: boolean }> | undefined,
+  });
+
+  res.status(201).json(confirmation);
+});
 
 router.post('/:id/esim/issue', (req: Request, res: Response) => {
   const { id } = req.params;
