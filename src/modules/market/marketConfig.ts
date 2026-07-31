@@ -65,6 +65,7 @@ export function getMarket(marketCode: string): MarketConfig | undefined {
   return MARKETS[marketCode.toUpperCase()];
 }
 
-export function isKnownMarket(marketCode: string): boolean {
-  return marketCode.toUpperCase() in MARKETS;
+// Returns the default market (ZA) — used when no market cookie/header is present.
+export function getDefaultMarket(): MarketConfig {
+  return MARKETS['ZA'];
 }

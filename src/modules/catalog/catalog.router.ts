@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
+import { getDefaultMarket, MarketConfig } from '../market/marketConfig';
 
 export const catalogRouter = Router();
 
-function renderOfferCard(offer: PrepaidUpsellOffer): string {
+function renderOfferCard(offer: PrepaidUpsellOffer, market: MarketConfig): string {
   const price = offer.pricingSummary.recurringAmount ?? offer.pricingSummary.onceOffAmount ?? 0;
   const badge = offer.badge ? `<span class="offer-badge">${offer.badge}</span>` : '';
   return `
@@ -12,15 +13,15 @@ function renderOfferCard(offer: PrepaidUpsellOffer): string {
       ${badge}
       <h4>${offer.title}</h4>
       <p>${offer.description}</p>
-      <p class="offer-price">R ${price}/month</p>
+      <p class="offer-price">${market.currencySymbol} ${price}/month</p>
       ${offer.pricingSummary.discountLabel ? `<p class="offer-discount">${offer.pricingSummary.discountLabel}</p>` : ''}
       <button class="btn-upsell-cta" data-offer-id="${offer.offerId}">${offer.ctaLabel}</button>
     </div>`;
 }
 
-function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
+function renderUpsellPanel(offers: PrepaidUpsellOffer[], market: MarketConfig): string {
   if (offers.length === 0) return '';
-  const cards = offers.map(renderOfferCard).join('\n');
+  const cards = offers.map(o => renderOfferCard(o, market)).join('\n');
   return `
   <div class="upsell-panel recommended-panel promotional-section">
     <h3>Recommended for You</h3>
@@ -33,8 +34,16 @@ function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
 catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
   const offers = context ? getUpsellOffersByContext(context) : [];
+  const market = getDefaultMarket();
 
-  const upsellPanel = renderUpsellPanel(offers);
+  const upsellPanel = renderUpsellPanel(offers, market);
+  const sym = market.currencySymbol;
+  const taxPct = Math.round(market.vatRate * 100);
+  const taxLabel = market.taxLabel;
+
+  const devicePrice = 24999.00;
+  const vatAmount = parseFloat((devicePrice * market.vatRate).toFixed(2));
+  const totalOnceOff = parseFloat((devicePrice + vatAmount).toFixed(2));
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -63,7 +72,7 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   <main>
     <h1>Configure Your Bundle</h1>
     <h3>iPhone 15 Pro 256GB</h3>
-    <p>Natural Titanium &mdash; R 24,999.00</p>
+    <p>Natural Titanium &mdash; ${sym} ${devicePrice.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
     <p>This plan is compatible with your device</p>
 
     <section class="plan-selection">
@@ -75,19 +84,19 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
         <div class="plan-card" data-plan-id="plan_red_5gb">
           <h4>Vodacom Red 5GB</h4>
           <p>5GB Data + Unlimited Calls &amp; SMS</p>
-          <p class="plan-price">R 299/month</p>
+          <p class="plan-price">${sym} 299/month</p>
           <button class="btn-select-plan">Select Plan</button>
         </div>
         <div class="plan-card" data-plan-id="plan_unlimited_20gb">
           <h4>Vodacom Unlimited 20GB</h4>
           <p>20GB Data + Unlimited Calls &amp; SMS</p>
-          <p class="plan-price">R 799/month</p>
+          <p class="plan-price">${sym} 799/month</p>
           <button class="btn-select-plan">Select Plan</button>
         </div>
         <div class="plan-card" data-plan-id="plan_red_premium">
           <h4>Vodacom Red Premium</h4>
           <p>50GB Data + Unlimited Calls &amp; SMS</p>
-          <p class="plan-price">R 1,299/month</p>
+          <p class="plan-price">${sym} 1,299/month</p>
           <button class="btn-select-plan">Select Plan</button>
         </div>
       </div>
@@ -95,24 +104,24 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
     <section class="bundle-addons">
       <h2>Optional Add-Ons</h2>
-      <label><input type="checkbox" name="addon-data"> Extra 10GB Data &mdash; + R 199/month</label>
-      <label><input type="checkbox" name="addon-international" checked> International Calling &mdash; + R 149/month</label>
-      <label><input type="checkbox" name="addon-roaming"> Roaming Bundle &mdash; + R 299/month</label>
+      <label><input type="checkbox" name="addon-data"> Extra 10GB Data &mdash; + ${sym} 199/month</label>
+      <label><input type="checkbox" name="addon-international" checked> International Calling &mdash; + ${sym} 149/month</label>
+      <label><input type="checkbox" name="addon-roaming"> Roaming Bundle &mdash; + ${sym} 299/month</label>
     </section>
   </main>
 
   <aside class="pricing-summary">
     <h3>Pricing Summary</h3>
     <dl>
-      <dt>iPhone 15 Pro 256GB</dt><dd>R 24,999.00</dd>
-      <dt>Activation Fee</dt><dd>R 0.00</dd>
-      <dt>Vodacom Unlimited 20GB</dt><dd>R 799.00</dd>
-      <dt>International Calling</dt><dd>R 149.00</dd>
+      <dt>iPhone 15 Pro 256GB</dt><dd>${sym} ${devicePrice.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</dd>
+      <dt>Activation Fee</dt><dd>${sym} 0.00</dd>
+      <dt>Vodacom Unlimited 20GB</dt><dd>${sym} 799.00</dd>
+      <dt>International Calling</dt><dd>${sym} 149.00</dd>
     </dl>
-    <p>Once-Off Subtotal: R 24,999.00</p>
-    <p>VAT (15%): R 3,749.85</p>
-    <p>Total Once-Off: R 28,748.85</p>
-    <p>Total Monthly: R 948.00</p>
+    <p>Once-Off Subtotal: ${sym} ${devicePrice.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+    <p>${taxLabel} (${taxPct}%): ${sym} ${vatAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+    <p>Total Once-Off: ${sym} ${totalOnceOff.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+    <p>Total Monthly: ${sym} 948.00</p>
     <button>Continue to Cart</button>
   </aside>
 </body>
@@ -124,8 +133,10 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
   const offers = context ? getUpsellOffersByContext(context) : [];
+  const market = getDefaultMarket();
 
-  const upsellPanel = renderUpsellPanel(offers);
+  const upsellPanel = renderUpsellPanel(offers, market);
+  const sym = market.currencySymbol;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -154,8 +165,8 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <section class="product-hero">
     <h1>iPhone 15 Pro 256GB</h1>
     <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
+    <p class="product-price">${sym} 24,999.00</p>
+    <p>or from ${sym} 899/month with a plan</p>
 
     <div class="color-selector">
       <span>Color</span>
@@ -191,19 +202,19 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <div class="plan-card" data-plan-id="plan_red_5gb">
         <h4>Vodacom Red 5GB</h4>
         <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
+        <p class="plan-price">${sym} 299/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
       <div class="plan-card" data-plan-id="plan_unlimited_20gb">
         <h4>Vodacom Unlimited 20GB</h4>
         <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
+        <p class="plan-price">${sym} 799/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
       <div class="plan-card" data-plan-id="plan_red_premium">
         <h4>Vodacom Red Premium</h4>
         <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
+        <p class="plan-price">${sym} 1,299/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
     </div>

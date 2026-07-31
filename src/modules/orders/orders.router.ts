@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse, Milestone } from './order-status-scenarios';
+import { getDefaultMarket } from '../market/marketConfig';
 
 function escapeHtml(str: string): string {
   return str
@@ -67,6 +68,8 @@ function renderMilestone(m: Milestone): string {
 ordersRouter.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const scenario = (req.query.scenario as string) ?? 'activation_complete';
+  const market = getDefaultMarket();
+  const sym = market.currencySymbol;
 
   const status = buildStatusResponse(id, scenario);
   const milestones = status ? status.milestones : [];
@@ -123,8 +126,8 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
         <dt>Status</dt><dd>${overallState}</dd>
         <dt>Order Date</dt><dd>28 July 2026, 10:00 AM</dd>
         <dt>Customer</dt><dd>Amina Dlamini</dd>
-        <dt>Total Amount</dt><dd>R 20,496.55</dd>
-        <dt>Monthly Charge</dt><dd>R 799.00/month</dd>
+        <dt>Total Amount</dt><dd>${sym} 20,496.55</dd>
+        <dt>Monthly Charge</dt><dd>${sym} 799.00/month</dd>
       </dl>
     </section>
 
@@ -137,19 +140,19 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
       <h2>Order Items</h2>
       <div class="order-item">
         <h4>iPhone 15 Pro</h4>
-        <p>Natural Titanium, 256GB &mdash; Quantity: 1 &mdash; R 18,999.00</p>
+        <p>Natural Titanium, 256GB &mdash; Quantity: 1 &mdash; ${sym} 18,999.00</p>
       </div>
       <div class="order-item">
         <h4>iPhone 15 Pro Silicone Case</h4>
-        <p>Storm Blue &mdash; Quantity: 1 &mdash; R 599.00</p>
+        <p>Storm Blue &mdash; Quantity: 1 &mdash; ${sym} 599.00</p>
       </div>
       <div class="order-item">
         <h4>20W USB-C Power Adapter</h4>
-        <p>Fast charging compatible &mdash; Quantity: 1 &mdash; R 399.00</p>
+        <p>Fast charging compatible &mdash; Quantity: 1 &mdash; ${sym} 399.00</p>
       </div>
       <div class="order-item">
         <h4>Unlimited 20GB Plan</h4>
-        <p>20GB data, unlimited calls &amp; SMS &mdash; Monthly subscription &mdash; R 799.00/month</p>
+        <p>20GB data, unlimited calls &amp; SMS &mdash; Monthly subscription &mdash; ${sym} 799.00/month</p>
       </div>
     </section>
   </main>
@@ -158,7 +161,7 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
     <h3>Your Account</h3>
     <dl>
       <dt>Current Plan</dt><dd>Unlimited 20GB</dd>
-      <dt>Monthly Cost</dt><dd>R 799.00</dd>
+      <dt>Monthly Cost</dt><dd>${sym} 799.00</dd>
       <dt>Contract End Date</dt><dd>28 July 2028</dd>
       <dt>Phone Number</dt><dd>+27 83 555 0123</dd>
       <dt>Network Status</dt><dd>Active</dd>
