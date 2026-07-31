@@ -1,7 +1,41 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse } from '../modules/activation/statusScenarios';
+import { issueEsim } from '../modules/activation/activationOrchestrationService';
 
 const router = Router();
+
+router.post('/:id/esim/issue', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = issueEsim(id);
+
+  switch (result.outcome) {
+    case 'NOT_FOUND':
+      res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      return;
+    case 'PAYMENT_PENDING':
+      res.status(403).json({ errorCode: 'PAYMENT_PENDING', message: 'Payment has not been confirmed. eSIM issuance requires a confirmed payment.' });
+      return;
+    case 'VERIFICATION_PENDING':
+      res.status(403).json({ errorCode: 'VERIFICATION_PENDING', message: 'Identity verification has not been completed. eSIM issuance requires passed KYC/RICA verification.' });
+      return;
+    case 'ALREADY_ISSUED':
+      res.status(200).json({
+        orderId: result.orderId,
+        activationState: result.activationState,
+        activationCode: result.activationCode,
+        smdpAddress: result.smdpAddress,
+      });
+      return;
+    case 'ISSUED':
+      res.status(200).json({
+        orderId: result.orderId,
+        activationState: result.activationState,
+        activationCode: result.activationCode,
+        smdpAddress: result.smdpAddress,
+      });
+      return;
+  }
+});
 
 router.get('/:id/status', (req: Request, res: Response) => {
   const { id } = req.params;
