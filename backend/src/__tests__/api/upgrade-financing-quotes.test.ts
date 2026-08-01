@@ -32,6 +32,7 @@ interface FinancingQuote {
   termMonths: number;
   monthlyAmount: number;
   onceOffDeposit: number;
+  activationFee: number;
   totalCost: number;
   interestRate: number;
 }
@@ -178,6 +179,12 @@ describe('GET /api/upgrade/financing — FinancingQuote field completeness', () 
         }
       });
 
+      it('each quote has activationFee', () => {
+        for (const q of quotes) {
+          expect(q).toHaveProperty('activationFee');
+        }
+      });
+
       it('each quote has totalCost', () => {
         for (const q of quotes) {
           expect(q).toHaveProperty('totalCost');
@@ -229,6 +236,13 @@ describe('GET /api/upgrade/financing — FinancingQuote field types', () => {
     }
   });
 
+  it('activationFee is a non-negative number on every quote', () => {
+    for (const q of quotes) {
+      expect(typeof q.activationFee).toBe('number');
+      expect(q.activationFee).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it('totalCost is a positive number on every quote', () => {
     for (const q of quotes) {
       expect(typeof q.totalCost).toBe('number');
@@ -258,9 +272,10 @@ describe('GET /api/upgrade/financing — once-off vs recurring separation', () =
     quotes = res.body as FinancingQuote[];
   });
 
-  it('onceOffDeposit (once-off charge) is a separate field from monthlyAmount (recurring charge)', () => {
+  it('onceOffDeposit and activationFee (once-off charges) are separate fields from monthlyAmount (recurring charge)', () => {
     for (const q of quotes) {
       expect(Object.prototype.hasOwnProperty.call(q, 'onceOffDeposit')).toBe(true);
+      expect(Object.prototype.hasOwnProperty.call(q, 'activationFee')).toBe(true);
       expect(Object.prototype.hasOwnProperty.call(q, 'monthlyAmount')).toBe(true);
     }
   });
@@ -273,9 +288,9 @@ describe('GET /api/upgrade/financing — once-off vs recurring separation', () =
     }
   });
 
-  it('totalCost is consistent with term: termMonths * monthlyAmount + onceOffDeposit approx equals totalCost', () => {
+  it('totalCost is consistent with term: termMonths * monthlyAmount + onceOffDeposit + activationFee approx equals totalCost', () => {
     for (const q of quotes) {
-      const computed = q.termMonths * q.monthlyAmount + q.onceOffDeposit;
+      const computed = q.termMonths * q.monthlyAmount + q.onceOffDeposit + q.activationFee;
       // Allow up to 1 ZAR rounding tolerance
       expect(Math.abs(computed - q.totalCost)).toBeLessThanOrEqual(1);
     }
@@ -337,6 +352,7 @@ describe('GET /api/upgrade/financing — planId optional param', () => {
       expect(q).toHaveProperty('termMonths');
       expect(q).toHaveProperty('monthlyAmount');
       expect(q).toHaveProperty('onceOffDeposit');
+      expect(q).toHaveProperty('activationFee');
       expect(q).toHaveProperty('totalCost');
       expect(q).toHaveProperty('interestRate');
     }

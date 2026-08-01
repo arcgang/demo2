@@ -41,6 +41,8 @@ router.post('/eligibility', (req: Request, res: Response) => {
 
 router.get('/financing', (req: Request, res: Response) => {
   const productId = req.query.productId as string | undefined;
+  // planId is accepted but intentionally unused in the mock — quotes are product-scoped only
+  // const planId = req.query.planId as string | undefined;
 
   if (!productId || !productId.trim()) {
     res.status(400).json({
