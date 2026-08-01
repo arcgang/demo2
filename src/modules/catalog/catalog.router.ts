@@ -122,22 +122,8 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
-// Plans sourced from recommendations API seed for iphone-15-pro (prod_za_iphone15pro_256)
-const PRODUCT_PLANS = [
-  { id: 'plan_red_5gb',      name: 'Vodacom Red 5GB',      desc: '5GB Data + Unlimited Calls &amp; SMS',  monthly: 299 },
-  { id: 'plan_unlimited_20gb', name: 'Vodacom Unlimited 20GB', desc: '20GB Data + Unlimited Calls &amp; SMS', monthly: 799 },
-  { id: 'plan_red_premium',  name: 'Vodacom Red Premium',  desc: '50GB Data + Unlimited Calls &amp; SMS', monthly: 1299 },
-];
-
-const PRODUCT_ACCESSORIES = [
-  { id: 'acc_airpods_pro',        name: 'AirPods Pro (2nd Gen)',     price: 4999 },
-  { id: 'acc_iphone15pro_case',   name: 'iPhone 15 Pro Case',        price: 799 },
-  { id: 'acc_20w_usbc_adapter',   name: '20W USB-C Power Adapter',   price: 399 },
-  { id: 'acc_screen_protector',   name: 'Screen Protector',          price: 299 },
-];
-
 function formatPrice(amount: number): string {
-  return 'R ' + amount.toLocaleString('en-US');
+  return 'R ' + amount.toLocaleString('en-ZA');
 }
 
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
@@ -146,28 +132,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
   const upsellPanel = renderUpsellPanel(offers);
   const cartCount = getCartCount(req);
-
-  const planCardsHtml = PRODUCT_PLANS.map((plan, idx) => {
-    const isSelected = idx === 0;
-    const selectedAttr = isSelected ? 'data-selected="true"' : 'data-selected="false"';
-    const selectedClass = isSelected ? ' selected' : '';
-    return `
-      <div class="plan-card${selectedClass} plan-required" ${selectedAttr} data-plan-id="${plan.id}">
-        <span class="badge badge-required required-label">Required</span>
-        <h4>${plan.name}</h4>
-        <p>${plan.desc}</p>
-        <p class="plan-price">${formatPrice(plan.monthly)}/month</p>
-        <button class="btn-select-plan btn-add-to-cart" data-item-id="${plan.id}" data-item-type="PLAN">Select Plan</button>
-      </div>`;
-  }).join('\n');
-
-  const accessoryCardsHtml = PRODUCT_ACCESSORIES.map(acc => `
-      <div class="accessory-card">
-        <div class="image-placeholder accessory-image"></div>
-        <h4>${acc.name}</h4>
-        <p class="accessory-price">${formatPrice(acc.price)}</p>
-        <button class="btn-add-to-cart" data-item-id="${acc.id}" data-item-type="ACCESSORY">Add to Cart</button>
-      </div>`).join('\n');
+  const deviceId = req.params['id'] ?? 'prod_za_iphone15pro_256';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -184,7 +149,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
-    <button class="cart-badge" data-cart-count="${cartCount}">${cartCount}</button>
+    <button class="cart-badge" id="cart-badge" data-cart-count="${cartCount}">${cartCount}</button>
   </header>
 
   <nav class="breadcrumb">
@@ -230,8 +195,8 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
     ${upsellPanel}
 
-    <div class="base-plan-list">
-      ${planCardsHtml}
+    <div class="base-plan-list" id="plan-list">
+      <p>Loading plans&hellip;</p>
     </div>
   </section>
 
@@ -251,10 +216,92 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
   <section class="recommendations">
     <h2>Complete your purchase</h2>
-    <div class="accessory-grid">
-      ${accessoryCardsHtml}
+    <div class="accessory-grid" id="accessory-grid">
+      <p>Loading accessories&hellip;</p>
     </div>
   </section>
+
+  <script>
+    (function () {
+      var DEVICE_ID = ${JSON.stringify(deviceId)};
+
+      function formatZAR(amount) {
+        return 'R ' + amount.toLocaleString('en-ZA');
+      }
+
+      function updateBadge(count) {
+        var badge = document.getElementById('cart-badge');
+        if (badge) {
+          badge.textContent = String(count);
+          badge.dataset.cartCount = String(count);
+        }
+      }
+
+      function addToCart(itemId, itemType) {
+        fetch('/cart/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: itemId, itemType: itemType })
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) { updateBadge(data.itemCount); })
+          .catch(function () {});
+      }
+
+      function renderPlans(attachments) {
+        var plans = attachments.filter(function (a) { return a.type === 'PLAN'; });
+        var planList = document.getElementById('plan-list');
+        if (!planList) return;
+        if (plans.length === 0) { planList.innerHTML = '<p>No plans available.</p>'; return; }
+        planList.innerHTML = plans.map(function (plan, idx) {
+          var selectedClass = idx === 0 ? ' selected' : '';
+          var selectedAttr = idx === 0 ? 'data-selected="true"' : 'data-selected="false"';
+          return '<div class="plan-card plan-required' + selectedClass + '" ' + selectedAttr + ' data-plan-id="' + plan.id + '">'
+            + '<span class="badge badge-required required-label">Required</span>'
+            + '<h4>' + plan.name + '</h4>'
+            + '<p class="plan-price">' + formatZAR(plan.pricingRule.monthly) + '/month</p>'
+            + '<button class="btn-select-plan btn-add-to-cart" data-item-id="' + plan.id + '" data-item-type="PLAN">Select Plan</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      function renderAccessories(attachments) {
+        var accessories = attachments.filter(function (a) { return a.type === 'ACCESSORY'; });
+        var grid = document.getElementById('accessory-grid');
+        if (!grid) return;
+        if (accessories.length === 0) { grid.innerHTML = '<p>No accessories available.</p>'; return; }
+        grid.innerHTML = accessories.map(function (acc) {
+          return '<div class="accessory-card">'
+            + '<div class="image-placeholder accessory-image"></div>'
+            + '<h4>' + acc.name + '</h4>'
+            + '<p class="accessory-price">' + formatZAR(acc.pricingRule.onceOff) + '</p>'
+            + '<button class="btn-add-to-cart" data-item-id="' + acc.id + '" data-item-type="ACCESSORY">Add to Cart</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('.btn-add-to-cart') : null;
+        if (!btn) return;
+        var itemId = btn.dataset.itemId;
+        var itemType = btn.dataset.itemType;
+        if (itemId && itemType) addToCart(itemId, itemType);
+      });
+
+      fetch('/api/devices/' + DEVICE_ID + '/recommendations')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          renderPlans(data.attachments || []);
+          renderAccessories(data.attachments || []);
+        })
+        .catch(function () {
+          var planList = document.getElementById('plan-list');
+          if (planList) planList.innerHTML = '<p>Could not load plans.</p>';
+          var grid = document.getElementById('accessory-grid');
+          if (grid) grid.innerHTML = '<p>Could not load accessories.</p>';
+        });
+    })();
+  </script>
 </body>
 </html>`;
 
