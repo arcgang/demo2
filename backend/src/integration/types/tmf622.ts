@@ -33,3 +33,9 @@ export interface ProductOrder {
   requestedStartDate?: string;
   requestedCompletionDate?: string;
 }
+
+/** Lightweight reference to a ProductOrder resource, used in TMF669 event payloads. */
+export interface ProductOrderRef {
+  id: string;
+  href?: string;
+}
