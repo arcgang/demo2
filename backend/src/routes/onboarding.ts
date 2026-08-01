@@ -39,10 +39,20 @@ router.post('/porting', (req: Request, res: Response) => {
     portingReference: body.portingReference as string | undefined,
   });
 
+  // Signal verification_required when KYC stub reports missing artifacts,
+  // or delayed_activation for certain markets where porting processing takes longer.
+  let scenario: 'verification_required' | 'delayed_activation' | null = null;
+  if (record.kycStub.missingArtifacts.length > 0) {
+    scenario = 'verification_required';
+  } else if (marketCode === 'TZ' || marketCode === 'MZ') {
+    scenario = 'delayed_activation';
+  }
+
   res.status(201).json({
     caseId: record.caseId,
     status: record.status,
     kycStub: record.kycStub,
+    scenario,
   });
 });
 

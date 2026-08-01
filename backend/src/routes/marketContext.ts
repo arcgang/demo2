@@ -29,6 +29,7 @@ router.get('/', (req: Request, res: Response) => {
     language: market.language,
     vatRate: market.vatRate,
     paymentMethods: market.paymentMethods,
+    portingSupported: market.portingSupported,
   });
 });
 
