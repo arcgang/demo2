@@ -27,7 +27,7 @@ function isPurchasable(product: ProductSeed, paymentMethods: string[]): boolean 
 }
 
 function isLiteMode(req: Request): boolean {
-  return req.query.lite === 'true' || req.headers['save-data'] === 'on';
+  return req.query.lite === 'true' || req.query.lite === '1' || req.headers['save-data'] === 'on';
 }
 
 function computeMonthlyFrom(product: ProductSeed, planIndex: Map<string, ProductSeed>): number {

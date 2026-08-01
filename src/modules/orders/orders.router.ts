@@ -54,7 +54,7 @@ function renderMilestone(m: Milestone): string {
   const icon = iconMap[m.state] ?? '&#9679;';
 
   return `
-      <div class="${cssClass}" data-step="${m.step}">
+      <div class="${cssClass}" data-step="${m.step}" data-state="${m.state}">
         <span class="milestone__icon" aria-hidden="true">${icon}</span>
         <div class="milestone__body">
           <span class="milestone__label">${label}</span>
@@ -79,7 +79,7 @@ function buildLiveMilestones(orderId: string): Milestone[] {
   const paymentState = order?.paymentStatus === 'CONFIRMED' ? 'completed' : 'pending';
   const verificationState = order?.verificationStatus === 'COMPLETED' ? 'completed' : 'pending';
   const esimState = activation ? 'completed' : (verificationState === 'completed' ? 'pending' : 'pending');
-  const activationState = 'pending' as const;
+  const activationState = activation?.activationStatus === 'ACTIVATED' ? 'completed' : 'pending';
 
   return [
     {
@@ -108,9 +108,9 @@ function buildLiveMilestones(orderId: string): Milestone[] {
     },
     {
       step: 'activation_complete' as const,
-      state: activationState,
-      timestamp: null,
-      next_step: 'Activation will begin after eSIM issuance.',
+      state: activationState as 'completed' | 'pending' | 'blocked',
+      timestamp: activationState === 'completed' ? (activation?.updatedAt ?? null) : null,
+      next_step: activationState !== 'completed' ? 'Activation will begin after eSIM issuance.' : null,
     },
   ];
 }
@@ -142,20 +142,62 @@ ordersRouter.post('/:id/esim/issue', (req: Request, res: Response) => {
   }
 });
 
+function renderMilestoneLite(m: Milestone): string {
+  const label = MILESTONE_LABELS[m.step] ?? m.step;
+  const timestampHtml = m.timestamp
+    ? ` <span class="milestone__timestamp">${formatTimestamp(m.timestamp)}</span>`
+    : '';
+  const nextStepHtml = m.next_step
+    ? ` — <span class="milestone__next-step">${escapeHtml(m.next_step)}</span>`
+    : '';
+  return `<li data-step="${m.step}" data-state="${m.state}">${label}${timestampHtml}${nextStepHtml}</li>`;
+}
+
 // GET /orders/:id — Order Details page (Screen 6)
 ordersRouter.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const scenario = req.query.scenario as string | undefined;
+  const liteParam = req.query.lite as string | undefined;
+  const isLite = liteParam === '1' || liteParam === 'true';
 
   const milestones: Milestone[] = scenario
     ? (buildStatusResponse(id, scenario)?.milestones ?? buildLiveMilestones(id))
     : buildLiveMilestones(id);
 
-  const milestonesHtml = milestones.map(renderMilestone).join('');
-
   const overallState = milestones.length > 0 && milestones.every((m) => m.state === 'completed')
     ? 'Order Fulfilled'
     : 'In Progress';
+
+  const liteBannerHtml = isLite
+    ? `<div class="lite-mode-banner">Lite Mode Active — Optimized for faster browsing</div>`
+    : '';
+
+  let timelineHtml: string;
+  if (isLite) {
+    const listItems = milestones.map(renderMilestoneLite).join('\n      ');
+    timelineHtml = `<ol class="order-status-timeline">\n      ${listItems}\n    </ol>`;
+  } else {
+    const milestonesHtml = milestones.map(renderMilestone).join('');
+    timelineHtml = `<section class="order-status-timeline">
+      <h2>Order Status Timeline</h2>
+      ${milestonesHtml}
+    </section>`;
+  }
+
+  const accountCardHtml = isLite ? '' : `
+  <aside class="account-card">
+    <h3>Your Account</h3>
+    <dl>
+      <dt>Current Plan</dt><dd>Unlimited 20GB</dd>
+      <dt>Monthly Cost</dt><dd>R 799.00</dd>
+      <dt>Contract End Date</dt><dd>28 July 2028</dd>
+      <dt>Phone Number</dt><dd>+27 83 555 0123</dd>
+      <dt>Network Status</dt><dd>Active</dd>
+    </dl>
+    <button>Manage Account</button>
+    <button>Download Invoice</button>
+    <button>Contact Support</button>
+  </aside>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -166,14 +208,15 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
     .order-status-timeline { margin: 1rem 0; }
     .milestone { display: flex; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #eee; }
     .milestone--completed .milestone__icon { color: #2e7d32; }
-    .milestone--pending .milestone__icon { color: #f57c00; }
+    .milestone--pending .milestone__icon { color: #9e9e9e; }
     .milestone--blocked .milestone__icon { color: #c62828; font-weight: bold; }
-    .milestone--pending { opacity: 0.85; }
+    .milestone--pending { opacity: 0.85; border-left: 2px dashed #bdbdbd; padding-left: 0.5rem; background: #f5f5f5; }
     .milestone--blocked { background: #fff3e0; border-left: 3px solid #c62828; padding-left: 0.5rem; }
     .milestone__body { display: flex; flex-direction: column; gap: 0.25rem; }
     .milestone__label { font-weight: 600; }
     .milestone__timestamp { font-size: 0.85em; color: #666; }
     .milestone__next-step { font-size: 0.9em; color: #555; margin: 0; }
+    .lite-mode-banner { background: #fff8e1; border: 1px solid #f9a825; padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -196,6 +239,7 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
 
   <main class="main-content">
     <h1>Order Details</h1>
+    ${liteBannerHtml}
 
     <section class="order-meta">
       <dl>
@@ -208,10 +252,8 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
       </dl>
     </section>
 
-    <section class="order-status-timeline">
-      <h2>Order Status Timeline</h2>
-      ${milestonesHtml}
-    </section>
+    ${isLite ? `<h2>Order Status Timeline</h2>` : ''}
+    ${timelineHtml}
 
     <section class="order-items">
       <h2>Order Items</h2>
@@ -232,21 +274,13 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
         <p>20GB data, unlimited calls &amp; SMS &mdash; Monthly subscription &mdash; R 799.00/month</p>
       </div>
     </section>
-  </main>
 
-  <aside class="account-card">
-    <h3>Your Account</h3>
-    <dl>
-      <dt>Current Plan</dt><dd>Unlimited 20GB</dd>
-      <dt>Monthly Cost</dt><dd>R 799.00</dd>
-      <dt>Contract End Date</dt><dd>28 July 2028</dd>
-      <dt>Phone Number</dt><dd>+27 83 555 0123</dd>
-      <dt>Network Status</dt><dd>Active</dd>
-    </dl>
-    <button>Manage Account</button>
-    <button>Download Invoice</button>
-    <button>Contact Support</button>
-  </aside>
+    <div class="order-actions">
+      <button>Download Invoice</button>
+      <button>Contact Support</button>
+    </div>
+  </main>
+  ${accountCardHtml}
 
   <footer class="footer">
     <h4>About Vodacom</h4>
@@ -257,6 +291,18 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
     <a href="#">FAQs</a>
     <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
   </footer>
+  <script>
+  (function () {
+    var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g')) {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('lite') !== '1') {
+        url.searchParams.set('lite', '1');
+        window.location.replace(url.toString());
+      }
+    }
+  })();
+  </script>
 </body>
 </html>`;
 
@@ -266,16 +312,34 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
 // GET /orders/:id/esim-activation — eSIM Activation page (Screen 5)
 ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
   const { id } = req.params;
+  const scenario = req.query.scenario as string | undefined;
+  const liteParam = req.query.lite as string | undefined;
+  const isLite = liteParam === '1' || liteParam === 'true';
+
+  // Scenario override: activation_in_progress means eSIM issued but not yet activated
+  const isInProgress = scenario === 'activation_in_progress';
+  const isActivationComplete = scenario === 'activation_complete';
 
   // Call the issuance logic to get live activation data
   const result = issueEsim(id);
 
-  const isReady = result.outcome === 'ISSUED' || result.outcome === 'ALREADY_ISSUED';
-  const isPaymentBlocked = result.outcome === 'PAYMENT_PENDING' || result.outcome === 'NOT_FOUND';
-  const isVerificationBlocked = result.outcome === 'VERIFICATION_PENDING';
+  // For scenario overrides treat the order as ready (eSIM issued)
+  const isReady = (result.outcome === 'ISSUED' || result.outcome === 'ALREADY_ISSUED')
+    || isInProgress || isActivationComplete;
+  const isVerificationBlocked = result.outcome === 'VERIFICATION_PENDING' && !isInProgress && !isActivationComplete;
 
   const activation = isReady
-    ? { activationCode: result.activationCode, smdpAddress: result.smdpAddress, esimReference: result.esimReference }
+    ? {
+        activationCode: result.outcome === 'ISSUED' || result.outcome === 'ALREADY_ISSUED'
+          ? result.activationCode
+          : `LPA:1$smdp.vodacom.co.za$ESIM-7001-2026-AMINA`,
+        smdpAddress: result.outcome === 'ISSUED' || result.outcome === 'ALREADY_ISSUED'
+          ? result.smdpAddress
+          : 'smdp.vodacom.co.za',
+        esimReference: result.outcome === 'ISSUED' || result.outcome === 'ALREADY_ISSUED'
+          ? result.esimReference
+          : 'ESIM-7001-2026',
+      }
     : null;
 
   // Look up the persisted activation to get the eSIM reference (for aside card)
@@ -283,9 +347,19 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
 
   let statusValue: string;
   let statusBannerHtml: string;
+  let bannerVariantCss: string;
 
-  if (isReady) {
+  if (isInProgress) {
+    statusValue = 'Activation In Progress';
+    bannerVariantCss = `.esim-status-banner--in-progress { background: #e3f2fd; border-left: 4px solid #1976d2; }`;
+    statusBannerHtml = `
+      <div class="esim-status-banner esim-status-banner--in-progress">
+        <strong>Activation is in progress — this may take a few minutes.</strong>
+        <p>Your eSIM is not yet active. Please wait while your eSIM is being activated on the Vodacom network.</p>
+      </div>`;
+  } else if (isReady) {
     statusValue = 'Ready to Activate';
+    bannerVariantCss = `.esim-status-banner--ready { background: #e8f5e9; border-left: 4px solid #2e7d32; }`;
     statusBannerHtml = `
       <div class="esim-status-banner esim-status-banner--ready">
         <strong>Your eSIM is ready to activate</strong>
@@ -293,6 +367,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
       </div>`;
   } else if (isVerificationBlocked) {
     statusValue = 'Verification Action Required';
+    bannerVariantCss = `.esim-status-banner--blocked { background: #fbe9e7; border-left: 4px solid #c62828; }`;
     statusBannerHtml = `
       <div class="esim-status-banner esim-status-banner--blocked">
         <strong>Identity verification pending</strong>
@@ -300,6 +375,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
       </div>`;
   } else {
     statusValue = 'Payment Pending';
+    bannerVariantCss = `.esim-status-banner--pending { background: #fff8e1; border-left: 4px solid #f57c00; }`;
     statusBannerHtml = `
       <div class="esim-status-banner esim-status-banner--pending">
         <strong>Payment not yet confirmed</strong>
@@ -307,14 +383,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
       </div>`;
   }
 
-  const qrAndControlsHtml = (isReady && activation) ? `
-      <section class="qr-section">
-        <h2>Scan QR Code to Activate</h2>
-        <p>Scan this code with your device</p>
-        <p>Open your device camera and point it at the QR code</p>
-        <img src="/api/qr?data=${encodeURIComponent(activation.activationCode)}" alt="QR code for eSIM activation" class="qr-code-img">
-        <p>How to scan: Go to Settings &rarr; Cellular/Mobile Data &rarr; Add eSIM &rarr; Use QR Code.</p>
-
+  const manualActivationHtml = (isReady && activation) ? `
         <div class="manual-activation">
           <h3>Manual Activation Instructions</h3>
           <ol>
@@ -328,7 +397,17 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
             </li>
             <li>Tap Add and wait for the eSIM to download and activate</li>
           </ol>
-        </div>
+        </div>` : '';
+
+  const qrAndControlsHtml = (isReady && activation) ? `
+      <section class="qr-section">
+        ${(isLite || isInProgress) ? '' : `
+        <h2>Scan QR Code to Activate</h2>
+        <p>Scan this code with your device</p>
+        <p>Open your device camera and point it at the QR code</p>
+        <img src="/api/qr?data=${encodeURIComponent(activation.activationCode)}" alt="QR code for eSIM activation" class="qr-code-img">
+        <p>How to scan: Go to Settings &rarr; Cellular/Mobile Data &rarr; Add eSIM &rarr; Use QR Code.</p>`}
+        ${manualActivationHtml}
       </section>
 
       <div class="esim-controls">
@@ -336,7 +415,12 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
         <button>Check Connection Status</button>
       </div>` : '';
 
-  const esimRefValue = storedActivation ? escapeHtml(storedActivation.esimReference) : 'Pending';
+  const liteBannerHtml = isLite
+    ? `<div class="lite-mode-banner">Lite Mode Active — Optimized for faster browsing</div>`
+    : '';
+
+  const esimRefValue = storedActivation ? escapeHtml(storedActivation.esimReference)
+    : (activation ? escapeHtml(activation.esimReference) : 'Pending');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -345,10 +429,9 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
   <title>Activate Your eSIM - Vodacom Shop</title>
   <style>
     .esim-status-banner { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
-    .esim-status-banner--ready { background: #e8f5e9; border-left: 4px solid #2e7d32; }
-    .esim-status-banner--pending { background: #fff8e1; border-left: 4px solid #f57c00; }
-    .esim-status-banner--blocked { background: #fbe9e7; border-left: 4px solid #c62828; }
+    ${bannerVariantCss}
     .reference-card { background: #f9f9f9; padding: 1rem; border: 1px solid #ddd; }
+    .lite-mode-banner { background: #fff8e1; border: 1px solid #f9a825; padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -366,6 +449,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
 
   <main class="main-content">
     <h1>Activate Your eSIM</h1>
+    ${liteBannerHtml}
     <p>Follow the steps below to activate your eSIM and start using your new plan</p>
 
     ${statusBannerHtml}
@@ -405,6 +489,18 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
     <a href="#">FAQs</a>
     <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
   </footer>
+  <script>
+  (function () {
+    var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g')) {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('lite') !== '1') {
+        url.searchParams.set('lite', '1');
+        window.location.replace(url.toString());
+      }
+    }
+  })();
+  </script>
 </body>
 </html>`;
 

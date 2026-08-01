@@ -86,6 +86,41 @@ checkoutConfirmationRouter.get('/checkout', (req: Request, res: Response, next) 
 
       <div id="order-error" class="error-region" role="alert" aria-live="assertive"></div>
 
+      <div
+        id="error-not-submitted"
+        class="error-region error-state-region"
+        data-error-state="not-submitted"
+        hidden
+        role="alert"
+        aria-live="assertive"
+      >
+        Your order was not submitted. Please try again.
+        <button type="button" id="retry-btn" data-retry>Retry</button>
+      </div>
+
+      <div
+        id="error-no-response"
+        class="error-region error-state-region"
+        data-error-state="no-response"
+        data-disable-on="no-response"
+        hidden
+        role="alert"
+        aria-live="assertive"
+      >
+        We could not confirm your order status. Do not submit again — <a href="/orders">check Order Status</a> or <a href="/support">contact support</a>.
+      </div>
+
+      <div
+        id="error-payment-pending"
+        class="error-region error-state-region"
+        data-error-state="payment-pending"
+        hidden
+        role="alert"
+        aria-live="assertive"
+      >
+        Your payment is being processed. You will receive a confirmation shortly. Do not re-submit.
+      </div>
+
       <form id="checkout-form" novalidate>
         <h2>1 Customer Details</h2>
         <div class="form-row">
@@ -213,6 +248,11 @@ checkoutConfirmationRouter.get('/checkout', (req: Request, res: Response, next) 
   (function () {
     var btn = document.getElementById('place-order');
     var errorRegion = document.getElementById('order-error');
+    var regions = {
+      'not-submitted':  document.getElementById('error-not-submitted'),
+      'no-response':    document.getElementById('error-no-response'),
+      'payment-pending': document.getElementById('error-payment-pending'),
+    };
 
     function setLoading(loading) {
       btn.disabled = loading;
@@ -229,6 +269,27 @@ checkoutConfirmationRouter.get('/checkout', (req: Request, res: Response, next) 
     function clearError() {
       errorRegion.textContent = '';
       errorRegion.style.display = 'none';
+      Object.keys(regions).forEach(function (k) {
+        regions[k].hidden = true;
+      });
+    }
+
+    function showState(state) {
+      if (regions[state]) {
+        regions[state].hidden = false;
+      }
+      if (state === 'no-response') {
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
+      }
+    }
+
+    var retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', function () {
+        clearError();
+        btn.disabled = false;
+      });
     }
 
     btn.addEventListener('click', function () {
@@ -259,25 +320,37 @@ checkoutConfirmationRouter.get('/checkout', (req: Request, res: Response, next) 
         ]
       };
 
+      var requestSent = false;
       fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
         .then(function (r) {
+          requestSent = true;
           if (!r.ok) {
             return r.json().then(function (err) {
+              if (err.errorCode === 'PAYMENT_PENDING') {
+                setLoading(false);
+                showState('payment-pending');
+                return Promise.reject(null);
+              }
               throw new Error(err.message || 'Order failed. Please try again.');
             });
           }
           return r.json();
         })
         .then(function (data) {
-          window.location.href = '/confirmation/' + data.orderReference;
+          if (data) window.location.href = '/confirmation/' + data.orderReference;
         })
         .catch(function (err) {
+          if (err === null) return;
           setLoading(false);
-          showError(err.message || 'An unexpected error occurred. Please try again.');
+          if (!requestSent) {
+            showState('not-submitted');
+          } else {
+            showState('no-response');
+          }
         });
     });
   })();

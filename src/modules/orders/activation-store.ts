@@ -14,6 +14,7 @@ export interface ActivationRecord {
   activationCode: string;
   smdpAddress: string;
   updatedAt: string;
+  activationStatus: 'ESIM_ISSUED' | 'ACTIVATED';
 }
 
 export type IssueResult =
@@ -78,6 +79,7 @@ export function issueEsim(orderId: string): IssueResult {
     activationCode,
     smdpAddress: SMDP_ADDRESS,
     updatedAt: new Date().toISOString(),
+    activationStatus: 'ESIM_ISSUED',
   };
   activations.set(orderId, record);
   return { outcome: 'ISSUED', activationCode, smdpAddress: SMDP_ADDRESS, esimReference, orderId };

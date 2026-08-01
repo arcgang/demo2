@@ -187,20 +187,27 @@ function renderPortingPage(market: string, bannerHtml: string, fieldErrors: Arra
 async function isPortingSupported(marketCode: string): Promise<boolean> {
   return new Promise((resolve) => {
     const url = new URL(`/api/market-context?market=${encodeURIComponent(marketCode)}`, BACKEND_BASE);
-    const req = http.get(url.toString(), (res) => {
-      let data = '';
-      res.on('data', (chunk: string) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const body = JSON.parse(data) as { portingSupported?: boolean };
-          // If the API explicitly responds, trust it
-          resolve(body.portingSupported === true);
-        } catch {
-          resolve(PORTING_SUPPORTED_MARKETS_FALLBACK.has(marketCode));
-        }
-      });
-    });
-    req.on('error', () => resolve(PORTING_SUPPORTED_MARKETS_FALLBACK.has(marketCode)));
+    let settled = false;
+    const settle = (val: boolean) => { if (!settled) { settled = true; resolve(val); } };
+    const fallback = () => settle(PORTING_SUPPORTED_MARKETS_FALLBACK.has(marketCode));
+    // agent: false avoids http.globalAgent pool timers that keep the event loop alive after failure
+    const req = http.get(
+      { hostname: url.hostname, port: url.port ? Number(url.port) : undefined, path: url.pathname + url.search, agent: false },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            const body = JSON.parse(data) as { portingSupported?: boolean };
+            settle(body.portingSupported === true);
+          } catch {
+            fallback();
+          }
+        });
+      },
+    );
+    req.setTimeout(2000, () => { req.destroy(); fallback(); });
+    req.on('error', fallback);
   });
 }
 
@@ -209,11 +216,16 @@ async function postPortingToApi(payload: Record<string, string>): Promise<{ stat
   return new Promise((resolve) => {
     const bodyStr = JSON.stringify(payload);
     const url = new URL('/api/onboarding/porting', BACKEND_BASE);
+    let settled = false;
+    const settle = (val: { status: number; body: Record<string, unknown> }) => {
+      if (!settled) { settled = true; resolve(val); }
+    };
     const options: http.RequestOptions = {
       hostname: url.hostname,
-      port: url.port || 80,
+      port: url.port || undefined,
       path: url.pathname,
       method: 'POST',
+      agent: false,
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(bodyStr),
@@ -225,13 +237,14 @@ async function postPortingToApi(payload: Record<string, string>): Promise<{ stat
       res.on('end', () => {
         try {
           const body = JSON.parse(data) as Record<string, unknown>;
-          resolve({ status: res.statusCode ?? 500, body });
+          settle({ status: res.statusCode ?? 500, body });
         } catch {
-          resolve({ status: res.statusCode ?? 500, body: {} });
+          settle({ status: res.statusCode ?? 500, body: {} });
         }
       });
     });
-    req.on('error', () => resolve({ status: 503, body: { errorCode: 'BACKEND_UNAVAILABLE' } }));
+    req.setTimeout(2000, () => { req.destroy(); settle({ status: 503, body: { errorCode: 'BACKEND_UNAVAILABLE' } }); });
+    req.on('error', () => settle({ status: 503, body: { errorCode: 'BACKEND_UNAVAILABLE' } }));
     req.write(bodyStr);
     req.end();
   });

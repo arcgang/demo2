@@ -55,6 +55,14 @@ const SCENARIOS: Record<string, Milestone[]> = {
     blocked('esim_issued',           'eSIM issuance is on hold until verification is resolved. Please complete the verification step above.'),
     blocked('activation_complete',   'Activation is blocked pending verification resolution. Contact support if you need assistance.'),
   ],
+
+  activation_in_progress: [
+    completed('order_placed',          '2026-07-28T09:00:00Z'),
+    completed('payment_confirmed',     '2026-07-28T09:05:00Z'),
+    completed('verification_complete', '2026-07-28T09:20:00Z'),
+    completed('esim_issued',           '2026-07-28T09:25:00Z'),
+    pending('activation_complete',     'Activation is in progress — this may take a few minutes. Your eSIM is not yet active.'),
+  ],
 };
 
 export function buildStatusResponse(orderId: string, scenario: string): StatusResponse | null {
