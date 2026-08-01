@@ -1,14 +1,21 @@
 import { Router, Request, Response } from 'express';
-<<<<<<< HEAD
 import { buildEligibilityResult } from '../modules/eligibility/eligibility.fixtures';
 import { resolveToken } from '../modules/auth/resolve-token';
+import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
+import { getFinancingQuotesByProductId } from '../modules/upgrade/financingAdapter';
+import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
+import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// GET /api/upgrade/eligibility  (three-state auth-gated)
+// ---------------------------------------------------------------------------
 
 router.get('/eligibility', (req: Request, res: Response) => {
   const token = resolveToken(req);
   if (!token) {
-    res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Authorization header with Bearer token is required.' });
+    res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Authorization header with ****** is required.' });
     return;
   }
 
@@ -17,13 +24,9 @@ router.get('/eligibility', (req: Request, res: Response) => {
     res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Unrecognised token.' });
     return;
   }
-=======
-import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
-import { getFinancingQuotesByProductId } from '../modules/upgrade/financingAdapter';
-import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
-import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
 
-const router = Router();
+  res.status(200).json(result);
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/upgrade/eligibility
@@ -50,13 +53,10 @@ router.post('/eligibility', (req: Request, res: Response) => {
     body.lineId as string,
     body.marketCode as string,
   );
->>>>>>> origin/main
 
   res.status(200).json(result);
 });
 
-<<<<<<< HEAD
-=======
 // ---------------------------------------------------------------------------
 // GET /api/upgrade/financing
 // ---------------------------------------------------------------------------
@@ -184,5 +184,4 @@ router.put('/session', (req: Request, res: Response) => {
   res.status(200).json(updated);
 });
 
->>>>>>> origin/main
 export default router;
