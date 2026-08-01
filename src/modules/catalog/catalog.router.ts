@@ -670,7 +670,6 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       document.querySelectorAll('input[name="plan"]').forEach(function (r) {
         r.addEventListener('change', function () {
           onPlanChange();
-          update();
         });
       });
       document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {

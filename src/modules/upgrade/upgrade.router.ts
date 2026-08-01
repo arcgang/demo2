@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
+import { getFinancingQuotesByProductId } from '../../../backend/src/modules/upgrade/financingAdapter';
 
 export const upgradeRouter = Router();
 
@@ -160,8 +161,18 @@ upgradeRouter.post('/api/upgrade/trade-in/valuation', (req: Request, res: Respon
 
 // ── GET /api/upgrade/financing ───────────────────────────────────────────────
 
-upgradeRouter.get('/api/upgrade/financing', (_req: Request, res: Response) => {
-  res.status(200).json({ asyncPending: true });
+upgradeRouter.get('/api/upgrade/financing', (req: Request, res: Response) => {
+  const productId = req.query.productId as string | undefined;
+  if (!productId || !productId.trim()) {
+    res.status(400).json({ errorCode: 'PRODUCT_ID_REQUIRED', message: 'Query parameter productId is required.' });
+    return;
+  }
+  const quotes = getFinancingQuotesByProductId(productId);
+  if (quotes === null) {
+    res.status(404).json({ errorCode: 'PRODUCT_NOT_FOUND', message: `No financing options found for product "${productId}".` });
+    return;
+  }
+  res.status(200).json(quotes);
 });
 
 // ── GET /upgrade/eligibility (Screen 4) ──────────────────────────────────────
