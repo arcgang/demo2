@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
+import { getCartCount } from '../cart/cart.store';
 
 export const catalogRouter = Router();
 
@@ -121,11 +122,17 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
+function formatPrice(amount: number): string {
+  return 'R ' + amount.toLocaleString('en-ZA');
+}
+
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
   const offers = context ? getUpsellOffersByContext(context) : [];
 
   const upsellPanel = renderUpsellPanel(offers);
+  const cartCount = getCartCount(req);
+  const deviceId = req.params['id'] ?? 'prod_za_iphone15pro_256';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -142,6 +149,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
+    <button class="cart-badge" id="cart-badge" data-cart-count="${cartCount}">${cartCount}</button>
   </header>
 
   <nav class="breadcrumb">
@@ -178,7 +186,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <input type="number" value="1" min="1">
     </div>
 
-    <button class="btn-add-to-cart">Add to Cart</button>
+    <button class="btn-add-to-cart" data-item-id="prod_za_iphone15pro_256" data-item-type="DEVICE">Add to Cart</button>
     <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
   </section>
 
@@ -187,31 +195,113 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
     ${upsellPanel}
 
-    <div class="base-plan-list">
-      <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
-        <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-        <h4>Vodacom Unlimited 20GB</h4>
-        <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_red_premium">
-        <h4>Vodacom Red Premium</h4>
-        <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
+    <div class="base-plan-list" id="plan-list">
+      <p>Loading plans&hellip;</p>
     </div>
   </section>
 
   <section class="product-details">
-    <h2>Complete your purchase</h2>
+    <h2>Specifications</h2>
+    <dl>
+      <dt>Display</dt><dd>6.1-inch Super Retina XDR display</dd>
+      <dt>Processor</dt><dd>A17 Pro chip with 6-core CPU</dd>
+      <dt>Camera</dt><dd>48MP Main + 12MP Ultra Wide + 12MP Telephoto</dd>
+      <dt>Storage</dt><dd>256GB</dd>
+      <dt>Battery</dt><dd>Up to 23 hours video playback</dd>
+      <dt>Connectivity</dt><dd>5G, Wi-Fi 6E, Bluetooth 5.3</dd>
+      <dt>SIM</dt><dd>Dual SIM (nano-SIM and eSIM)</dd>
+      <dt>Operating System</dt><dd>iOS 17</dd>
+    </dl>
   </section>
+
+  <section class="recommendations">
+    <h2>Complete your purchase</h2>
+    <div class="accessory-grid" id="accessory-grid">
+      <p>Loading accessories&hellip;</p>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var DEVICE_ID = ${JSON.stringify(deviceId)};
+
+      function formatZAR(amount) {
+        return 'R ' + amount.toLocaleString('en-ZA');
+      }
+
+      function updateBadge(count) {
+        var badge = document.getElementById('cart-badge');
+        if (badge) {
+          badge.textContent = String(count);
+          badge.dataset.cartCount = String(count);
+        }
+      }
+
+      function addToCart(itemId, itemType) {
+        fetch('/cart/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: itemId, itemType: itemType })
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) { updateBadge(data.itemCount); })
+          .catch(function () {});
+      }
+
+      function renderPlans(attachments) {
+        var plans = attachments.filter(function (a) { return a.type === 'PLAN'; });
+        var planList = document.getElementById('plan-list');
+        if (!planList) return;
+        if (plans.length === 0) { planList.innerHTML = '<p>No plans available.</p>'; return; }
+        planList.innerHTML = plans.map(function (plan, idx) {
+          var selectedClass = idx === 0 ? ' selected' : '';
+          var selectedAttr = idx === 0 ? 'data-selected="true"' : 'data-selected="false"';
+          return '<div class="plan-card plan-required' + selectedClass + '" ' + selectedAttr + ' data-plan-id="' + plan.id + '">'
+            + '<span class="badge badge-required required-label">Required</span>'
+            + '<h4>' + plan.name + '</h4>'
+            + '<p class="plan-price">' + formatZAR(plan.pricingRule.monthly) + '/month</p>'
+            + '<button class="btn-select-plan btn-add-to-cart" data-item-id="' + plan.id + '" data-item-type="PLAN">Select Plan</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      function renderAccessories(attachments) {
+        var accessories = attachments.filter(function (a) { return a.type === 'ACCESSORY'; });
+        var grid = document.getElementById('accessory-grid');
+        if (!grid) return;
+        if (accessories.length === 0) { grid.innerHTML = '<p>No accessories available.</p>'; return; }
+        grid.innerHTML = accessories.map(function (acc) {
+          return '<div class="accessory-card">'
+            + '<div class="image-placeholder accessory-image"></div>'
+            + '<h4>' + acc.name + '</h4>'
+            + '<p class="accessory-price">' + formatZAR(acc.pricingRule.onceOff) + '</p>'
+            + '<button class="btn-add-to-cart" data-item-id="' + acc.id + '" data-item-type="ACCESSORY">Add to Cart</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('.btn-add-to-cart') : null;
+        if (!btn) return;
+        var itemId = btn.dataset.itemId;
+        var itemType = btn.dataset.itemType;
+        if (itemId && itemType) addToCart(itemId, itemType);
+      });
+
+      fetch('/api/devices/' + DEVICE_ID + '/recommendations')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          renderPlans(data.attachments || []);
+          renderAccessories(data.attachments || []);
+        })
+        .catch(function () {
+          var planList = document.getElementById('plan-list');
+          if (planList) planList.innerHTML = '<p>Could not load plans.</p>';
+          var grid = document.getElementById('accessory-grid');
+          if (grid) grid.innerHTML = '<p>Could not load accessories.</p>';
+        });
+    })();
+  </script>
 </body>
 </html>`;
 
