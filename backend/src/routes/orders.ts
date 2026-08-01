@@ -145,12 +145,19 @@ function handleStatusTimeline(req: Request, res: Response): void {
       return 'activation_pending';
     })();
 
+    // Carry forward any timestamps already persisted so they aren't overwritten on every GET
+    const existingEvents = getTimelineEvents(id);
+    const storedTimestamps: Record<string, string> = {};
+    for (const evt of existingEvents) {
+      if (evt.timestamp) storedTimestamps[evt.eventType] = evt.timestamp;
+    }
+
     const input: TimelineInput = {
       orderId: id,
       paymentStatus: paymentToken,
       verificationStatus: verificationToken,
       activationStatus: activationToken,
-      timestamps: { order_placed: order.createdAt },
+      timestamps: { order_placed: order.createdAt, ...storedTimestamps } as TimelineInput['timestamps'],
     };
 
     const timeline = buildTimeline(input);

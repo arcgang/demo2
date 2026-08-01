@@ -2,7 +2,7 @@
  * Unit tests for the StatusTimelineService state-machine logic.
  *
  * Covers (from task brief):
- *   - All 11 state-machine event types
+ *   - All 12 state-machine event types
  *   - Valid state transitions between eventTypes
  *   - Polling contract: failed/pending state changes must be reflected
  *     within 60 seconds (nextPollMs ≤ 60 000)

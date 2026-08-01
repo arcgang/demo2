@@ -99,6 +99,11 @@ import {
   seedTimelineEvents,
 } from '../../modules/statusTimeline/timelineStore';
 
+import {
+  clearAll as clearOrderStore,
+  persistOrder,
+} from '../../modules/order/orderStore';
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function fetchTimeline(
@@ -448,6 +453,79 @@ describe('GET /api/orders/:id/status-timeline — activation failure scenario', 
     const failedEvent = events.find((e) => e.eventType === 'activation_failed');
     expect(typeof failedEvent?.description).toBe('string');
     expect((failedEvent?.description ?? '').trim().length).toBeGreaterThan(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Real-order code path: order persisted via persistOrder, not timeline-store seed
+// Exercises lines 119-162 of orders.ts and verifies no timestamp loss on GET.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/orders/:id/status-timeline — real order code path', () => {
+  let app: Application;
+  const REAL_ORDER_ID = 'ord_real_path_001';
+  const CREATED_AT = '2026-07-28T08:00:00Z';
+
+  beforeEach(() => {
+    clearOrderStore();
+    clearTimelineStore();
+    app = getApp();
+
+    persistOrder({
+      orderId: REAL_ORDER_ID,
+      orderReference: REAL_ORDER_ID,
+      cartId: 'cart_real_001',
+      paymentAttemptId: 'pay_real_001',
+      paymentStatus: 'payment_confirmed',
+      verificationStatus: 'verification_complete',
+      activationState: 'activation_complete',
+      createdAt: CREATED_AT,
+      lineItems: [{ name: 'iPhone 15', qty: 1, unitPrice: 18999 }],
+      onceOffTotal: 18999,
+      monthlyTotal: 799,
+      timelineEvents: [],
+    });
+  });
+
+  it('returns HTTP 200 for an order in the order store', async () => {
+    const { status } = await fetchTimeline(app, REAL_ORDER_ID);
+    expect(status).toBe(200);
+  });
+
+  it('response orderId matches the requested id', async () => {
+    const { body } = await fetchTimeline(app, REAL_ORDER_ID);
+    expect(body.orderId).toBe(REAL_ORDER_ID);
+  });
+
+  it('timeline contains order_placed with the persisted createdAt timestamp', async () => {
+    const { body } = await fetchTimeline(app, REAL_ORDER_ID);
+    const placed = (body.timeline as TimelineEvent[]).find((e) => e.eventType === 'order_placed');
+    expect(placed).toBeDefined();
+    expect(placed?.timestamp).toBe(CREATED_AT);
+  });
+
+  it('timeline includes all four state categories for a fully-processed order', async () => {
+    const { body } = await fetchTimeline(app, REAL_ORDER_ID);
+    const types = (body.timeline as TimelineEvent[]).map((e) => e.eventType);
+    const hasPayment = types.some((t) => (PAYMENT_EVENT_TYPES as readonly string[]).includes(t));
+    const hasVerification = types.some((t) => (VERIFICATION_EVENT_TYPES as readonly string[]).includes(t));
+    const hasActivation = types.some((t) => (ACTIVATION_EVENT_TYPES as readonly string[]).includes(t));
+    expect(hasPayment).toBe(true);
+    expect(hasVerification).toBe(true);
+    expect(hasActivation).toBe(true);
+  });
+
+  it('re-fetching the timeline preserves the order_placed timestamp (no timestamp loss)', async () => {
+    // First call seeds the timeline; second call must return the same timestamp.
+    await fetchTimeline(app, REAL_ORDER_ID);
+    const { body } = await fetchTimeline(app, REAL_ORDER_ID);
+    const placed = (body.timeline as TimelineEvent[]).find((e) => e.eventType === 'order_placed');
+    expect(placed?.timestamp).toBe(CREATED_AT);
+  });
+
+  it('nextPollMs is 0 for a terminal activation_complete order', async () => {
+    const { body } = await fetchTimeline(app, REAL_ORDER_ID);
+    expect(body.nextPollMs).toBe(0);
   });
 });
 

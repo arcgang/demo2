@@ -277,13 +277,18 @@ export function pollBoundaries(): void {
       return 'payment_pending';
     })();
 
-    // Rebuild timeline from live state using the real order-creation timestamp
+    // Carry forward already-stored timestamps before rebuilding to avoid overwriting them
+    const storedTimestamps: Record<string, string> = {};
+    for (const evt of current) {
+      if (evt.timestamp) storedTimestamps[evt.eventType] = evt.timestamp;
+    }
+
     const updated = buildTimeline({
       orderId: snap.orderId,
       paymentStatus: payment,
       verificationStatus: verification,
       activationStatus: activation,
-      timestamps: { order_placed: snap.createdAt },
+      timestamps: { order_placed: snap.createdAt, ...storedTimestamps } as Partial<Record<StatusEventType, string>>,
     });
 
     seedTimelineEvents(snap.orderId, updated);
