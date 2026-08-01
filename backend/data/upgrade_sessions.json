@@ -92,5 +92,1000 @@
     "eligibility": null,
     "financing": null,
     "tradeIn": null
+  },
+  "e16843d4-4fac-4f61-ae68-338c8b161b56": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "7238d11c-075a-4f12-9877-33691660a160": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "f254915f-a296-4740-b735-13acb6d2e4ed": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "40f07f9b-9ebd-4722-a0ee-ab1134ec0f4d": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "3d9618e6-e1ed-4bda-b6fd-8a0ba36f6cc1": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "bbc16046-f4f1-44f1-8a46-9971a289fd58": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "69369d2f-bacb-4a7a-82f3-3531371f6a74": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "aa8a1ec9-dd3e-4f0d-9080-18992e9a3cdf": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "1afeb737-be74-4c7a-82ac-71a9a222edca": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "92851422-3bed-4a50-aa93-536fcdf32584": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "6e99bc01-bdec-416b-8d5b-10c03d9458eb": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "3b53db00-47be-4ddc-8e23-303137e22cf0": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 1549,
+      "termMonths": 12,
+      "asyncPending": false
+    },
+    "tradeIn": null
+  },
+  "a7bd93c8-8d36-41e2-8906-38f54bc45cbb": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "c9553290-72c2-48df-a17c-130af2809c77": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "5968e2a3-4316-43ae-9ada-a92240df35c8": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "60d550af-9bb3-438a-b146-328632984412": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "c30ddf97-4fa4-4484-bcb1-2a5c152f07f2": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": false
+    }
+  },
+  "1a1121f0-1be1-4c84-95e9-e2ce1b59abd5": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 1549,
+      "termMonths": 12,
+      "asyncPending": false
+    },
+    "tradeIn": null
+  },
+  "326bfa45-8ba9-40ac-9b62-cdbae3ed0ab7": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "338e887e-a6ee-470e-8629-68e544c525c0": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "model": "iPhone 12",
+      "asyncPending": true
+    }
+  },
+  "2e8b1b99-58ac-4190-a752-be2b5a6cc64e": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "0c652098-cc0f-4dbd-bbb2-87ecc9f3e737": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 1000,
+      "asyncPending": false
+    }
+  },
+  "1d59a297-27cc-40c5-91ff-b20b8c565df3": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "c56a1082-6bbe-4f25-a410-35aa5f1c233c": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "7a55d651-5fc7-4369-962a-a1265199d10e": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "84e0d8ad-f23d-4402-8de6-e670f54b27f8": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "f190d907-99e7-4f6c-bde5-879cb2751cc3": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "d20c17d1-ce16-40ba-87af-3ed0afa5820c": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "d42fc1dd-a8da-4ef1-9c94-2268d244fce7": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "06fcda8a-d1e3-4269-a818-340b95c9ddf5": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "ac60832a-7e22-4662-8823-a1d09b205ee1": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "9abc10e2-88d9-482c-a97e-8d4040f2983e": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "7135f89f-83eb-485a-8874-fce2eba09bb5": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "b8a95823-73f9-4547-853b-8502cb9d6400": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "66f28a19-20dd-4bdd-b472-67938d836e60": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "be0b5099-74c7-4959-9db2-5e35b1469f53": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "8a4b52de-5eb0-45da-9e7f-a89ac1b8df26": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "22caf14c-4c5f-4c5e-bcf9-9ad405848aff": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "ba118441-d8b8-4007-983e-65a633cae52d": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "5695af80-1074-49a4-85a8-9b50f195fae4": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "c3407e31-7396-4f57-8ba4-beb5d8a95f22": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "dc532f63-34e6-4503-8fa7-5c772e9dd94f": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "bd67a729-3932-480c-9efb-1752cf7f39c2": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "5616d96e-026f-4e49-8feb-74e215ac1956": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "aae7893c-65fb-4113-b957-1fb5bb68b9a2": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "50befb8c-260a-44f9-8820-e9a54e53e422": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "b8712c8e-45f1-4b0d-b28e-6df699abbb6c": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "60274270-2036-4b37-9848-50d5f124d8ef": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "ec75baf4-5c94-4fb8-aca4-749924226a18": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "98fefed3-c7fe-4a82-a6e6-e1bc14e9913a": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 1549,
+      "termMonths": 12,
+      "asyncPending": false
+    },
+    "tradeIn": null
+  },
+  "4dae3591-3987-4af5-832c-f93137ebd9fb": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "95e85fc6-147c-4b7b-9345-36c4e6855049": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "ae772459-cae9-4f7a-bf20-c4b6626ad1c1": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "42311fa9-044f-4ad3-be6e-c7b3bcb683fe": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "546e739c-16a6-4e95-9e33-890a47bdee08": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": false
+    }
+  },
+  "35e789ed-4308-4e12-9c9b-3f5f9027da61": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 1549,
+      "termMonths": 12,
+      "asyncPending": false
+    },
+    "tradeIn": null
+  },
+  "3202e7d3-67de-45dd-aa56-287f5794b5d7": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "fb6a5075-485b-4559-83b0-e33891ea0d08": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "3e80f0e7-7b2b-4ed9-8202-b59cf28fbc0f": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "3b4028d5-c1b7-4268-918c-ce2eed72f815": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "model": "iPhone 12",
+      "asyncPending": true
+    }
+  },
+  "b27a92d0-fb11-41cb-a946-f58343ec930d": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "e6ac964b-91b4-4e3b-9b74-4b96f657915b": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 3000,
+      "asyncPending": false
+    }
+  },
+  "2e676cbf-f5e4-4129-9f5f-02ccbce6a00c": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "0dfeb94e-d8e9-47e4-a8c4-212f76019d55": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "cc4b05e4-3fe3-4b2f-9dda-c24c83379513": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "a97285a4-06bf-4717-ab5b-fbe1cea847e8": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "ef5a2e72-d979-4b60-aa86-b71e44fcf9a4": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "2a25f11e-2580-4cb8-beab-d96b53351f76": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "ac0ae8b7-29b3-4f99-b4cb-32fcd6416104": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "062ae7e7-0004-4831-976d-5fcfdb934677": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "ce53f627-ad14-4a65-b57d-87243b645895": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "c16af256-7eaf-488b-a934-70a608590717": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "5ad431e6-faa5-437a-aa71-7799a3833c73": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "5665339f-eb6b-45fb-9a7e-14834a932d00": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "90c506ee-ad57-4976-a88d-47f6e5909926": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "b65aa0b0-fa77-4e12-b5a6-003cf5525ec8": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "currentPlan": "plan_red"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "ca83ac25-ca1d-4817-b1b8-84ba0cb1e274": {
+    "eligibility": null,
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": null
+  },
+  "a48a8215-0890-49d2-8429-0c05e29e7dc6": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple"
+    }
+  },
+  "267fc1bc-2ef5-4d6e-882c-0a8b683df01f": {
+    "eligibility": {
+      "upgradeWindowOpen": false
+    },
+    "financing": {
+      "termMonths": 12,
+      "monthlyAmount": 450
+    },
+    "tradeIn": null
+  },
+  "89ce1a18-7c18-4d46-9602-668e2b82b08e": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 1000
+    }
+  },
+  "44c42ef1-36ee-4e21-b2ae-6eee7d2e1576": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500
+    }
+  },
+  "4c27b4b4-eea1-45b9-a76e-c7f03bca5993": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "tag": "session-a"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "5670ee33-093d-4f40-9f08-f1cb6e1b08d6": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "d0381979-117d-4076-bd53-ada588782c07": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "3fbc30f5-2423-4a89-9778-105a5f05eddf": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "2f75d33b-7de5-4ca9-93ca-894a73aa2435": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "31c6af22-5c19-403c-892b-e26eda5c1e92": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "c9edb279-e051-4fb4-a726-09f49bd6ef90": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "41c5d066-a331-43be-afe5-5546fa7fe0bd": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "1e86b5c7-de32-4224-bef2-a268b38bac70": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "da66cfa9-c90d-4454-8814-066dd664e859": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "091e2c0c-f598-445f-b16e-6b632fd1ae76": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "0f15c87f-67da-4288-b1d2-23eecd591e97": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "9962d977-9a51-43d0-868c-9d9e570e9418": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "c2755b21-5b4c-4db9-ac88-5d6a518e58fd": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "b9f41863-fe0d-4483-a6b6-adb243e99dbf": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "25b39ae4-2116-4dce-93eb-015ee45047c1": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "a6e4722e-e02c-48f5-89af-953b9725244d": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "c99f26de-1961-4418-86bc-8576bbd0d9b1": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "17a43503-f001-4b5e-8ead-02a9c2a7b4ac": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "7dcde650-0b74-41a3-899d-d575c950664f": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "e1e0fafa-6155-4e40-b82e-91cdb0012707": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "0fa1c450-5d60-427e-910e-a3e998b03123": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "17be1ac6-e735-4112-ba27-b7d73b494ba9": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 1549,
+      "termMonths": 12,
+      "asyncPending": false
+    },
+    "tradeIn": null
+  },
+  "3d267cc7-e562-4a00-b829-91c629701edf": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "fb70235d-1b44-4e54-be53-a9f4d1349fec": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "c4388628-ae52-443a-9dd2-2cadc60c24eb": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "6402a411-c580-4306-8880-a2c7ef8ecdca": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "ecdd6f15-f673-4aff-8600-999b3f527892": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": false
+    }
+  },
+  "5e432cef-48e1-44a4-9f96-682e4400196c": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 1549,
+      "termMonths": 12,
+      "asyncPending": false
+    },
+    "tradeIn": null
+  },
+  "200709ba-623f-49d6-b274-116c72c03f15": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "16d9d985-91a8-4733-bc43-0bdbaa9741d1": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "e1935c40-ca94-455d-af00-4acc794de14d": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "2edb603e-3d1c-4bd5-8327-24c7b399260b": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "model": "iPhone 12",
+      "asyncPending": true
+    }
+  },
+  "09592ff3-8f3b-4031-8493-dd04a9cc9586": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple",
+      "asyncPending": true
+    }
+  },
+  "825e732e-9823-4d74-bae7-9ef43f0663f0": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 3000,
+      "asyncPending": false
+    }
+  },
+  "9bd2675b-5a73-4abd-8823-744df5aaf495": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "5dcbd47f-18e3-4ac5-aef4-3ab4409e5785": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "9e54f4c3-e8e7-4e05-9e69-b363d2247f9e": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "52dc66a1-c9bd-4c90-bf07-2f1a5982af73": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "287d4687-8d7c-48e2-b441-0d25f865135a": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "fd2a81af-7a74-415b-a820-7753ad10fbb4": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "asyncPending": true
+    }
+  },
+  "2a2f839a-cfa4-422d-a68e-147fee84acce": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "9ba24406-c01c-4233-b814-028b4509b81e": {
+    "eligibility": null,
+    "financing": {
+      "monthlyAmount": 899,
+      "termMonths": 24,
+      "asyncPending": true
+    },
+    "tradeIn": null
+  },
+  "2c5f9db0-53ff-4ee2-b528-cb72eb9655ea": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
   }
 }

@@ -6,6 +6,7 @@ import journeysRouter from './routes/journeys';
 import marketContextRouter from './routes/marketContext';
 import catalogRouter from './routes/catalog';
 import devicesRouter from './routes/devices';
+import cartRouter from './routes/cart';
 
 export function createApp(): Application {
   const app = express();
@@ -17,6 +18,7 @@ export function createApp(): Application {
   app.use('/api/market-context', marketContextRouter);
   app.use('/api/catalog', catalogRouter);
   app.use('/api/devices', devicesRouter);
+  app.use('/api/cart', cartRouter);
   return app;
 }
 
