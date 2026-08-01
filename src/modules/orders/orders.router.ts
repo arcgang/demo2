@@ -79,7 +79,7 @@ function buildLiveMilestones(orderId: string): Milestone[] {
   const paymentState = order?.paymentStatus === 'CONFIRMED' ? 'completed' : 'pending';
   const verificationState = order?.verificationStatus === 'COMPLETED' ? 'completed' : 'pending';
   const esimState = activation ? 'completed' : (verificationState === 'completed' ? 'pending' : 'pending');
-  const activationState = 'pending' as const;
+  const activationState = activation?.activationStatus === 'ACTIVATED' ? 'completed' : 'pending';
 
   return [
     {
@@ -108,9 +108,9 @@ function buildLiveMilestones(orderId: string): Milestone[] {
     },
     {
       step: 'activation_complete' as const,
-      state: activationState,
-      timestamp: null,
-      next_step: 'Activation will begin after eSIM issuance.',
+      state: activationState as 'completed' | 'pending' | 'blocked',
+      timestamp: activationState === 'completed' ? (activation?.updatedAt ?? null) : null,
+      next_step: activationState !== 'completed' ? 'Activation will begin after eSIM issuance.' : null,
     },
   ];
 }
@@ -401,7 +401,7 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
 
   const qrAndControlsHtml = (isReady && activation) ? `
       <section class="qr-section">
-        ${isLite ? '' : `
+        ${(isLite || isInProgress) ? '' : `
         <h2>Scan QR Code to Activate</h2>
         <p>Scan this code with your device</p>
         <p>Open your device camera and point it at the QR code</p>

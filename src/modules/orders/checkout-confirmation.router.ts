@@ -316,14 +316,13 @@ checkoutConfirmationRouter.get('/checkout', (_req: Request, res: Response) => {
         ]
       };
 
-      var requestSent = false;
+      var requestSent = true;
       fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
         .then(function (r) {
-          requestSent = true;
           if (!r.ok) {
             return r.json().then(function (err) {
               if (err.errorCode === 'PAYMENT_PENDING') {
@@ -347,7 +346,6 @@ checkoutConfirmationRouter.get('/checkout', (_req: Request, res: Response) => {
           } else {
             showState('no-response');
           }
-          showError(err.message || 'An unexpected error occurred. Please try again.');
         });
     });
   })();
