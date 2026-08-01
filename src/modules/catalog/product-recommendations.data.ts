@@ -69,3 +69,11 @@ const IPHONE15PRO_RECOMMENDATIONS: ProductRecommendations = {
 export function getIphone15ProRecommendations(): ProductRecommendations {
   return IPHONE15PRO_RECOMMENDATIONS;
 }
+
+const RECOMMENDATIONS_BY_SLUG = new Map<string, ProductRecommendations>([
+  ['iphone-15-pro', IPHONE15PRO_RECOMMENDATIONS],
+]);
+
+export function getRecommendationsBySlug(slug: string): ProductRecommendations | undefined {
+  return RECOMMENDATIONS_BY_SLUG.get(slug);
+}

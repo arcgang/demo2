@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getCartCount } from '../cart/cart.store';
-import { getIphone15ProRecommendations } from './product-recommendations.data';
+import { getRecommendationsBySlug } from './product-recommendations.data';
 
 function escapeHtml(str: string): string {
   return str
@@ -143,9 +143,10 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const upsellPanel = renderUpsellPanel(offers);
   const cartCount = getCartCount(req);
 
-  const recommendations = getIphone15ProRecommendations();
-  const plans = recommendations.attachments.filter(a => a.type === 'PLAN');
-  const accessories = recommendations.attachments.filter(a => a.type === 'ACCESSORY');
+  const slug = req.params.id;
+  const recommendations = getRecommendationsBySlug(slug);
+  const plans = recommendations ? recommendations.attachments.filter(a => a.type === 'PLAN') : [];
+  const accessories = recommendations ? recommendations.attachments.filter(a => a.type === 'ACCESSORY') : [];
 
   const planCardsHtml = plans.map((plan, idx) => {
     const selectedAttr = idx === 0 ? 'data-selected="true"' : 'data-selected="false"';
@@ -253,6 +254,65 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       ${accessoryCardsHtml}
     </div>
   </section>
+
+  <script>
+    (function () {
+      var badge = document.getElementById('cart-badge');
+
+      function updateBadge(count) {
+        if (badge) {
+          badge.textContent = String(count);
+          badge.dataset.cartCount = String(count);
+        }
+      }
+
+      function postToCart(itemId, itemType) {
+        fetch('/cart/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: itemId, itemType: itemType }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) { updateBadge(data.itemCount); });
+      }
+
+      // Plan card selection toggle
+      var planList = document.getElementById('plan-list');
+      if (planList) {
+        planList.addEventListener('click', function (e) {
+          var btn = e.target.closest('.btn-select-plan');
+          if (!btn) return;
+          var card = btn.closest('.plan-card');
+          if (!card) return;
+          planList.querySelectorAll('.plan-card').forEach(function (c) {
+            c.classList.remove('selected');
+            c.dataset.selected = 'false';
+          });
+          card.classList.add('selected');
+          card.dataset.selected = 'true';
+          postToCart(btn.dataset.itemId, btn.dataset.itemType);
+        });
+      }
+
+      // Accessory add-to-cart
+      var accGrid = document.getElementById('accessory-grid');
+      if (accGrid) {
+        accGrid.addEventListener('click', function (e) {
+          var btn = e.target.closest('.btn-add-to-cart');
+          if (!btn) return;
+          postToCart(btn.dataset.itemId, btn.dataset.itemType);
+        });
+      }
+
+      // Device add-to-cart (product hero button)
+      var heroBtn = document.querySelector('.product-hero .btn-add-to-cart');
+      if (heroBtn) {
+        heroBtn.addEventListener('click', function () {
+          postToCart(heroBtn.dataset.itemId, heroBtn.dataset.itemType);
+        });
+      }
+    })();
+  </script>
 </body>
 </html>`;
 
