@@ -3,7 +3,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 export const KEY_LENGTH_BITS = 256;
 const KEY_LENGTH_BYTES = KEY_LENGTH_BITS / 8; // 32
 const IV_LENGTH_BYTES = 16;
-const ALGORITHM = 'aes-256-cbc';
+const AUTH_TAG_LENGTH_BYTES = 16;
+const ALGORITHM = 'aes-256-gcm';
 
 // Loaded exclusively from the environment — no fallback literal key.
 function getKey(): Buffer {
@@ -24,21 +25,24 @@ function getKey(): Buffer {
   return key;
 }
 
-// Encrypted format: base64( IV[16 bytes] || ciphertext )
+// Encrypted format: base64( IV[16 bytes] || ciphertext || authTag[16 bytes] )
 export function encryptField(plaintext: string): string {
   const key = getKey();
   const iv = randomBytes(IV_LENGTH_BYTES);
   const cipher = createCipheriv(ALGORITHM, key, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  return Buffer.concat([iv, encrypted]).toString('base64');
+  const authTag = cipher.getAuthTag();
+  return Buffer.concat([iv, encrypted, authTag]).toString('base64');
 }
 
 export function decryptField(ciphertext: string): string {
   const key = getKey();
   const buf = Buffer.from(ciphertext, 'base64');
   const iv = buf.subarray(0, IV_LENGTH_BYTES);
-  const encrypted = buf.subarray(IV_LENGTH_BYTES);
+  const authTag = buf.subarray(buf.length - AUTH_TAG_LENGTH_BYTES);
+  const encrypted = buf.subarray(IV_LENGTH_BYTES, buf.length - AUTH_TAG_LENGTH_BYTES);
   const decipher = createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
 }
 
@@ -71,6 +75,7 @@ export const SENSITIVE_PII_FIELDS: readonly string[] = [
   'email',
   'phone',
   'addressLine1',
+  'city',
   'deliveryAddress',
   'idNumber',
 ] as const;

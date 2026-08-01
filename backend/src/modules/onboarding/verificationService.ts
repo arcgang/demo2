@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { runKycRicaCheck } from './kycRicaAdapter';
+import { encryptPiiObject, decryptPiiObject, SENSITIVE_PII_FIELDS } from '../encryption/fieldEncryption';
 
 const prisma = new PrismaClient();
 
@@ -36,6 +37,11 @@ export interface CreateVerificationInput {
 export async function createVerificationCase(input: CreateVerificationInput): Promise<VerificationCaseRecord> {
   const adapterResult = runKycRicaCheck(input.identityFields.idNumber);
 
+  const encryptedFields = encryptPiiObject(
+    input.identityFields as Record<string, unknown>,
+    SENSITIVE_PII_FIELDS as string[],
+  );
+
   const row = await prisma.verificationCase.create({
     data: {
       orderId: input.orderId,
@@ -43,10 +49,15 @@ export async function createVerificationCase(input: CreateVerificationInput): Pr
       type: input.type,
       status: adapterResult.status,
       resolvedAt: adapterResult.resolvedAt,
-      identityFields: input.identityFields as object,
+      identityFields: encryptedFields as object,
       auditRef: adapterResult.auditRef,
     },
   });
+
+  const decryptedFields = decryptPiiObject(
+    row.identityFields as unknown as Record<string, unknown>,
+    SENSITIVE_PII_FIELDS as string[],
+  );
 
   return {
     id: row.id,
@@ -56,7 +67,7 @@ export async function createVerificationCase(input: CreateVerificationInput): Pr
     status: row.status as VerificationStatus,
     submittedAt: row.submittedAt,
     resolvedAt: row.resolvedAt,
-    identityFields: row.identityFields as unknown as IdentityFields,
+    identityFields: decryptedFields as unknown as IdentityFields,
     auditRef: row.auditRef,
   };
 }
@@ -65,6 +76,11 @@ export async function getVerificationCaseByOrderId(orderId: string): Promise<Ver
   const row = await prisma.verificationCase.findFirst({ where: { orderId } });
   if (!row) return null;
 
+  const decryptedFields = decryptPiiObject(
+    row.identityFields as unknown as Record<string, unknown>,
+    SENSITIVE_PII_FIELDS as string[],
+  );
+
   return {
     id: row.id,
     orderId: row.orderId,
@@ -73,7 +89,7 @@ export async function getVerificationCaseByOrderId(orderId: string): Promise<Ver
     status: row.status as VerificationStatus,
     submittedAt: row.submittedAt,
     resolvedAt: row.resolvedAt,
-    identityFields: row.identityFields as unknown as IdentityFields,
+    identityFields: decryptedFields as unknown as IdentityFields,
     auditRef: row.auditRef,
   };
 }

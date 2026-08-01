@@ -3,7 +3,7 @@ import ordersRouter from './routes/orders';
 import onboardingRouter from './routes/onboarding';
 import upgradeRouter from './routes/upgrade';
 import journeysRouter from './routes/journeys';
-import { isHttpRedirectEnabled } from './config/tlsConfig';
+import { createServer, isHttpRedirectEnabled } from './config/tlsConfig';
 
 // Redirect plain HTTP requests to HTTPS when running in production behind a
 // TLS-terminating proxy that sets X-Forwarded-Proto.  Skipped outside
@@ -34,7 +34,5 @@ export function createApp(): Application {
 if (require.main === module) {
   const app = createApp();
   const port = process.env.PORT ?? 3001;
-  app.listen(port, () => {
-    console.log(`Backend listening on port ${port}`);
-  });
+  createServer(app, port);
 }

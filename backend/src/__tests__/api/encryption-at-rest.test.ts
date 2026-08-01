@@ -27,7 +27,7 @@ import * as path from 'path';
  */
 
 // ---------------------------------------------------------------------------
-// Module under test (does not exist yet)
+// Module under test
 // ---------------------------------------------------------------------------
 
 type FieldEncryptionModule = {
