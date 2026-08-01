@@ -5,6 +5,7 @@ import {
   seedOrder,
 } from '../../modules/activation/activationStore';
 import { clearAll as clearOrderStore } from '../../modules/order/orderStore';
+import { KYC_FAIL_ID_PREFIX } from '../../modules/onboarding/kycRicaAdapter';
 
 /**
  * Acceptance tests: structured error response contract and classification (LLD §10).
@@ -66,6 +67,8 @@ const VALID_REASON_CODES = [
   'cart_expired',
   'session_timeout',
   'support_required',
+  'not_found',
+  'validation_error',
 ] as const;
 
 type ReasonCode = (typeof VALID_REASON_CODES)[number];
@@ -80,8 +83,8 @@ const ORD_ACTIVATION_DELAYED = 'ord_err_act_delayed';
 const CART_PAYMENT_FAILED   = 'cart_pay_fail_test';
 const CART_EXPIRED          = 'cart_expired_test';
 
-// KYC-fail trigger: idNumber prefix '000' → mock adapter returns failed
-const FAILING_ID_NUMBER = '0001015800088';
+// KYC-fail trigger: idNumber starting with KYC_FAIL_ID_PREFIX → mock adapter returns failed
+const FAILING_ID_NUMBER = `${KYC_FAIL_ID_PREFIX}1015800088`;
 
 // ─── app factory ─────────────────────────────────────────────────────────────
 
@@ -943,4 +946,56 @@ describe('reasonCode enum — all returned codes are within the documented set',
       expect(REASON_CODE_SET.has(body.reasonCode as string)).toBe(true);
     });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AC-12 session_timeout scenario — unauthenticated audit-trail access
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('AC-12 session_timeout scenario — audit-trail endpoint without authentication', () => {
+  let app: Application;
+
+  beforeEach(() => {
+    clearActivationStore();
+    clearOrderStore();
+    app = getApp();
+  });
+
+  async function getAuditTrail(
+    a: Application,
+    ref: string,
+  ): Promise<{ status: number; body: Record<string, unknown> }> {
+    const res = await request(a).get(`/api/orders/${ref}/audit-trail`);
+    return { status: res.status, body: res.body as Record<string, unknown> };
+  }
+
+  it('returns HTTP 401 when no auth header is provided', async () => {
+    const { status } = await getAuditTrail(app, 'ORD-DUMMY');
+    expect(status).toBe(401);
+  });
+
+  it('response includes reasonCode "session_timeout"', async () => {
+    const { body } = await getAuditTrail(app, 'ORD-DUMMY');
+    expect(body.reasonCode).toBe('session_timeout');
+  });
+
+  it('response includes retryable=false — client must re-authenticate', async () => {
+    const { body } = await getAuditTrail(app, 'ORD-DUMMY');
+    expect(body.retryable).toBe(false);
+  });
+
+  it('statePreserved.cart and statePreserved.order are false — no state implied', async () => {
+    const { body } = await getAuditTrail(app, 'ORD-DUMMY');
+    const sp = body.statePreserved as StatePreserved;
+    expect(sp.cart).toBe(false);
+    expect(sp.order).toBe(false);
+  });
+
+  it('nextSteps contains a sign_in action', async () => {
+    const { body } = await getAuditTrail(app, 'ORD-DUMMY');
+    const steps = body.nextSteps as NextStep[];
+    expect(Array.isArray(steps)).toBe(true);
+    expect(steps.length).toBeGreaterThan(0);
+    expect(steps.some((s) => s.action === 'sign_in')).toBe(true);
+  });
 });

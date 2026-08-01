@@ -24,7 +24,7 @@ router.post('/payments', (req: Request, res: Response) => {
 
   if (!cartId) {
     res.status(422).json(
-      buildStructuredError('support_required', {
+      buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'cartId is required.',
       }),
@@ -53,7 +53,7 @@ router.post('/payments', (req: Request, res: Response) => {
   }
 
   if (marketCode && DELAYED_ACTIVATION_MARKETS.has(marketCode)) {
-    res.status(503).json(
+    res.status(202).json(
       buildStructuredError('activation_delayed', {
         errorCode: 'ACTIVATION_DEFERRED',
         message: 'Payment received. Activation is in progress and may take additional time in this market.',

@@ -19,7 +19,7 @@ router.post('/porting', (req: Request, res: Response) => {
   const errors = validatePortingInput(body);
   if (errors.length > 0) {
     res.status(422).json({
-      ...buildStructuredError('support_required', {
+      ...buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'Required fields are missing or invalid.',
       }),
@@ -71,7 +71,7 @@ router.post('/verification', async (req: Request, res: Response) => {
   const errors = validateVerificationInput(body);
   if (errors.length > 0) {
     res.status(422).json({
-      ...buildStructuredError('support_required', {
+      ...buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'Required fields are missing or invalid.',
       }),
@@ -119,7 +119,7 @@ router.get('/verification/:orderId', async (req: Request, res: Response) => {
 
   if (!record) {
     res.status(404).json(
-      buildStructuredError('support_required', {
+      buildStructuredError('not_found', {
         errorCode: 'VERIFICATION_CASE_NOT_FOUND',
         message: `No verification case found for orderId "${orderId}".`,
       }),

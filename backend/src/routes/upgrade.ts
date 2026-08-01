@@ -91,7 +91,7 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
 
   if (errors.length > 0) {
     res.status(422).json({
-      ...buildStructuredError('support_required', {
+      ...buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'Required fields are missing or invalid.',
       }),
@@ -154,7 +154,7 @@ router.put('/session', (req: Request, res: Response) => {
 
   if (errors.length > 0) {
     res.status(422).json({
-      ...buildStructuredError('support_required', {
+      ...buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'Required fields are missing or invalid.',
       }),
@@ -167,7 +167,7 @@ router.put('/session', (req: Request, res: Response) => {
 
   if (!hasKnownKey) {
     res.status(422).json(
-      buildStructuredError('support_required', {
+      buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'Body must contain at least one of: eligibility, financing, tradeIn.',
       }),

@@ -24,6 +24,10 @@
  * │   Authenticated session idle-timeout; client must re-authenticate.                         │
  * │ support_required        │ false        │ cart:true  order:true  payment:false               │
  * │   Terminal state; human intervention required before retry.                                │
+ * │ not_found               │ false        │ cart:false order:false payment:false               │
+ * │   Requested resource does not exist; no state to preserve on the server.                   │
+ * │ validation_error        │ false        │ cart:true  order:false payment:false               │
+ * │   Client-correctable field error; no human support needed, client should fix and resubmit. │
  * └─────────────────────────┴──────────────┴───────────────────────────────────────────────────┘
  */
 
@@ -36,7 +40,9 @@ export type ReasonCode =
   | 'activation_delayed'
   | 'cart_expired'
   | 'session_timeout'
-  | 'support_required';
+  | 'support_required'
+  | 'not_found'
+  | 'validation_error';
 
 export interface StatePreserved {
   cart: boolean;
@@ -69,6 +75,8 @@ const DEFAULTS: Record<ReasonCode, { retryable: boolean; statePreserved: StatePr
   cart_expired:            { retryable: false, statePreserved: { cart: false, order: false, payment: false } },
   session_timeout:         { retryable: false, statePreserved: { cart: false, order: false, payment: false } },
   support_required:        { retryable: false, statePreserved: { cart: true,  order: true,  payment: false } },
+  not_found:               { retryable: false, statePreserved: { cart: false, order: false, payment: false } },
+  validation_error:        { retryable: false, statePreserved: { cart: true,  order: false, payment: false } },
 };
 
 const NEXT_STEPS: Record<ReasonCode, NextStep[]> = {
@@ -81,6 +89,8 @@ const NEXT_STEPS: Record<ReasonCode, NextStep[]> = {
   cart_expired:            [{ action: 'start_new_cart',      url: '/catalog' }],
   session_timeout:         [{ action: 'sign_in',             url: '/auth/login' }],
   support_required:        [{ action: 'contact_support',     url: '/support' }],
+  not_found:               [{ action: 'check_reference',     url: '/support' }],
+  validation_error:        [{ action: 'correct_and_resubmit', url: '' }],
 };
 
 export function buildStructuredError(

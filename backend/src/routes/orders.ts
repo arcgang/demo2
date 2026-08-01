@@ -14,7 +14,7 @@ router.post('/', (req: Request, res: Response) => {
   const errors = validateCreateOrderInput(body);
   if (errors.length > 0) {
     res.status(422).json({
-      ...buildStructuredError('support_required', {
+      ...buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
         message: 'Required fields are missing or invalid.',
       }),
@@ -45,7 +45,7 @@ router.post('/:id/esim/issue', (req: Request, res: Response) => {
 
   switch (result.outcome) {
     case 'NOT_FOUND':
-      res.status(404).json(buildStructuredError('support_required', {
+      res.status(404).json(buildStructuredError('not_found', {
         errorCode: 'ORDER_NOT_FOUND',
         message: 'Order not found.',
       }));
@@ -98,7 +98,7 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
   const order = getOrderByReference(ref);
   if (!order) {
     res.status(404).json(
-      buildStructuredError('support_required', {
+      buildStructuredError('not_found', {
         errorCode: 'ORDER_NOT_FOUND',
         message: `No order found for reference "${ref}".`,
       }),
@@ -128,7 +128,7 @@ router.get('/:id/status', (req: Request, res: Response) => {
 
   if (!scenario) {
     res.status(404).json(
-      buildStructuredError('support_required', {
+      buildStructuredError('not_found', {
         errorCode: 'SCENARIO_REQUIRED',
         message: 'Query parameter ?scenario is required for stub responses.',
       }),
@@ -139,7 +139,7 @@ router.get('/:id/status', (req: Request, res: Response) => {
   const response = buildStatusResponse(id, scenario);
   if (!response) {
     res.status(404).json(
-      buildStructuredError('support_required', {
+      buildStructuredError('not_found', {
         errorCode: 'SCENARIO_NOT_FOUND',
         message: `Unknown scenario: ${scenario}`,
       }),
