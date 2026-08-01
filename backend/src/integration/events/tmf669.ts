@@ -40,14 +40,18 @@ export interface EventPayload {}
 /**
  * TMF669 Event envelope. Wraps a domain payload T in the standard
  * eventId / eventTime / eventType / event fields.
+ *
+ * The second type parameter K pins the eventType discriminant so that
+ * concrete event type aliases (e.g. ProductOrderCreateEvent) reject a
+ * mismatched eventType value at compile time.
  */
-export interface Event<T extends EventPayload> {
+export interface Event<T extends EventPayload, K extends EventType = EventType> {
   /** Unique event identifier. */
   eventId: string;
   /** ISO 8601 timestamp at which the event occurred. */
   eventTime: string;
   /** Discriminator aligned to TMF669 event resource names. */
-  eventType: EventType;
+  eventType: K;
   /** Domain-specific payload. */
   event: T;
 }
@@ -63,7 +67,7 @@ export interface ProductOrderCreatePayload extends EventPayload {
 }
 
 /** TMF669 ProductOrderCreateEvent — raised when an order is first placed. */
-export type ProductOrderCreateEvent = Event<ProductOrderCreatePayload>;
+export type ProductOrderCreateEvent = Event<ProductOrderCreatePayload, 'ProductOrderCreateEvent'>;
 
 // ─── ProductOrderStateChangeEvent (Payment Confirmed) ────────────────────────
 
@@ -76,7 +80,7 @@ export interface ProductOrderStateChangePayload extends EventPayload {
 }
 
 /** TMF669 ProductOrderStateChangeEvent — raised when order state advances (e.g. payment confirmed). */
-export type ProductOrderStateChangeEvent = Event<ProductOrderStateChangePayload>;
+export type ProductOrderStateChangeEvent = Event<ProductOrderStateChangePayload, 'ProductOrderStateChangeEvent'>;
 
 // ─── VerificationCompleteEvent (Verification Complete) ────────────────────────
 
@@ -89,7 +93,7 @@ export interface VerificationCompletePayload extends EventPayload {
 }
 
 /** TMF669 VerificationCompleteEvent — raised when KYC/RICA verification completes. */
-export type VerificationCompleteEvent = Event<VerificationCompletePayload>;
+export type VerificationCompleteEvent = Event<VerificationCompletePayload, 'VerificationCompleteEvent'>;
 
 // ─── ESIMIssuedEvent (eSIM Issued) ────────────────────────────────────────────
 
@@ -102,7 +106,7 @@ export interface ESIMIssuedPayload extends EventPayload {
 }
 
 /** TMF669 ESIMIssuedEvent — raised when an eSIM profile has been issued. */
-export type ESIMIssuedEvent = Event<ESIMIssuedPayload>;
+export type ESIMIssuedEvent = Event<ESIMIssuedPayload, 'ESIMIssuedEvent'>;
 
 // ─── ActivationCompleteEvent (Activation Complete) ───────────────────────────
 
@@ -113,4 +117,4 @@ export interface ActivationCompletePayload extends EventPayload {
 }
 
 /** TMF669 ActivationCompleteEvent — raised when service activation is complete. */
-export type ActivationCompleteEvent = Event<ActivationCompletePayload>;
+export type ActivationCompleteEvent = Event<ActivationCompletePayload, 'ActivationCompleteEvent'>;

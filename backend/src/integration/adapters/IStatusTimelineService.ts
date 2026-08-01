@@ -12,6 +12,17 @@
 
 import type { EventType } from '../events/tmf669';
 
+// ─── MilestoneState ───────────────────────────────────────────────────────────
+
+/**
+ * Permitted state values for a TimelineMilestone.
+ *
+ * - SUCCESS / COMPLETED — terminal positive states
+ * - PENDING             — awaiting processing
+ * - FAILED / BLOCKED    — terminal negative states
+ */
+export type MilestoneState = 'SUCCESS' | 'COMPLETED' | 'PENDING' | 'FAILED' | 'BLOCKED';
+
 // ─── TimelineMilestone ────────────────────────────────────────────────────────
 
 /**
@@ -29,8 +40,8 @@ export interface TimelineMilestone {
   eventType: EventType;
   /** ISO 8601 timestamp at which this milestone was recorded. */
   timestamp: string;
-  /** Current state of this milestone (e.g. SUCCESS, PENDING, COMPLETED, FAILED). */
-  state: string;
+  /** Current state of this milestone. */
+  state: MilestoneState;
   /** Optional human-readable description shown in the Order Status Timeline screen. */
   message?: string;
 }
