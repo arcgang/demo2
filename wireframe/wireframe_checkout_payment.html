@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout - Vodacom Shop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; font-size: 14px; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Header */
+    .header { background: #e60000; color: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .header-brand { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+    .header-steps { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+    .step { padding: 4px 12px; border-radius: 12px; opacity: 0.7; }
+    .step.active { background: rgba(255,255,255,0.2); opacity: 1; font-weight: 600; }
+
+    /* Breadcrumb */
+    .breadcrumb { padding: 12px 24px; font-size: 13px; color: #666; background: #fff; border-bottom: 1px solid #e0e0e0; }
+    .breadcrumb a { color: #666; }
+    .breadcrumb a:hover { color: #e60000; }
+    .breadcrumb span { margin: 0 6px; }
+
+    /* Layout */
+    .main-content { max-width: 1100px; margin: 24px auto; padding: 0 24px; display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
+
+    /* Section panels */
+    .section-panel { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; padding: 24px; margin-bottom: 16px; }
+    .section-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .section-number { width: 24px; height: 24px; background: #e60000; color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+
+    /* Form */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; font-weight: 500; color: #444; }
+    input[type="text"], input[type="email"], input[type="tel"] {
+      border: 1px solid #ccc; border-radius: 4px; padding: 10px 12px; font-size: 14px; width: 100%;
+    }
+    input:focus { outline: none; border-color: #e60000; }
+    input[required]:valid { border-color: #4caf50; }
+
+    /* Payment methods */
+    .payment-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .payment-option { border: 1px solid #ccc; border-radius: 6px; padding: 14px; cursor: pointer; transition: border-color 0.2s; }
+    .payment-option:has(input:checked) { border-color: #e60000; background: #fff5f5; }
+    .payment-option input { margin-right: 8px; accent-color: #e60000; }
+    .payment-option-name { font-weight: 600; font-size: 14px; }
+    .payment-option-sub { font-size: 12px; color: #666; margin-top: 2px; }
+    .card-brands { display: flex; gap: 6px; margin-top: 6px; }
+    .card-brand { font-size: 11px; font-weight: 700; padding: 2px 6px; border: 1px solid #ccc; border-radius: 3px; color: #555; }
+
+    .card-fields { border-top: 1px solid #f0f0f0; padding-top: 16px; margin-top: 4px; }
+    .card-security-note { font-size: 11px; color: #888; margin-top: 4px; }
+
+    /* Terms */
+    .consent-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .consent-row input[type="checkbox"] { margin-top: 2px; accent-color: #e60000; flex-shrink: 0; }
+    .consent-label { font-size: 13px; color: #444; line-height: 1.4; }
+    .consent-label a { color: #e60000; }
+
+    .btn-place-order { width: 100%; background: #e60000; color: #fff; border: none; border-radius: 6px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    .btn-place-order:hover { background: #cc0000; }
+    .btn-place-order:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Order Summary Card */
+    .summary-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; padding: 24px; position: sticky; top: 24px; }
+    .summary-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #e60000; }
+
+    .order-item { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 14px; }
+    .order-item-info .name { font-weight: 500; }
+    .order-item-info .qty { font-size: 12px; color: #888; margin-top: 2px; }
+    .order-item-price { font-weight: 600; white-space: nowrap; }
+
+    .summary-divider { border: none; border-top: 1px solid #e0e0e0; margin: 12px 0; }
+
+    .summary-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 14px; }
+    .summary-line .label { color: #555; }
+    .summary-line .value { font-weight: 500; }
+    .credit-line .value { color: #2e7d32; font-weight: 600; }
+
+    .total-once { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; padding-top: 12px; border-top: 2px solid #1a1a1a; }
+    .total-once .label { font-weight: 700; font-size: 15px; }
+    .total-once .value { font-weight: 700; font-size: 17px; }
+    .total-monthly { display: flex; justify-content: space-between; margin-top: 6px; font-size: 13px; color: #555; }
+
+    /* asyncPending notice */
+    .notice { background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px; padding: 8px 10px; font-size: 12px; color: #5d4037; margin-top: 4px; margin-bottom: 4px; }
+    .notice::before { content: "ℹ "; }
+
+    /* Skeleton loader */
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-line { height: 14px; margin-bottom: 8px; }
+
+    /* Financing block */
+    .financing-block { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 12px; margin-top: 12px; font-size: 13px; }
+    .financing-block .fin-title { font-weight: 600; margin-bottom: 4px; color: #1b5e20; }
+    .financing-block .fin-detail { color: #2e7d32; }
+
+    /* Security badges */
+    .security-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; }
+    .badge { font-size: 11px; font-weight: 600; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; color: #555; }
+
+    /* Footer */
+    footer { background: #1a1a1a; color: #ccc; padding: 40px 24px 24px; margin-top: 48px; }
+    .footer-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-bottom: 32px; }
+    .footer-col h4 { color: #fff; font-size: 13px; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .footer-col a { display: block; color: #aaa; font-size: 13px; margin-bottom: 6px; }
+    .footer-col a:hover { color: #fff; text-decoration: none; }
+    .footer-bottom { max-width: 1100px; margin: 0 auto; border-top: 1px solid #333; padding-top: 16px; font-size: 12px; color: #888; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">Vodacom Shop</div>
+  <nav class="header-steps">
+    <span class="step">1 Cart</span>
+    <span>›</span>
+    <span class="step active">2 Checkout</span>
+    <span>›</span>
+    <span class="step">3 Confirmation</span>
+  </nav>
+</header>
+
+<nav class="breadcrumb">
+  <a href="#">Home</a><span>›</span>
+  <a href="#">Cart</a><span>›</span>
+  <strong>Checkout</strong>
+</nav>
+
+<div class="main-content">
+  <!-- Left: Checkout Form -->
+  <div>
+    <h1>Checkout</h1>
+
+    <!-- Section 1: Customer Details -->
+    <section class="section-panel">
+      <h2><span class="section-number">1</span> Customer Details</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="first-name">First Name</label>
+          <input type="text" id="first-name" name="first-name" required value="Amina" />
+        </div>
+        <div class="form-group">
+          <label for="last-name">Last Name</label>
+          <input type="text" id="last-name" name="last-name" required value="Dlamini" />
+        </div>
+        <div class="form-group full">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" required value="amina.dlamini@example.com" />
+        </div>
+        <div class="form-group full">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone" required value="+27 83 555 0123" />
+        </div>
+        <div class="form-group full">
+          <label for="address">Street Address</label>
+          <input type="text" id="address" name="address" required value="10 Palm Street" />
+        </div>
+        <div class="form-group">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" required value="Johannesburg" />
+        </div>
+        <div class="form-group">
+          <label for="postal-code">Postal Code</label>
+          <input type="text" id="postal-code" name="postal-code" required value="2001" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Payment Method -->
+    <section class="section-panel">
+      <h2><span class="section-number">2</span> Payment Method</h2>
+
+      <div class="payment-options">
+        <label class="payment-option">
+          <input type="radio" name="payment-method" value="card" checked />
+          <div>
+            <div class="payment-option-name">Credit or Debit Card</div>
+            <div class="payment-option-sub">Secure payment with tokenized card processing</div>
+            <div class="card-brands">
+              <span class="card-brand">VISA</span>
+              <span class="card-brand">MC</span>
+              <span class="card-brand">AMEX</span>
+            </div>
+          </div>
+        </label>
+        <label class="payment-option">
+          <input type="radio" name="payment-method" value="mobile-money" />
+          <div>
+            <div class="payment-option-name">Mobile Money</div>
+            <div class="payment-option-sub">Pay with M-Pesa or Vodacom wallet</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="card-fields">
+        <div class="form-group" style="margin-bottom:14px">
+          <label for="card-number">Card Number</label>
+          <input type="text" id="card-number" name="card-number" placeholder="1234 5678 9012 3456" required maxlength="19" />
+          <span class="card-security-note">Your card details are encrypted and never stored</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="expiry">Expiry Date</label>
+            <input type="text" id="expiry" name="expiry" placeholder="MM/YY" required maxlength="5" />
+          </div>
+          <div class="form-group">
+            <label for="cvv">CVV</label>
+            <input type="text" id="cvv" name="cvv" placeholder="123" required maxlength="4" />
+          </div>
+          <div class="form-group full">
+            <label for="cardholder-name">Cardholder Name</label>
+            <input type="text" id="cardholder-name" name="cardholder-name" placeholder="Name as it appears on card" required />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Terms & Consent -->
+    <section class="section-panel">
+      <h2><span class="section-number">3</span> Terms &amp; Consent</h2>
+
+      <div class="consent-row">
+        <input type="checkbox" id="terms" name="terms" required />
+        <label class="consent-label" for="terms">
+          I agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a> (Required)
+        </label>
+      </div>
+      <div class="consent-row">
+        <input type="checkbox" id="marketing" name="marketing" />
+        <label class="consent-label" for="marketing">
+          I consent to receiving marketing communications from Vodacom about products, services, and special offers (Optional)
+        </label>
+      </div>
+
+      <button class="btn-place-order" id="place-order-btn">Place Order</button>
+    </section>
+  </div>
+
+  <!-- Right: Order Summary -->
+  <aside class="summary-card">
+    <h3>Order Summary</h3>
+
+    <!-- Loading skeleton -->
+    <div id="checkout-summary-skeleton">
+      <div class="skeleton skeleton-line" style="width:70%"></div>
+      <div class="skeleton skeleton-line" style="width:55%"></div>
+      <div class="skeleton skeleton-line" style="width:80%"></div>
+      <div class="skeleton skeleton-line" style="width:60%"></div>
+      <div class="skeleton skeleton-line" style="width:90%"></div>
+    </div>
+
+    <!-- Summary content (populated by JS) -->
+    <div id="checkout-summary-content" style="display:none">
+      <!-- Line items -->
+      <div class="order-item">
+        <div class="order-item-info">
+          <div class="name">iPhone 15 Pro 256GB</div>
+          <div class="qty">Qty: 1</div>
+        </div>
+        <div class="order-item-price" id="co-device">R 18,999</div>
+      </div>
+      <div class="order-item">
+        <div class="order-item-info">
+          <div class="name">Silicone Case</div>
+          <div class="qty">Qty: 1</div>
+        </div>
+        <div class="order-item-price">R 599</div>
+      </div>
+      <div class="order-item">
+        <div class="order-item-info">
+          <div class="name">20W Power Adapter</div>
+          <div class="qty">Qty: 1</div>
+        </div>
+        <div class="order-item-price">R 399</div>
+      </div>
+
+      <hr class="summary-divider" />
+
+      <div class="summary-line">
+        <span class="label">Once-Off Subtotal</span>
+        <span class="value" id="co-subtotal">R 19,997.00</span>
+      </div>
+      <div class="summary-line">
+        <span class="label">Monthly Plan</span>
+        <span class="value" id="co-plan">R 799.00</span>
+      </div>
+
+      <!-- Financing block — shown when financing session active -->
+      <div class="financing-block" id="co-financing-block" style="display:none">
+        <div class="fin-title">Financing Plan</div>
+        <div class="fin-detail" id="co-financing-detail">R 899.00/month × 24 months</div>
+        <div id="co-financing-notice"></div>
+      </div>
+
+      <div class="summary-line">
+        <span class="label">VAT (15%)</span>
+        <span class="value" id="co-vat">R 2,999.55</span>
+      </div>
+
+      <!-- Trade-In Credit line — shown when tradeIn session active -->
+      <div id="co-trade-in-row" style="display:none">
+        <div class="summary-line credit-line">
+          <span class="label">Trade-In Credit</span>
+          <span class="value" id="co-trade-in-credit">− R 2,500.00</span>
+        </div>
+        <div id="co-trade-in-notice"></div>
+      </div>
+
+      <div class="total-once">
+        <span class="label">Total Once-Off</span>
+        <span class="value" id="co-total">R 22,996.55</span>
+      </div>
+      <div class="total-monthly">
+        <span>Monthly</span>
+        <span id="co-total-monthly">+ R 799.00/month</span>
+      </div>
+    </div>
+
+    <div class="security-badges">
+      <span class="badge">PCI-DSS</span>
+      <span class="badge">SSL Encrypted</span>
+    </div>
+  </aside>
+</div>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div class="footer-col">
+      <h4>About Vodacom</h4>
+      <a href="#">About Us</a>
+      <a href="#">Careers</a>
+      <a href="#">Press</a>
+      <a href="#">Investors</a>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <a href="#">Contact Us</a>
+      <a href="#">FAQs</a>
+      <a href="#">Store Locator</a>
+      <a href="#">Coverage Map</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Terms &amp; Conditions</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Cookie Policy</a>
+      <a href="#">Accessibility</a>
+    </div>
+    <div class="footer-col">
+      <h4>Connect</h4>
+      <a href="#">Facebook</a>
+      <a href="#">Twitter</a>
+      <a href="#">Instagram</a>
+      <a href="#">LinkedIn</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Vodacom Group. All rights reserved.</span>
+    <span>South Africa</span>
+  </div>
+</footer>
+
+<script>
+  const API_BASE = '/api';
+
+  function fmt(amount) {
+    return 'R ' + Math.abs(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function renderNotice(container, message) {
+    container.innerHTML = '';
+    if (message) {
+      const div = document.createElement('div');
+      div.className = 'notice';
+      div.textContent = message;
+      container.appendChild(div);
+    }
+  }
+
+  async function loadCheckoutSummary() {
+    const skeleton = document.getElementById('checkout-summary-skeleton');
+    const content = document.getElementById('checkout-summary-content');
+
+    let data;
+    try {
+      const res = await fetch(API_BASE + '/cart/summary', { credentials: 'include' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    } catch (e) {
+      // Fallback to static wireframe values when API is unavailable
+      data = {
+        onceOff: {
+          device: 18999, accessories: 998, activationFee: 0,
+          subtotal: 19997, vat: 2999.55, total: 22996.55
+        },
+        recurring: { plan: 799, monthlySubtotal: 799 },
+        notices: []
+      };
+    }
+
+    const o = data.onceOff;
+    const r = data.recurring;
+    const notices = data.notices || [];
+
+    document.getElementById('co-subtotal').textContent = fmt(o.subtotal);
+    document.getElementById('co-plan').textContent = fmt(r.plan);
+    document.getElementById('co-vat').textContent = fmt(o.vat);
+    document.getElementById('co-total').textContent = fmt(o.total);
+    document.getElementById('co-total-monthly').textContent = '+ ' + fmt(r.monthlySubtotal) + '/month';
+
+    // Trade-In Credit row
+    const tradeInRow = document.getElementById('co-trade-in-row');
+    const tradeInNotice = document.getElementById('co-trade-in-notice');
+    if (typeof o.tradeInCredit === 'number') {
+      document.getElementById('co-trade-in-credit').textContent = '− ' + fmt(o.tradeInCredit);
+      tradeInRow.style.display = 'block';
+      const notice = notices.find(n => n.field === 'tradeInCredit');
+      renderNotice(tradeInNotice, notice ? notice.message : null);
+    } else {
+      tradeInRow.style.display = 'none';
+    }
+
+    // Financing block
+    const financingBlock = document.getElementById('co-financing-block');
+    const financingNotice = document.getElementById('co-financing-notice');
+    if (data.financing) {
+      const f = data.financing;
+      document.getElementById('co-financing-detail').textContent =
+        fmt(f.monthlyAmount) + '/month × ' + f.termMonths + ' months';
+      financingBlock.style.display = 'block';
+      const notice = notices.find(n => n.field === 'financing');
+      renderNotice(financingNotice, notice ? notice.message : null);
+    } else {
+      financingBlock.style.display = 'none';
+    }
+
+    skeleton.style.display = 'none';
+    content.style.display = 'block';
+  }
+
+  document.addEventListener('DOMContentLoaded', loadCheckoutSummary);
+</script>
+</body>
+</html>

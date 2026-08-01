@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Cart - Vodacom Shop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; font-size: 14px; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Header */
+    .header { background: #e60000; color: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .header-brand { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+    .nav-main { display: flex; gap: 24px; align-items: center; font-size: 14px; }
+    .nav-main a { color: #fff; opacity: 0.9; }
+    .nav-main a:hover { opacity: 1; text-decoration: none; }
+    .header-actions { display: flex; align-items: center; gap: 16px; }
+    .header-locale { font-size: 12px; opacity: 0.85; }
+    .btn-icon { background: rgba(255,255,255,0.15); border: none; color: #fff; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+    .btn-icon:hover { background: rgba(255,255,255,0.25); }
+
+    /* Breadcrumb */
+    .breadcrumb { padding: 12px 24px; font-size: 13px; color: #666; background: #fff; border-bottom: 1px solid #e0e0e0; }
+    .breadcrumb a { color: #666; }
+    .breadcrumb a:hover { color: #e60000; }
+    .breadcrumb span { margin: 0 6px; }
+
+    /* Layout */
+    .main-content { max-width: 1100px; margin: 24px auto; padding: 0 24px; display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .cart-count { color: #666; font-size: 14px; margin-bottom: 20px; }
+
+    /* Cart Items */
+    .cart-items { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; overflow: hidden; }
+    .cart-item { display: grid; grid-template-columns: 56px 1fr auto; gap: 16px; align-items: start; padding: 20px; border-bottom: 1px solid #f0f0f0; }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-img { width: 56px; height: 56px; background: #f0f0f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .cart-item-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+    .cart-item-sub { color: #666; font-size: 13px; margin-bottom: 10px; }
+    .cart-item-plan { font-size: 12px; color: #e60000; font-weight: 500; margin-bottom: 10px; }
+    .qty-control { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 28px; height: 28px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    .qty-btn:hover { border-color: #e60000; color: #e60000; }
+    .qty-val { font-size: 14px; font-weight: 600; min-width: 20px; text-align: center; }
+    .cart-item-remove { font-size: 12px; color: #e60000; cursor: pointer; background: none; border: none; padding: 0; margin-left: 12px; }
+    .cart-item-remove:hover { text-decoration: underline; }
+    .cart-item-price { text-align: right; }
+    .price-once { font-weight: 700; font-size: 15px; }
+    .price-monthly { font-size: 12px; color: #666; margin-top: 2px; }
+
+    /* Promo */
+    .promo-section { margin-top: 16px; display: flex; gap: 8px; }
+    .promo-input { flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 8px 12px; font-size: 14px; }
+    .promo-input:focus { outline: none; border-color: #e60000; }
+    .btn-secondary { background: #fff; border: 1px solid #e60000; color: #e60000; border-radius: 4px; padding: 8px 16px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-secondary:hover { background: #fff5f5; }
+
+    /* Order Summary Card */
+    .summary-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; padding: 24px; position: sticky; top: 24px; }
+    .summary-card h2 { font-size: 17px; font-weight: 700; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #e60000; }
+
+    .summary-section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin: 16px 0 8px; }
+    .summary-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 14px; }
+    .summary-line.indent { padding-left: 8px; color: #444; }
+    .summary-line .label { flex: 1; }
+    .summary-line .value { font-weight: 500; white-space: nowrap; }
+
+    .summary-divider { border: none; border-top: 1px solid #e0e0e0; margin: 12px 0; }
+
+    .credit-line .value { color: #2e7d32; font-weight: 600; }
+
+    .total-once { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; padding-top: 12px; border-top: 2px solid #1a1a1a; }
+    .total-once .label { font-weight: 700; font-size: 15px; }
+    .total-once .value { font-weight: 700; font-size: 17px; }
+    .total-monthly { display: flex; justify-content: space-between; margin-top: 6px; font-size: 13px; color: #555; }
+
+    /* asyncPending notice */
+    .notice { background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px; padding: 8px 10px; font-size: 12px; color: #5d4037; margin-top: 4px; margin-bottom: 4px; }
+    .notice::before { content: "ℹ "; }
+
+    .btn-primary { width: 100%; background: #e60000; color: #fff; border: none; border-radius: 6px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+    .btn-primary:hover { background: #cc0000; }
+    .btn-continue { display: block; text-align: center; color: #e60000; font-size: 14px; margin-top: 12px; }
+    .secure-notice { text-align: center; font-size: 11px; color: #888; margin-top: 10px; }
+
+    /* Skeleton loader */
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-line { height: 14px; margin-bottom: 8px; }
+    .skeleton-total { height: 20px; margin-top: 12px; }
+
+    /* Loading state */
+    .summary-loading { display: none; }
+    .summary-loaded { display: block; }
+
+    /* Financing block */
+    .financing-block { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 12px; margin-top: 12px; font-size: 13px; }
+    .financing-block .fin-title { font-weight: 600; margin-bottom: 4px; color: #1b5e20; }
+    .financing-block .fin-detail { color: #2e7d32; }
+
+    /* Footer */
+    footer { background: #1a1a1a; color: #ccc; padding: 40px 24px 24px; margin-top: 48px; }
+    .footer-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-bottom: 32px; }
+    .footer-col h4 { color: #fff; font-size: 13px; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .footer-col a { display: block; color: #aaa; font-size: 13px; margin-bottom: 6px; }
+    .footer-col a:hover { color: #fff; text-decoration: none; }
+    .footer-bottom { max-width: 1100px; margin: 0 auto; border-top: 1px solid #333; padding-top: 16px; font-size: 12px; color: #888; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">Vodacom Shop</div>
+  <nav class="nav-main">
+    <a href="#">Devices</a>
+    <a href="#">Plans</a>
+    <a href="#">Accessories</a>
+    <a href="#">Support</a>
+  </nav>
+  <div class="header-actions">
+    <span class="header-locale">South Africa - ZAR</span>
+    <button class="btn-icon">Account</button>
+    <button class="btn-icon" id="cart-badge">Cart</button>
+  </div>
+</header>
+
+<nav class="breadcrumb">
+  <a href="#">Home</a><span>›</span><strong>Cart</strong>
+</nav>
+
+<div class="main-content">
+  <!-- Left: Cart Items -->
+  <div>
+    <h1>Your Cart</h1>
+    <p class="cart-count" id="cart-count">3 items</p>
+
+    <div class="cart-items">
+      <!-- Item 1: Device -->
+      <div class="cart-item">
+        <div class="cart-item-img">📱</div>
+        <div>
+          <div class="cart-item-name">iPhone 15 Pro</div>
+          <div class="cart-item-sub">Natural Titanium, 256GB</div>
+          <div class="cart-item-plan">Unlimited 20GB Plan attached</div>
+          <div class="qty-control">
+            <button class="qty-btn" aria-label="Decrease quantity">−</button>
+            <span class="qty-val">1</span>
+            <button class="qty-btn" aria-label="Increase quantity">+</button>
+            <a href="#" class="cart-item-remove">Remove</a>
+          </div>
+        </div>
+        <div class="cart-item-price">
+          <div class="price-once">R 18,999</div>
+          <div class="price-monthly">+ R 799/month</div>
+        </div>
+      </div>
+
+      <!-- Item 2: Accessory -->
+      <div class="cart-item">
+        <div class="cart-item-img">🛡️</div>
+        <div>
+          <div class="cart-item-name">iPhone 15 Pro Silicone Case</div>
+          <div class="cart-item-sub">Storm Blue</div>
+          <div class="qty-control">
+            <button class="qty-btn" aria-label="Decrease quantity">−</button>
+            <span class="qty-val">1</span>
+            <button class="qty-btn" aria-label="Increase quantity">+</button>
+            <a href="#" class="cart-item-remove">Remove</a>
+          </div>
+        </div>
+        <div class="cart-item-price">
+          <div class="price-once">R 599</div>
+        </div>
+      </div>
+
+      <!-- Item 3: Accessory -->
+      <div class="cart-item">
+        <div class="cart-item-img">🔌</div>
+        <div>
+          <div class="cart-item-name">20W USB-C Power Adapter</div>
+          <div class="cart-item-sub">Fast charging compatible</div>
+          <div class="qty-control">
+            <button class="qty-btn" aria-label="Decrease quantity">−</button>
+            <span class="qty-val">1</span>
+            <button class="qty-btn" aria-label="Increase quantity">+</button>
+            <a href="#" class="cart-item-remove">Remove</a>
+          </div>
+        </div>
+        <div class="cart-item-price">
+          <div class="price-once">R 399</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promo Code -->
+    <div class="promo-section">
+      <input type="text" class="promo-input" placeholder="Promo code" aria-label="Promo code" />
+      <button class="btn-secondary">Apply</button>
+    </div>
+  </div>
+
+  <!-- Right: Order Summary -->
+  <aside class="summary-card">
+    <h2>Order Summary</h2>
+
+    <!-- Loading skeleton (hidden once data loads) -->
+    <div class="summary-loading" id="summary-skeleton">
+      <div class="skeleton skeleton-line" style="width:60%"></div>
+      <div class="skeleton skeleton-line" style="width:80%"></div>
+      <div class="skeleton skeleton-line" style="width:70%"></div>
+      <div class="skeleton skeleton-total" style="width:90%"></div>
+    </div>
+
+    <!-- Summary content (populated by JS) -->
+    <div class="summary-loaded" id="summary-content">
+      <div class="summary-section-label">Once-Off Charges</div>
+      <div class="summary-line indent">
+        <span class="label">Device</span>
+        <span class="value" id="line-device">R 18,999.00</span>
+      </div>
+      <div class="summary-line indent">
+        <span class="label">Accessories</span>
+        <span class="value" id="line-accessories">R 998.00</span>
+      </div>
+      <div class="summary-line indent">
+        <span class="label">Activation Fee</span>
+        <span class="value" id="line-activation">R 0.00</span>
+      </div>
+      <div class="summary-line" style="font-weight:600;margin-top:6px">
+        <span class="label">Subtotal</span>
+        <span class="value" id="line-subtotal">R 19,997.00</span>
+      </div>
+
+      <hr class="summary-divider" />
+
+      <div class="summary-section-label">Recurring Charges</div>
+      <div class="summary-line indent" id="recurring-plan-row">
+        <span class="label" id="recurring-plan-label">Unlimited 20GB Plan</span>
+        <span class="value" id="line-plan">R 799.00</span>
+      </div>
+      <div class="summary-line indent">
+        <span class="label">Monthly Subtotal</span>
+        <span class="value" id="line-monthly-subtotal">R 799.00</span>
+      </div>
+
+      <!-- Financing block — shown when financing session is active -->
+      <div class="financing-block" id="financing-block" style="display:none">
+        <div class="fin-title">Financing Plan</div>
+        <div class="fin-detail" id="financing-detail">R 899.00/month × 24 months</div>
+        <div id="financing-notice-container"></div>
+      </div>
+
+      <hr class="summary-divider" />
+
+      <div class="summary-section-label">Taxes &amp; Credits</div>
+      <div class="summary-line indent">
+        <span class="label">VAT (15%)</span>
+        <span class="value" id="line-vat">R 2,999.55</span>
+      </div>
+
+      <!-- Trade-In Credit line — shown when tradeIn session is active -->
+      <div id="trade-in-credit-row" style="display:none">
+        <div class="summary-line indent credit-line">
+          <span class="label">Trade-In Credit</span>
+          <span class="value" id="line-trade-in-credit">− R 2,500.00</span>
+        </div>
+        <div id="trade-in-notice-container"></div>
+      </div>
+
+      <div class="total-once">
+        <span class="label">Total Once-Off</span>
+        <span class="value" id="line-total">R 22,996.55</span>
+      </div>
+      <div class="total-monthly">
+        <span>Monthly</span>
+        <span id="line-total-monthly">+ R 799.00/month</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="window.location.href='wireframe_checkout_payment.html'">Proceed to Checkout</button>
+    <a href="#" class="btn-continue">Continue Shopping</a>
+    <p class="secure-notice">🔒 Secure checkout with encrypted payment</p>
+  </aside>
+</div>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div class="footer-col">
+      <h4>About Vodacom</h4>
+      <a href="#">About Us</a>
+      <a href="#">Careers</a>
+      <a href="#">Press</a>
+      <a href="#">Investors</a>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <a href="#">Contact Us</a>
+      <a href="#">FAQs</a>
+      <a href="#">Store Locator</a>
+      <a href="#">Coverage Map</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Terms &amp; Conditions</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Cookie Policy</a>
+      <a href="#">Accessibility</a>
+    </div>
+    <div class="footer-col">
+      <h4>Connect</h4>
+      <a href="#">Facebook</a>
+      <a href="#">Twitter</a>
+      <a href="#">Instagram</a>
+      <a href="#">LinkedIn</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Vodacom Group. All rights reserved.</span>
+    <span>South Africa</span>
+  </div>
+</footer>
+
+<script>
+  const API_BASE = '/api';
+
+  function fmt(amount) {
+    return 'R ' + Math.abs(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function renderNotice(container, message) {
+    container.innerHTML = '';
+    if (message) {
+      const div = document.createElement('div');
+      div.className = 'notice';
+      div.textContent = message;
+      container.appendChild(div);
+    }
+  }
+
+  async function loadCartSummary() {
+    const skeleton = document.getElementById('summary-skeleton');
+    const content = document.getElementById('summary-content');
+    skeleton.style.display = 'block';
+    content.style.display = 'none';
+
+    let data;
+    try {
+      const res = await fetch(API_BASE + '/cart/summary', { credentials: 'include' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    } catch (e) {
+      // Fallback to static wireframe values when API is unavailable
+      data = {
+        onceOff: {
+          device: 18999, accessories: 998, activationFee: 0,
+          subtotal: 19997, vat: 2999.55, total: 22996.55
+        },
+        recurring: { plan: 799, monthlySubtotal: 799 },
+        notices: []
+      };
+    }
+
+    const o = data.onceOff;
+    const r = data.recurring;
+    const notices = data.notices || [];
+
+    document.getElementById('line-device').textContent = fmt(o.device);
+    document.getElementById('line-accessories').textContent = fmt(o.accessories);
+    document.getElementById('line-activation').textContent = fmt(o.activationFee);
+    document.getElementById('line-subtotal').textContent = fmt(o.subtotal);
+    document.getElementById('line-vat').textContent = fmt(o.vat);
+    document.getElementById('line-plan').textContent = fmt(r.plan);
+    document.getElementById('line-monthly-subtotal').textContent = fmt(r.monthlySubtotal);
+    document.getElementById('line-total').textContent = fmt(o.total);
+    document.getElementById('line-total-monthly').textContent = '+ ' + fmt(r.monthlySubtotal) + '/month';
+
+    // Trade-In Credit row
+    const tradeInRow = document.getElementById('trade-in-credit-row');
+    const tradeInNoticeContainer = document.getElementById('trade-in-notice-container');
+    if (typeof o.tradeInCredit === 'number') {
+      document.getElementById('line-trade-in-credit').textContent = '− ' + fmt(o.tradeInCredit);
+      tradeInRow.style.display = 'block';
+      const tradeInNotice = notices.find(n => n.field === 'tradeInCredit');
+      renderNotice(tradeInNoticeContainer, tradeInNotice ? tradeInNotice.message : null);
+    } else {
+      tradeInRow.style.display = 'none';
+    }
+
+    // Financing block
+    const financingBlock = document.getElementById('financing-block');
+    const financingNoticeContainer = document.getElementById('financing-notice-container');
+    if (data.financing) {
+      const f = data.financing;
+      document.getElementById('financing-detail').textContent =
+        fmt(f.monthlyAmount) + '/month × ' + f.termMonths + ' months';
+      financingBlock.style.display = 'block';
+      const finNotice = notices.find(n => n.field === 'financing');
+      renderNotice(financingNoticeContainer, finNotice ? finNotice.message : null);
+    } else {
+      financingBlock.style.display = 'none';
+    }
+
+    skeleton.style.display = 'none';
+    content.style.display = 'block';
+  }
+
+  document.addEventListener('DOMContentLoaded', loadCartSummary);
+</script>
+</body>
+</html>

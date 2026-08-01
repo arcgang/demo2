@@ -245,8 +245,7 @@ describe('GET /api/cart/summary — VAT calculation correctness', () => {
     const agent = request.agent(app);
     const { body } = await getCartSummary(agent);
     const s = (body as CartSummaryResponse).onceOff;
-    const expectedVat = Math.round(s.subtotal * 0.15 * 100) / 100;
-    expect(s.vat).toBeCloseTo(expectedVat, 2);
+    expect(s.vat).toBeCloseTo(VAT_ON_SUBTOTAL, 2);
   });
 
   it('onceOff.total equals subtotal + vat when no trade-in credit is active', async () => {
@@ -612,7 +611,7 @@ describe('Checkout order summary parity — data sufficient for checkout panel',
     const { body } = await getCartSummary(agent);
     const s = (body as CartSummaryResponse).onceOff;
     // R 19,997.00 subtotal + R 2,999.55 VAT - R 2,500.00 credit = R 20,496.55
-    expect(s.total).toBeCloseTo(20496.55, 2);
+    expect(s.total).toBeCloseTo(TOTAL_WITH_CREDIT, 2);
   });
 
   it('checkout asyncPending notice does not block the summary response', async () => {

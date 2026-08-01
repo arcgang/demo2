@@ -25,7 +25,7 @@ router.get('/summary', (req: Request, res: Response) => {
   const notices: Array<{ field: string; message: string }> = [];
 
   let tradeInCredit: number | undefined;
-  if (tradeIn && typeof tradeIn.estimatedCredit === 'number') {
+  if (tradeIn && typeof tradeIn.estimatedCredit === 'number' && tradeIn.estimatedCredit > 0) {
     tradeInCredit = -tradeIn.estimatedCredit;
     if (tradeIn.asyncPending === true) {
       notices.push({
