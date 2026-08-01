@@ -233,6 +233,7 @@
   (function () {
     var DRAFT_KEY = 'draft:cart';
     var EXPIRY_MS = 30 * 60 * 1000;
+    var noticeShown = false;
 
     function collectItems() {
       var items = [];
@@ -284,7 +285,10 @@
     }
 
     function tryRestore() {
-      if (restoreDraft()) showNotice();
+      if (restoreDraft() && !noticeShown) {
+        noticeShown = true;
+        showNotice();
+      }
     }
 
     // Quantity buttons

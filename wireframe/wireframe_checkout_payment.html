@@ -304,6 +304,8 @@
     var EXPIRY_MS = 30 * 60 * 1000;
     var SAFE_FIELDS = ['first-name', 'last-name', 'email', 'phone', 'address', 'city', 'postal-code'];
     var CARD_FIELDS = ['card-number', 'expiry', 'cvv'];
+    var restored = false;
+    var noticeShown = false;
 
     function saveDraft() {
       var fieldValues = {};
@@ -339,11 +341,14 @@
         var radio = document.querySelector('input[name="payment-method"][value="' + draft.paymentMethod + '"]');
         if (radio) radio.checked = true;
       }
-      // Explicitly clear card fields after restore
-      CARD_FIELDS.forEach(function (name) {
-        var el = document.querySelector('[name="' + name + '"]');
-        if (el) el.value = '';
-      });
+      // Clear card fields only on the very first restore
+      if (!restored) {
+        CARD_FIELDS.forEach(function (name) {
+          var el = document.querySelector('[name="' + name + '"]');
+          if (el) el.value = '';
+        });
+        restored = true;
+      }
       return true;
     }
 
@@ -353,7 +358,10 @@
     }
 
     function tryRestore() {
-      if (restoreDraft()) showNotice();
+      if (restoreDraft() && !noticeShown) {
+        noticeShown = true;
+        showNotice();
+      }
     }
 
     // Attach input listeners to safe fields

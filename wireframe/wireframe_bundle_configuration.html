@@ -193,6 +193,7 @@
     var PRODUCT_ID = 'iphone-15-pro';
     var DRAFT_KEY = 'draft:bundle:' + PRODUCT_ID;
     var EXPIRY_MS = 30 * 60 * 1000;
+    var noticeShown = false;
 
     function saveDraft() {
       var planEl = document.querySelector('input[name="plan"]:checked');
@@ -236,7 +237,10 @@
     }
 
     function tryRestore() {
-      if (restoreDraft()) showNotice();
+      if (restoreDraft() && !noticeShown) {
+        noticeShown = true;
+        showNotice();
+      }
     }
 
     // Attach save listeners
