@@ -1,13 +1,22 @@
 import { Router, Request, Response } from 'express';
-import { buildStatusResponse } from '../modules/activation/statusScenarios';
 import { issueEsim } from '../modules/activation/activationOrchestrationService';
 import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
-import { getOrderByReference } from '../modules/order/orderStore';
+import { getOrderByReference, getAllOrders } from '../modules/order/orderStore';
 import { getJourneyAuditTrail } from '../modules/consentAudit/consentAndAuditService';
-import { hasTimelineEvents, getTimelineEvents } from '../modules/statusTimeline/timelineStore';
-import { computeNextPollMs } from '../modules/statusTimeline/timelineService';
+import { hasTimelineEvents, getTimelineEvents, seedTimelineEvents } from '../modules/statusTimeline/timelineStore';
+import { buildTimeline, computeNextPollMs, startPolling, type TimelineInput } from '../modules/statusTimeline/timelineService';
 
 const router = Router();
+
+// Start background polling loop: every 15 s re-derive timeline from live order state.
+startPolling(() => {
+  return getAllOrders().map((o) => ({
+    orderId: o.orderId,
+    paymentStatus: o.paymentStatus ?? null,
+    verificationStatus: o.verificationStatus ?? null,
+    activationStatus: o.activationState ?? null,
+  }));
+});
 
 router.post('/', (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
@@ -86,7 +95,6 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
     return;
   }
 
-  // Audit events are keyed by orderReference (the public ref)
   const events = await getJourneyAuditTrail(order.orderReference);
   res.status(200).json({
     orderId: order.orderReference,
@@ -102,9 +110,58 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
   });
 });
 
-router.get('/:id/status-timeline', (req: Request, res: Response) => {
+// GET /api/orders/:id/status — unified timeline endpoint (also accessible as /status-timeline for backwards compat)
+function handleStatusTimeline(req: Request, res: Response): void {
   const { id } = req.params;
 
+  // Look up the order to derive live timeline from stored state
+  const order = getOrderByReference(id);
+
+  if (order) {
+    // Re-derive timeline from live order state so it always reflects current DB state
+    const paymentToken = (() => {
+      const s = order.paymentStatus?.toLowerCase();
+      if (s === 'confirmed' || s === 'payment_confirmed') return 'payment_confirmed';
+      if (s === 'failed' || s === 'payment_failed') return 'payment_failed';
+      return 'payment_pending';
+    })();
+
+    const verificationToken = (() => {
+      const s = order.verificationStatus?.toLowerCase();
+      if (!s) return null;
+      if (s === 'completed' || s === 'verified' || s === 'verification_complete') return 'verification_complete';
+      if (s === 'failed' || s === 'verification_failed') return 'verification_failed';
+      return 'verification_pending';
+    })();
+
+    const activationToken = (() => {
+      const s = order.activationState?.toLowerCase();
+      if (!s || s === 'pending') return null;
+      if (s === 'esim_issued') return 'esim_issued';
+      if (s === 'activation_complete' || s === 'completed') return 'activation_complete';
+      if (s === 'activation_failed' || s === 'failed') return 'activation_failed';
+      if (s === 'fulfillment_in_progress') return 'fulfillment_in_progress';
+      return 'activation_pending';
+    })();
+
+    const input: TimelineInput = {
+      orderId: id,
+      paymentStatus: paymentToken,
+      verificationStatus: verificationToken,
+      activationStatus: activationToken,
+      timestamps: { order_placed: order.createdAt },
+    };
+
+    const timeline = buildTimeline(input);
+    // Persist updated timeline back to both in-memory store and DB record
+    seedTimelineEvents(id, timeline);
+
+    const nextPollMs = computeNextPollMs(timeline);
+    res.status(200).json({ orderId: id, timeline, nextPollMs });
+    return;
+  }
+
+  // Fall back to in-memory timeline store (used by tests that seed directly)
   if (!hasTimelineEvents(id)) {
     res.status(404).json({
       errorCode: 'ORDER_NOT_FOUND',
@@ -115,26 +172,10 @@ router.get('/:id/status-timeline', (req: Request, res: Response) => {
 
   const timeline = getTimelineEvents(id);
   const nextPollMs = computeNextPollMs(timeline);
-
   res.status(200).json({ orderId: id, timeline, nextPollMs });
-});
+}
 
-router.get('/:id/status', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const scenario = req.query.scenario as string | undefined;
-
-  if (!scenario) {
-    res.status(404).json({ errorCode: 'SCENARIO_REQUIRED', message: 'Query parameter ?scenario is required for stub responses.' });
-    return;
-  }
-
-  const response = buildStatusResponse(id, scenario);
-  if (!response) {
-    res.status(404).json({ errorCode: 'SCENARIO_NOT_FOUND', message: `Unknown scenario: ${scenario}` });
-    return;
-  }
-
-  res.status(200).json(response);
-});
+router.get('/:id/status', handleStatusTimeline);
+router.get('/:id/status-timeline', handleStatusTimeline);
 
 export default router;

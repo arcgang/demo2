@@ -2,6 +2,8 @@ import {
   StatusEventType,
   TimelineEvent,
   appendTimelineEvent,
+  seedTimelineEvents,
+  getTimelineEvents,
 } from './timelineStore';
 
 export type { TimelineEvent };
@@ -15,7 +17,8 @@ export interface TimelineInput {
 }
 
 const NEXT_POLL_MS_PENDING = 15_000;
-const NEXT_POLL_MS_TERMINAL = 60_000;
+const NEXT_POLL_MS_TERMINAL = 0;
+const POLL_INTERVAL_MS = 15_000;
 
 const EVENT_META: Record<StatusEventType, { label: string; description: string }> = {
   order_placed:            { label: 'Order Placed',            description: 'Your order has been received and is being processed.' },
@@ -142,12 +145,18 @@ function markCurrent(events: TimelineEvent[]): TimelineEvent[] {
   return result;
 }
 
+const TERMINAL_STATES: StatusEventType[] = ['activation_complete', 'activation_failed', 'payment_failed', 'verification_failed'];
+
 export function computeNextPollMs(events: TimelineEvent[]): number {
   if (events.length === 0) return NEXT_POLL_MS_PENDING;
   const current = events[events.length - 1];
-  const terminal: StatusEventType[] = ['activation_complete', 'activation_failed', 'payment_failed', 'verification_failed'];
-  if (terminal.includes(current.eventType)) return NEXT_POLL_MS_TERMINAL;
+  if (TERMINAL_STATES.includes(current.eventType)) return NEXT_POLL_MS_TERMINAL;
   return NEXT_POLL_MS_PENDING;
+}
+
+function isTerminal(events: TimelineEvent[]): boolean {
+  if (events.length === 0) return false;
+  return TERMINAL_STATES.includes(events[events.length - 1].eventType);
 }
 
 export interface ActivationStatusUpdate {
@@ -206,4 +215,84 @@ export function applyVerificationUpdate(
     timestamp: update.timestamp,
     isCurrent: true,
   });
+}
+
+// ── Background polling ────────────────────────────────────────────────────────
+
+export interface OrderStateSnapshot {
+  orderId: string;
+  paymentStatus: string | null;
+  verificationStatus: string | null;
+  activationStatus: string | null;
+}
+
+type OrderStateFetcher = () => OrderStateSnapshot[];
+
+let _fetcher: OrderStateFetcher | null = null;
+let _pollTimer: ReturnType<typeof setInterval> | null = null;
+
+function pollBoundaries(): void {
+  if (!_fetcher) return;
+  const snapshots = _fetcher();
+  const now = new Date().toISOString();
+
+  for (const snap of snapshots) {
+    const current = getTimelineEvents(snap.orderId);
+    if (isTerminal(current)) continue;
+
+    // Map raw status values to state-machine tokens
+    const activation = (() => {
+      const s = snap.activationStatus?.toLowerCase();
+      if (!s) return null;
+      if (s === 'esim_issued') return 'esim_issued';
+      if (s === 'activation_complete' || s === 'completed') return 'activation_complete';
+      if (s === 'activation_failed' || s === 'failed') return 'activation_failed';
+      if (s === 'fulfillment_in_progress') return 'fulfillment_in_progress';
+      return 'activation_pending';
+    })();
+
+    const verification = (() => {
+      const s = snap.verificationStatus?.toLowerCase();
+      if (!s) return null;
+      if (s === 'completed' || s === 'verified' || s === 'verification_complete') return 'verification_complete';
+      if (s === 'failed' || s === 'verification_failed') return 'verification_failed';
+      return 'verification_pending';
+    })();
+
+    const payment = (() => {
+      const s = snap.paymentStatus?.toLowerCase();
+      if (!s) return 'payment_pending';
+      if (s === 'confirmed' || s === 'payment_confirmed') return 'payment_confirmed';
+      if (s === 'failed' || s === 'payment_failed') return 'payment_failed';
+      return 'payment_pending';
+    })();
+
+    // Rebuild timeline from live state and persist
+    const updated = buildTimeline({
+      orderId: snap.orderId,
+      paymentStatus: payment,
+      verificationStatus: verification,
+      activationStatus: activation,
+      timestamps: { order_placed: now },
+    });
+
+    seedTimelineEvents(snap.orderId, updated);
+  }
+}
+
+export function startPolling(fetcher: OrderStateFetcher): void {
+  _fetcher = fetcher;
+  if (_pollTimer) return;
+  _pollTimer = setInterval(pollBoundaries, POLL_INTERVAL_MS);
+  if (typeof _pollTimer === 'object' && _pollTimer !== null && 'unref' in _pollTimer) {
+    (_pollTimer as NodeJS.Timeout).unref();
+  }
+}
+
+export function stopPolling(): void {
+  if (_pollTimer) {
+    clearInterval(_pollTimer);
+    _pollTimer = null;
+  }
+  _fetcher = null;
 }

@@ -363,32 +363,50 @@ describe('GET /api/orders/:id/status-timeline — four-category coverage', () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-5  nextPollMs is a positive integer ≤ 60 000
+// AC-5  nextPollMs contract
 // ─────────────────────────────────────────────────────────────────────────────
+
+const PENDING_ORDER_ID = 'ord_timeline_pending';
+
+function seedPendingOrder(): void {
+  seedTimelineEvents(PENDING_ORDER_ID, [
+    { eventType: 'order_placed',      label: 'Order Placed',      description: 'Your order was received.', timestamp: '2026-07-28T09:00:00Z', isCurrent: false },
+    { eventType: 'payment_confirmed', label: 'Payment Confirmed', description: 'Payment confirmed.',        timestamp: '2026-07-28T09:05:00Z', isCurrent: false },
+    { eventType: 'activation_pending', label: 'Activation Pending', description: 'Activation in progress.', timestamp: null, isCurrent: true },
+  ]);
+}
 
 describe('GET /api/orders/:id/status-timeline — nextPollMs contract', () => {
   let app: Application;
 
   beforeAll(() => {
     clearTimelineStore();
-    seedHappyPathOrder();
+    seedPendingOrder();
     app = getApp();
   });
 
   it('nextPollMs is a number', async () => {
-    const { body } = await fetchTimeline(app, HAPPY_PATH_ORDER_ID);
+    const { body } = await fetchTimeline(app, PENDING_ORDER_ID);
     expect(typeof body.nextPollMs).toBe('number');
   });
 
-  it('nextPollMs is a positive integer', async () => {
-    const { body } = await fetchTimeline(app, HAPPY_PATH_ORDER_ID);
+  it('nextPollMs is a non-negative integer for a pending order', async () => {
+    const { body } = await fetchTimeline(app, PENDING_ORDER_ID);
     expect(body.nextPollMs).toBeGreaterThan(0);
     expect(Number.isInteger(body.nextPollMs)).toBe(true);
   });
 
   it('nextPollMs does not exceed 60 000 ms', async () => {
-    const { body } = await fetchTimeline(app, HAPPY_PATH_ORDER_ID);
+    const { body } = await fetchTimeline(app, PENDING_ORDER_ID);
     expect(body.nextPollMs).toBeLessThanOrEqual(60_000);
+  });
+
+  it('nextPollMs is 0 for a terminal state (no further polling needed)', async () => {
+    clearTimelineStore();
+    seedHappyPathOrder();
+    const freshApp = getApp();
+    const { body } = await fetchTimeline(freshApp, HAPPY_PATH_ORDER_ID);
+    expect(body.nextPollMs).toBe(0);
   });
 });
 
