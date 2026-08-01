@@ -620,6 +620,7 @@ describe('Full checkout journey — AC-7 integration: all audit/consent writes p
   it('exactly four distinct audit event types are present for the order', () => {
     const events = getAuditEventsForOrder(orderRef);
     const types = new Set(events.map((e) => e.eventType));
+    expect(types.size).toBe(4);
     expect(types.has('order_created')).toBe(true);
     expect(types.has('payment_outcome')).toBe(true);
     expect(types.has('verification_outcome')).toBe(true);

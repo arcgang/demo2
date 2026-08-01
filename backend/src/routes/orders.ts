@@ -41,21 +41,27 @@ router.post('/', async (req: Request, res: Response) => {
   const termsConsent = consents?.find((c) => c.purpose === 'terms');
   const marketingConsent = consents?.find((c) => c.purpose === 'marketing');
 
-  await recordConsent({
-    orderId: confirmation.orderReference,
-    sessionId,
-    purpose: 'terms',
-    accepted: termsConsent?.granted ?? false,
-    ipAddress,
-  });
-
-  await recordConsent({
-    orderId: confirmation.orderReference,
-    sessionId,
-    purpose: 'marketing',
-    accepted: marketingConsent?.granted ?? false,
-    ipAddress,
-  });
+  try {
+    await Promise.all([
+      recordConsent({
+        orderId: confirmation.orderReference,
+        sessionId,
+        purpose: 'terms',
+        accepted: termsConsent?.granted ?? false,
+        ipAddress,
+      }),
+      recordConsent({
+        orderId: confirmation.orderReference,
+        sessionId,
+        purpose: 'marketing',
+        accepted: marketingConsent?.granted ?? false,
+        ipAddress,
+      }),
+    ]);
+  } catch (err) {
+    console.error({ msg: 'recordConsent failed in POST /api/orders', err, orderReference: confirmation.orderReference });
+    throw err;
+  }
 
   res.status(201).json(confirmation);
 });

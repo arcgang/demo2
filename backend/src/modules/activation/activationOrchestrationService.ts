@@ -111,3 +111,71 @@ export async function issueEsim(orderId: string): Promise<IssueResult> {
 
   return { outcome: 'ISSUED', activationCode, smdpAddress, activationState: toStatus, orderId };
 }
+
+export async function completeActivation(orderId: string): Promise<void> {
+  const existing = getActivationStatusForOrder(orderId);
+  const fromStatus = existing?.activationState ?? 'ESIM_ISSUED';
+  const toStatus = 'ACTIVATION_COMPLETE';
+  const esimReference = existing?.esimReference ?? orderId;
+
+  persistActivationStatus({
+    orderId,
+    activationState: toStatus,
+    esimReference,
+    activationCode: existing?.activationCode ?? '',
+    smdpAddress: existing?.smdpAddress ?? '',
+    updatedAt: new Date().toISOString(),
+  });
+
+  writeLocalAuditEvent(orderId, 'ACTIVATION_COMPLETE', { esimReference, activationState: toStatus });
+
+  const auditKey = resolveAuditKey(orderId);
+  try {
+    await emitAuditEvent({
+      type: 'activation_status_change',
+      orderId: auditKey,
+      payload: {
+        esim_ref: esimReference,
+        from_status: fromStatus,
+        to_status: toStatus,
+      },
+    });
+  } catch (err) {
+    console.error({ msg: 'emitAuditEvent failed in completeActivation', err, orderId });
+    throw err;
+  }
+}
+
+export async function failActivation(orderId: string): Promise<void> {
+  const existing = getActivationStatusForOrder(orderId);
+  const fromStatus = existing?.activationState ?? 'ESIM_ISSUED';
+  const toStatus = 'ACTIVATION_FAILED';
+  const esimReference = existing?.esimReference ?? orderId;
+
+  persistActivationStatus({
+    orderId,
+    activationState: toStatus,
+    esimReference,
+    activationCode: existing?.activationCode ?? '',
+    smdpAddress: existing?.smdpAddress ?? '',
+    updatedAt: new Date().toISOString(),
+  });
+
+  writeLocalAuditEvent(orderId, 'ACTIVATION_FAILED', { esimReference, activationState: toStatus });
+
+  const auditKey = resolveAuditKey(orderId);
+  try {
+    await emitAuditEvent({
+      type: 'activation_status_change',
+      orderId: auditKey,
+      payload: {
+        esim_ref: esimReference,
+        from_status: fromStatus,
+        to_status: toStatus,
+      },
+    });
+  } catch (err) {
+    console.error({ msg: 'emitAuditEvent failed in failActivation', err, orderId });
+    throw err;
+  }
+}
