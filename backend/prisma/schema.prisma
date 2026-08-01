@@ -1,0 +1,68 @@
+// Prisma schema for the Vodacom Shop backend demo.
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VerificationCaseType {
+  KYC
+  RICA
+}
+
+enum VerificationCaseStatus {
+  pending
+  verified
+  failed
+}
+
+model VerificationCase {
+  id             String                 @id @default(uuid())
+  orderId        String
+  customerId     String
+  type           VerificationCaseType
+  status         VerificationCaseStatus @default(pending)
+  submittedAt    DateTime               @default(now())
+  resolvedAt     DateTime?
+  identityFields Json
+  auditRef       String
+
+  @@map("verification_case")
+}
+
+enum ConsentType {
+  terms_and_privacy
+  marketing
+  personalization
+}
+
+model ConsentRecord {
+  id                 String      @id @default(uuid())
+  userId             String?     @map("user_id")
+  sessionId          String      @map("session_id")
+  consentType        ConsentType @map("consent_type")
+  granted            Boolean
+  purposeDescription String?     @map("purpose_description")
+  ipAddress          String?     @map("ip_address")
+  userAgent          String?     @map("user_agent")
+  createdAt          DateTime    @default(now()) @map("created_at")
+
+  @@map("consent_records")
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  eventType  String   @map("event_type")
+  entityId   String?  @map("entity_id")
+  entityType String?  @map("entity_type")
+  actorId    String?  @map("actor_id")
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("audit_events")
+}
