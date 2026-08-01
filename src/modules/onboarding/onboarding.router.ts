@@ -57,6 +57,9 @@ function buildBannerHtml(scenario: string): string {
 function buildFieldErrors(fields: Record<string, string | undefined>): Array<{ field: string; message: string }> {
   const errors: Array<{ field: string; message: string }> = [];
   for (const field of REQUIRED_PORTING_FIELDS) {
+    // marketCode is a hidden system field injected by the router; the market-context
+    // check handles missing/unsupported markets with a user-readable 403 page.
+    if (field === 'marketCode') continue;
     const value = fields[field];
     if (value === undefined || value === null || value === '') {
       errors.push({ field, message: `${field} is required and must not be empty.` });
@@ -84,7 +87,7 @@ function renderPortingForm(
   const val = (name: string) => escapeHtml(prefilled[name] ?? '');
 
   return `
-  <form method="POST" action="/onboarding/porting" novalidate>
+  <form method="POST" action="/onboarding/porting">
     <input type="hidden" name="marketCode" value="${escapeHtml(market)}">
 
     <div class="form-group">
@@ -381,13 +384,13 @@ onboardingRouter.post('/porting', async (req: Request, res: Response) => {
       res.status(201).json(apiResponse.body);
       return;
     }
-    // Re-render the form page with the scenario banner, then let the user continue
-    if (scenario === 'verification_required' || scenario === 'delayed_activation') {
-      const bannerHtml = buildBannerHtml(scenario);
-      res.status(200).type('text/html').send(renderPortingPage(marketCode, bannerHtml, [], {}));
-      return;
-    }
-    res.redirect(303, '/onboarding/porting/confirmation');
+    // Redirect to confirmation regardless of scenario so the submitted form is never
+    // re-rendered blank — prevents double-submission when a scenario banner is shown.
+    const dest =
+      scenario === 'verification_required' || scenario === 'delayed_activation'
+        ? `/onboarding/porting/confirmation?scenario=${encodeURIComponent(scenario)}`
+        : '/onboarding/porting/confirmation';
+    res.redirect(303, dest);
     return;
   }
 
@@ -415,16 +418,20 @@ onboardingRouter.post('/porting', async (req: Request, res: Response) => {
 
 // GET /porting/confirmation — porting request received confirmation page
 onboardingRouter.get('/porting/confirmation', (req: Request, res: Response) => {
+  const scenario = (req.query.scenario as string) ?? '';
+  const bannerHtml = buildBannerHtml(scenario);
   res.status(200).type('text/html').send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Porting Request Received - Vodacom Shop</title>
+  <style>${PAGE_STYLES}</style>
 </head>
 <body>
   <header class="header"><a href="/">Vodacom Shop</a></header>
   <main>
     <h1>Porting Request Received</h1>
+    ${bannerHtml}
     <p>Your number porting request has been received. We will contact you to confirm the transfer.</p>
     <a href="/onboarding/next">Continue</a>
   </main>
