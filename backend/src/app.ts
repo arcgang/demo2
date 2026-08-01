@@ -5,6 +5,7 @@ import upgradeRouter from './routes/upgrade';
 import journeysRouter from './routes/journeys';
 import marketContextRouter from './routes/marketContext';
 import catalogRouter from './routes/catalog';
+import devicesRouter from './routes/devices';
 
 export function createApp(): Application {
   const app = express();
@@ -15,6 +16,7 @@ export function createApp(): Application {
   app.use('/api/journeys', journeysRouter);
   app.use('/api/market-context', marketContextRouter);
   app.use('/api/catalog', catalogRouter);
+  app.use('/api/devices', devicesRouter);
   return app;
 }
 
