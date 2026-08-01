@@ -11,6 +11,16 @@ export interface ProductRecommendations {
   attachments: AttachmentItem[];
 }
 
+export interface ProductHero {
+  deviceId: string;
+  name: string;
+  priceOnceOff: number;
+  monthlyFrom: number;
+  badgeLabels: string[];
+  colors: string[];
+  storageOptions: string[];
+}
+
 const IPHONE15PRO_RECOMMENDATIONS: ProductRecommendations = {
   deviceId: 'prod_za_iphone15pro_256',
   attachments: [
@@ -76,4 +86,31 @@ const RECOMMENDATIONS_BY_SLUG = new Map<string, ProductRecommendations>([
 
 export function getRecommendationsBySlug(slug: string): ProductRecommendations | undefined {
   return RECOMMENDATIONS_BY_SLUG.get(slug);
+}
+
+const RECOMMENDATIONS_BY_DEVICE_ID = new Map<string, ProductRecommendations>(
+  [...RECOMMENDATIONS_BY_SLUG.values()].map(r => [r.deviceId, r]),
+);
+
+export function getRecommendationsByDeviceId(deviceId: string): ProductRecommendations | undefined {
+  return RECOMMENDATIONS_BY_DEVICE_ID.get(deviceId);
+}
+
+const HERO_BY_SLUG = new Map<string, ProductHero>([
+  [
+    'iphone-15-pro',
+    {
+      deviceId: 'prod_za_iphone15pro_256',
+      name: 'iPhone 15 Pro 256GB',
+      priceOnceOff: 24999,
+      monthlyFrom: 899,
+      badgeLabels: ['5G', 'Trade-In Eligible', 'In Stock'],
+      colors: ['Natural Titanium', 'Blue Titanium', 'White Titanium', 'Black Titanium'],
+      storageOptions: ['128GB', '256GB', '512GB', '1TB'],
+    },
+  ],
+]);
+
+export function getProductHeroBySlug(slug: string): ProductHero | undefined {
+  return HERO_BY_SLUG.get(slug);
 }

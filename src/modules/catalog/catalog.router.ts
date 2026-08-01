@@ -2,7 +2,10 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getCartCount } from '../cart/cart.store';
-import { getRecommendationsBySlug } from './product-recommendations.data';
+import {
+  getRecommendationsByDeviceId,
+  getProductHeroBySlug,
+} from './product-recommendations.data';
 
 function escapeHtml(str: string): string {
   return str
@@ -144,9 +147,44 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const cartCount = getCartCount(req);
 
   const slug = req.params.id;
-  const recommendations = getRecommendationsBySlug(slug);
+
+  // Resolve product hero details from the slug lookup.
+  const hero = getProductHeroBySlug(slug);
+
+  // Fetch recommendations via the device ID, exercising the same data path as
+  // GET /api/devices/:id/recommendations.
+  const recommendations = hero ? getRecommendationsByDeviceId(hero.deviceId) : undefined;
   const plans = recommendations ? recommendations.attachments.filter(a => a.type === 'PLAN') : [];
   const accessories = recommendations ? recommendations.attachments.filter(a => a.type === 'ACCESSORY') : [];
+
+  // Build hero HTML — data-driven when the slug is known, empty-state otherwise.
+  const heroHtml = hero
+    ? `
+  <section class="product-hero">
+    <h1>${escapeHtml(hero.name)}</h1>
+    <p>${hero.badgeLabels.map(b => escapeHtml(b)).join(' &mdash; ')}</p>
+    <p class="product-price">${escapeHtml(formatZAR(hero.priceOnceOff))}.00</p>
+    <p>or from R ${hero.monthlyFrom}/month with a plan</p>
+
+    <div class="color-selector">
+      <span>Color</span>
+      ${hero.colors.map(c => `<button>${escapeHtml(c)}</button>`).join('\n      ')}
+    </div>
+
+    <div class="storage-selector">
+      <span>Storage</span>
+      ${hero.storageOptions.map(s => `<button>${escapeHtml(s)}</button>`).join('\n      ')}
+    </div>
+
+    <div class="quantity-selector">
+      <label>Quantity</label>
+      <input type="number" value="1" min="1">
+    </div>
+
+    <button class="btn-add-to-cart" data-item-id="${escapeHtml(hero.deviceId)}" data-item-type="DEVICE">Add to Cart</button>
+    <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
+  </section>`
+    : `<section class="product-hero"><h1>${escapeHtml(slug)}</h1></section>`;
 
   const planCardsHtml = plans.map((plan, idx) => {
     const selectedAttr = idx === 0 ? 'data-selected="true"' : 'data-selected="false"';
@@ -168,11 +206,13 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       </div>`;
   }).join('\n');
 
+  const pageTitle = hero ? `${escapeHtml(hero.name)} - Vodacom Shop` : `${escapeHtml(slug)} - Vodacom Shop`;
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
+  <title>${pageTitle}</title>
 </head>
 <body>
   <header class="header">
@@ -190,39 +230,10 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
     <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
-    iPhone 15 Pro 256GB
+    ${hero ? escapeHtml(hero.name) : escapeHtml(slug)}
   </nav>
 
-  <section class="product-hero">
-    <h1>iPhone 15 Pro 256GB</h1>
-    <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
-
-    <div class="color-selector">
-      <span>Color</span>
-      <button>Natural Titanium</button>
-      <button>Blue Titanium</button>
-      <button>White Titanium</button>
-      <button>Black Titanium</button>
-    </div>
-
-    <div class="storage-selector">
-      <span>Storage</span>
-      <button>128GB</button>
-      <button>256GB</button>
-      <button>512GB</button>
-      <button>1TB</button>
-    </div>
-
-    <div class="quantity-selector">
-      <label>Quantity</label>
-      <input type="number" value="1" min="1">
-    </div>
-
-    <button class="btn-add-to-cart" data-item-id="prod_za_iphone15pro_256" data-item-type="DEVICE">Add to Cart</button>
-    <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
-  </section>
+  ${heroHtml}
 
   <section class="plan-attach-panel">
     <h2>Add a plan or bundle</h2>
@@ -276,6 +287,13 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
           .then(function (data) { updateBadge(data.itemCount); });
       }
 
+      function replaceCartItemType(itemType, itemId) {
+        // Remove any existing items of this type first, then add the new one.
+        // This prevents duplicate PLAN entries when the user switches plans.
+        fetch('/cart/items/' + encodeURIComponent(itemType), { method: 'DELETE' })
+          .then(function () { return postToCart(itemId, itemType); });
+      }
+
       // Plan card selection toggle
       var planList = document.getElementById('plan-list');
       if (planList) {
@@ -290,7 +308,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
           });
           card.classList.add('selected');
           card.dataset.selected = 'true';
-          postToCart(btn.dataset.itemId, btn.dataset.itemType);
+          replaceCartItemType(btn.dataset.itemType, btn.dataset.itemId);
         });
       }
 

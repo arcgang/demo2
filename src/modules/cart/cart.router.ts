@@ -26,3 +26,14 @@ cartRouter.get('/', (req: Request, res: Response) => {
   }
   res.status(200).json({ itemCount: cart.items.length, items: cart.items });
 });
+
+// Remove all items of the given type — used to replace the selected plan without accumulating duplicates.
+cartRouter.delete('/items/:itemType', (req: Request, res: Response) => {
+  const { itemType } = req.params;
+  const cart = lookupCart(req);
+  if (cart) {
+    cart.items = cart.items.filter(i => i.itemType !== itemType);
+  }
+  const count = cart ? cart.items.length : 0;
+  res.status(200).json({ itemCount: count });
+});
