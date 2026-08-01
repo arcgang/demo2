@@ -4,6 +4,7 @@ import onboardingRouter from './routes/onboarding';
 import upgradeRouter from './routes/upgrade';
 import journeysRouter from './routes/journeys';
 import marketContextRouter from './routes/marketContext';
+import configMarketRouter from './routes/configMarket';
 import catalogRouter from './routes/catalog';
 import devicesRouter from './routes/devices';
 
@@ -15,6 +16,7 @@ export function createApp(): Application {
   app.use('/api/upgrade', upgradeRouter);
   app.use('/api/journeys', journeysRouter);
   app.use('/api/market-context', marketContextRouter);
+  app.use('/api/config/market', configMarketRouter);
   app.use('/api/catalog', catalogRouter);
   app.use('/api/devices', devicesRouter);
   return app;

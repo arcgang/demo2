@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
+import { getDefaultMarketContext, MarketContext } from '../market/marketConfig';
 
 export const catalogRouter = Router();
 
@@ -99,12 +100,18 @@ function renderSharedFooter(): string {
 </footer>`;
 }
 
-function renderPage(title: string, body: string): string {
+function renderMarketContextScript(ctx: MarketContext): string {
+  return `<script id="market-context-data" type="application/json">${JSON.stringify(ctx)}</script>`;
+}
+
+function renderPage(title: string, body: string, ctx?: MarketContext): string {
+  const marketScript = renderMarketContextScript(ctx ?? getDefaultMarketContext());
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>${title}</title>
+  ${marketScript}
 </head>
 <body>
 ${renderSharedHeader()}
@@ -314,6 +321,8 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
     return;
   }
 
+  const marketCtx = getDefaultMarketContext();
+
   const plans = rec.attachments.filter(a => a.type === 'PLAN');
   const addons = rec.attachments.filter(a => a.type === 'ADDON');
 
@@ -345,7 +354,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const initialTotalMonthly = defaultPlanMonthly + defaultAddonMonthly;
 
   const devicePrice = rec.devicePrice;
-  const vat = parseFloat((devicePrice * 0.15).toFixed(2));
+  const vat = parseFloat((devicePrice * marketCtx.vatRate).toFixed(2));
   const totalOnceOff = parseFloat((devicePrice + vat).toFixed(2));
 
   const initialPlanRow = defaultPlan
@@ -364,6 +373,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
 <head>
   <meta charset="UTF-8">
   <title>Configure Your Bundle - Vodacom Shop</title>
+  ${renderMarketContextScript(marketCtx)}
 </head>
 <body>
   <header class="header">
@@ -427,7 +437,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
 
     <dl class="pricing-totals">
       <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">${fmtPrice(devicePrice)}</dd>
-      <dt>VAT (15%)</dt><dd id="vat-amount">${fmtPrice(vat)}</dd>
+      <dt>${marketCtx.taxLabel} (${(marketCtx.vatRate * 100).toFixed(0)}%)</dt><dd id="vat-amount">${fmtPrice(vat)}</dd>
       <dt>Total Once-Off</dt><dd id="total-once-off">${fmtPrice(totalOnceOff)}</dd>
       <dt>Total Monthly</dt><dd id="total-monthly">${fmtPrice(initialTotalMonthly)}</dd>
     </dl>
@@ -440,7 +450,9 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       var DEVICE_PRICE = ${devicePrice};
       var DEVICE_ID = '${rec.deviceId}';
       var DEVICE_NAME = '${rec.deviceName}';
-      var VAT_RATE = 0.15;
+      var _marketCtxEl = document.getElementById('market-context-data');
+      var _marketConfig = _marketCtxEl ? JSON.parse(_marketCtxEl.textContent || '{}') : {};
+      var VAT_RATE = typeof _marketConfig.vatRate === 'number' ? _marketConfig.vatRate : ${marketCtx.vatRate};
 
       function fmt(n) {
         return 'R ' + n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');

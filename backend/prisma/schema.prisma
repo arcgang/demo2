@@ -10,6 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model MarketConfig {
+  marketCode           String   @id @db.VarChar(8)
+  marketName           String   @db.VarChar(100)
+  localeCode           String   @db.VarChar(16)
+  currencyCode         String   @db.VarChar(8)
+  taxLabel             String   @db.VarChar(32)
+  vatRate              Decimal  @db.Decimal(5, 4)
+  enabledPaymentMethods String[] @db.Text
+  mobileMoneyEnabled   Boolean  @default(false)
+  cardPaymentEnabled   Boolean  @default(true)
+  liteModeDefault      Boolean  @default(false)
+  portingSupported     Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("market_config")
+}
+
 enum VerificationCaseType {
   KYC
   RICA

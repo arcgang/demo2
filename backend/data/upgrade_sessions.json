@@ -92,5 +92,193 @@
     "eligibility": null,
     "financing": null,
     "tradeIn": null
+  },
+  "6d18bf8e-ed7b-489d-99e0-27e19f03116a": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "bc7029f5-963b-4246-bcde-5e8298600c72": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "0d4c1ba1-bf06-4637-8fd8-069ce8595593": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "1a7eb98b-ddf2-490c-afce-5370a3c40e10": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "98b04eb0-109d-47f7-b56a-4680a170202e": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "currentPlan": "plan_red"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "2883cad2-bf89-42b1-aa45-2b4c5c3faf4d": {
+    "eligibility": null,
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": null
+  },
+  "441abb9d-f38e-40a7-a42f-e64791f4b87e": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple"
+    }
+  },
+  "990ef311-a900-4e41-8f57-a60c91f07a45": {
+    "eligibility": {
+      "upgradeWindowOpen": false
+    },
+    "financing": {
+      "termMonths": 12,
+      "monthlyAmount": 450
+    },
+    "tradeIn": null
+  },
+  "164950b1-93c6-49c8-a78d-439f6fc18ad9": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 1000
+    }
+  },
+  "77c75d72-16ad-44b2-b3e0-a7fc86147dad": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500
+    }
+  },
+  "2e745404-548d-434d-8270-e5fa7cbbb66a": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "tag": "session-a"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "3c8bd41c-c89a-4e7e-b380-3facc37267b9": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "5bc37d83-2329-4d2b-9cd2-79ec04acb5e0": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "9ea08028-7800-458a-b417-5aef6d8d6498": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "c9d6bddf-9725-4071-857d-6ec390a47aa6": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "cc76326e-7c99-4ffa-928e-a82224e84236": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "b8730c06-e766-436a-9fc4-0f75b7aed85a": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "currentPlan": "plan_red"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "75c7bad0-1235-41b5-af40-b006e2d09458": {
+    "eligibility": null,
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": null
+  },
+  "80bd51bc-cbd1-40c3-8f06-f8e8f797faec": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple"
+    }
+  },
+  "4f0d4961-e126-43bf-940e-499906c96356": {
+    "eligibility": {
+      "upgradeWindowOpen": false
+    },
+    "financing": {
+      "termMonths": 12,
+      "monthlyAmount": 450
+    },
+    "tradeIn": null
+  },
+  "5f1e0f3d-d534-4e29-baa2-edba5d701d70": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 1000
+    }
+  },
+  "74ea8dc3-c024-44dc-8ea2-982395dec5d6": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500
+    }
+  },
+  "127408ed-56a5-41ed-9d99-7f991866cdff": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "tag": "session-a"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "711dc4d1-9349-4204-9b6a-854e903a012c": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
   }
 }
