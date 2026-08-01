@@ -52,8 +52,59 @@ function renderSharedHeader(): string {
   <span class="market-indicator">South Africa - ZAR</span>
   <span class="cart-badge">Cart</span>
   <button class="btn-account">Account</button>
+  <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
 </header>`;
 }
+
+const LITE_MODE_JS = `
+(function() {
+  var LITE_QUERY_PARAM = 'lite=true';
+  function isAutoLite() {
+    try {
+      var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (conn) {
+        if (conn.saveData) return true;
+        if (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g') return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+  function getLitePreference() {
+    try { return localStorage.getItem('vodacom-lite-mode'); } catch(e) { return null; }
+  }
+  function setLitePreference(val) {
+    try { localStorage.setItem('vodacom-lite-mode', val); } catch(e) {}
+  }
+  function isLiteActive() {
+    var pref = getLitePreference();
+    if (pref === 'on') return true;
+    if (pref === 'off') return false;
+    return isAutoLite();
+  }
+  function reloadWithLite(on) {
+    var url = new URL(window.location.href);
+    if (on) { url.searchParams.set('lite', 'true'); }
+    else { url.searchParams.delete('lite'); }
+    window.location.href = url.toString();
+  }
+  var toggle = document.getElementById('lite-mode-toggle');
+  if (toggle) {
+    var active = isLiteActive();
+    toggle.textContent = active ? 'Lite Mode: ON' : 'Lite Mode';
+    toggle.addEventListener('click', function() {
+      var nowActive = !isLiteActive();
+      setLitePreference(nowActive ? 'on' : 'off');
+      reloadWithLite(nowActive);
+    });
+  }
+  // On page load: navigate data-lite-href links when lite mode is active
+  if (isLiteActive()) {
+    document.querySelectorAll('a[data-lite-href]').forEach(function(a) {
+      a.href = a.getAttribute('data-lite-href');
+    });
+  }
+})();
+`;
 
 function renderSharedFooter(): string {
   return `<footer class="footer">
@@ -99,51 +150,60 @@ function renderSharedFooter(): string {
 </footer>`;
 }
 
-function renderPage(title: string, body: string): string {
+function renderPage(title: string, body: string, liteMode = false): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>${title}</title>
 </head>
-<body>
+<body${liteMode ? ' data-lite-mode="true"' : ''}>
 ${renderSharedHeader()}
 ${body}
 ${renderSharedFooter()}
+<script>${LITE_MODE_JS}</script>
 </body>
 </html>`;
 }
 
 // ─── Home page (Screen 9: wireframe_storefront_home.html) ─────────────────────
 
-catalogRouter.get('/', (_req: Request, res: Response) => {
-  const body = `
+catalogRouter.get('/', (req: Request, res: Response) => {
+  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
+
+  const heroSection = liteMode ? '' : `
   <section class="hero">
     <h1>Welcome to Vodacom Shop</h1>
     <p>Discover devices, plans, and bundles tailored to your market</p>
     <a href="/catalog">Shop Devices</a>
     <a href="/plans">Explore Plans</a>
-  </section>
+  </section>`;
+
+  const liteQ = liteMode ? '?lite=true' : '';
+  const liteQAmp = liteMode ? '&lite=true' : '';
+
+  const body = `
+  ${heroSection}
 
   <section class="categories">
     <h2>Shop by Category</h2>
     <div class="category-tiles">
-      <a href="/catalog?category=smartphones">
+      <a href="/catalog?category=smartphones${liteQAmp}">
         <h3>Smartphones</h3>
         <p>Latest devices from top brands</p>
         <span>Browse</span>
       </a>
-      <a href="/catalog?category=tablets">
+      <a href="/catalog?category=tablets${liteQAmp}">
         <h3>Tablets</h3>
         <p>Work and play on the go</p>
         <span>Browse</span>
       </a>
-      <a href="/catalog?category=sim-esim">
+      <a href="/catalog?category=sim-esim${liteQAmp}">
         <h3>SIM &amp; eSIM</h3>
         <p>Get connected instantly</p>
         <span>Browse</span>
       </a>
-      <a href="/catalog?category=accessories">
+      <a href="/catalog?category=accessories${liteQAmp}">
         <h3>Accessories</h3>
         <p>Complete your setup</p>
         <span>Browse</span>
@@ -154,10 +214,10 @@ catalogRouter.get('/', (_req: Request, res: Response) => {
   <section class="trade-in-banner">
     <h2>Trade in your old device and save</h2>
     <p>Get up to R 5,000 credit towards your next purchase</p>
-    <a href="/upgrade/trade-in">Get a Valuation</a>
+    <a href="/upgrade/trade-in${liteQ}">Get a Valuation</a>
   </section>`;
 
-  res.status(200).type('text/html').send(renderPage('Vodacom Shop - Welcome', body));
+  res.status(200).type('text/html').send(renderPage('Vodacom Shop - Welcome', body, liteMode));
 });
 
 // ─── Product listing page (Screen 8: wireframe_product_listing.html) ──────────
@@ -173,13 +233,22 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
     ? `<div class="lite-banner">Lite Mode Active - Optimized for faster browsing</div>`
     : '';
 
+  const liteQAmp = liteMode ? '&lite=true' : '';
+  const productCardClass = liteMode ? 'product-card product-card-lite' : 'product-card';
+
+  // Build lite-mode prefetch hints: <a> tags carrying ?lite=true for AC-4 href detection
+  const litePrefetchLinks = liteMode
+    ? products.map(p => `<a href="/product/${p.slug}?lite=true" class="lite-product-link" aria-hidden="true" tabindex="-1" style="display:none"></a>`).join('\n')
+    : '';
+
   const productCards = products.map(p => {
     const badges = p.badges.map(b => `<span class="badge">${b}</span>`).join('');
+    const productHref = `/product/${p.slug}`;
     const cta = p.isPurchasable
-      ? `<a href="/product/${p.slug}" class="btn-view-details">View Details</a><button class="btn-add-to-cart" data-slug="${p.slug}">Add to Cart</button>`
-      : `<a href="/product/${p.slug}" class="btn-view-details">View Details</a>`;
+      ? `<a href="${productHref}" class="btn-view-details">View Details</a><button class="btn-add-to-cart" data-slug="${p.slug}">Add to Cart</button>`
+      : `<a href="${productHref}" class="btn-view-details">View Details</a>`;
     return `
-      <div class="product-card" data-brand="${p.brand}" data-price="${p.price}" data-storage="${p.storage}" data-availability="${p.availability}" data-purchasable="${p.isPurchasable}">
+      <div class="${productCardClass}" data-brand="${p.brand}" data-price="${p.price}" data-storage="${p.storage}" data-availability="${p.availability}" data-purchasable="${p.isPurchasable}">
         <div class="product-badges">${badges}</div>
         <h3>${p.name}</h3>
         <p class="product-price">${fmtStorefrontPrice(p.price)}</p>
@@ -231,6 +300,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
         <a href="#">3</a>
         <a href="#">Next</a>
       </nav>
+      ${litePrefetchLinks}
     </main>
   </div>
 
@@ -271,7 +341,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
     })();
   </script>`;
 
-  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body));
+  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body, liteMode));
 });
 
 function renderOfferCard(offer: PrepaidUpsellOffer): string {
@@ -546,9 +616,46 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
 
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
+  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
   const offers = context ? getUpsellOffersByContext(context) : [];
 
   const upsellPanel = renderUpsellPanel(offers);
+
+  const liteBanner = liteMode
+    ? `<div class="lite-banner">Lite Mode Active - Optimized for faster browsing</div>`
+    : '';
+
+  const recommendationsSection = liteMode ? '' : `
+  <section class="recommendations">
+    <h2>Complete your purchase</h2>
+    <div class="recommendations-carousel">
+      <div class="rec-item">
+        <h4>AirPods Pro (2nd Gen)</h4>
+        <p class="rec-price">R 4,999</p>
+        <button class="btn-add-to-cart" data-slug="airpods-pro">Add to Cart</button>
+      </div>
+      <div class="rec-item">
+        <h4>iPhone 15 Pro Case</h4>
+        <p class="rec-price">R 799</p>
+        <button class="btn-add-to-cart" data-slug="iphone-15-pro-case">Add to Cart</button>
+      </div>
+      <div class="rec-item">
+        <h4>20W USB-C Power Adapter</h4>
+        <p class="rec-price">R 399</p>
+        <button class="btn-add-to-cart" data-slug="20w-usb-c-adapter">Add to Cart</button>
+      </div>
+      <div class="rec-item">
+        <h4>Screen Protector</h4>
+        <p class="rec-price">R 299</p>
+        <button class="btn-add-to-cart" data-slug="screen-protector">Add to Cart</button>
+      </div>
+    </div>
+  </section>`;
+
+  const liteQ = liteMode ? '?lite=true' : '';
+  const liteQAmp = liteMode ? '&lite=true' : '';
+
+  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -556,7 +663,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <meta charset="UTF-8">
   <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
 </head>
-<body>
+<body${bodyAttr}>
   <header class="header">
     <a href="/">Vodacom</a>
     <nav>
@@ -565,14 +672,17 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
+    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
   </header>
 
   <nav class="breadcrumb">
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
-    <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
+    <a href="/catalog?category=smartphones${liteQAmp}">Smartphones</a> &rsaquo;
     iPhone 15 Pro 256GB
   </nav>
+
+  ${liteBanner}
 
   <section class="product-hero">
     <h1>iPhone 15 Pro 256GB</h1>
@@ -632,9 +742,193 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     </div>
   </section>
 
-  <section class="product-details">
-    <h2>Complete your purchase</h2>
-  </section>
+  ${recommendationsSection}
+
+  <script>${LITE_MODE_JS}</script>
+  <script>
+    // Propagate lite=true to API calls from this page
+    var LITE_PARAM = '${liteMode ? 'true' : ''}';
+    var apiBase = '/api/catalog/products/prod_za_iphone15pro_256' + (LITE_PARAM ? '?lite=true' : '');
+  </script>
+</body>
+</html>`;
+
+  res.status(200).type('text/html').send(html);
+});
+
+// ─── Cart page (Screen 2: wireframe_cart.html) ────────────────────────────────
+
+catalogRouter.get('/cart', (req: Request, res: Response) => {
+  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
+  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Your Cart - Vodacom Shop</title>
+</head>
+<body${bodyAttr}>
+  <header class="header">
+    <a href="/">Vodacom Shop</a>
+    <nav class="nav-main">
+      <a href="/catalog">Devices</a>
+      <a href="/plans">Plans</a>
+      <a href="/accessories">Accessories</a>
+      <a href="/support">Support</a>
+    </nav>
+    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
+    <button>Account</button>
+    <button>Cart</button>
+  </header>
+
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo; Cart
+  </nav>
+
+  <main class="main-content">
+    <h1>Your Cart</h1>
+    <p>3 items</p>
+
+    <div class="cart-items" id="cart-items">
+      <div class="cart-item">
+        <h3>iPhone 15 Pro</h3>
+        <p>Natural Titanium, 256GB</p>
+        <p>Unlimited 20GB Plan attached</p>
+        <span>1</span>
+        <a href="#">Remove</a>
+        <p class="item-price">R 18,999</p>
+        <p class="item-monthly">+ R 799/month</p>
+      </div>
+      <div class="cart-item">
+        <h3>iPhone 15 Pro Silicone Case</h3>
+        <p>Storm Blue</p>
+        <span>1</span>
+        <a href="#">Remove</a>
+        <p class="item-price">R 599</p>
+      </div>
+      <div class="cart-item">
+        <h3>20W USB-C Power Adapter</h3>
+        <p>Fast charging compatible</p>
+        <span>1</span>
+        <a href="#">Remove</a>
+        <p class="item-price">R 399</p>
+      </div>
+    </div>
+
+    <div class="promo-row">
+      <input type="text" name="promo" placeholder="Promo code">
+      <button>Apply</button>
+    </div>
+  </main>
+
+  <aside class="summary-card">
+    <h2>Order Summary</h2>
+    <dl>
+      <dt>Device</dt><dd>R 18,999.00</dd>
+      <dt>Accessories</dt><dd>R 998.00</dd>
+      <dt>Activation Fee</dt><dd>R 0.00</dd>
+      <dt>Subtotal</dt><dd>R 19,997.00</dd>
+      <dt>Monthly Plan</dt><dd>R 799.00</dd>
+      <dt>VAT (15%)</dt><dd>R 2,999.55</dd>
+      <dt>Trade-In Credit</dt><dd>- R 2,500.00</dd>
+      <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
+    </dl>
+    <button class="btn-checkout">Proceed to Checkout</button>
+    <a href="/catalog">Continue Shopping</a>
+    <p>Secure checkout with encrypted payment</p>
+  </aside>
+
+  <script>${LITE_MODE_JS}</script>
+</body>
+</html>`;
+
+  res.status(200).type('text/html').send(html);
+});
+
+// ─── Checkout page (Screen 3: wireframe_checkout_payment.html) ────────────────
+
+catalogRouter.get('/checkout', (req: Request, res: Response) => {
+  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
+  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout - Vodacom Shop</title>
+</head>
+<body${bodyAttr}>
+  <header class="header">
+    <a href="/">Vodacom Shop</a>
+    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
+  </header>
+
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo;
+    <a href="/cart">Cart</a> &rsaquo;
+    Checkout
+  </nav>
+
+  <main class="main-content">
+    <h1>Checkout</h1>
+
+    <section class="customer-details">
+      <h2>1 Customer Details</h2>
+      <label for="first-name">First Name</label>
+      <input type="text" id="first-name" name="first-name" required>
+      <label for="last-name">Last Name</label>
+      <input type="text" id="last-name" name="last-name" required>
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" required>
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" name="phone" required>
+      <label for="address">Street Address</label>
+      <input type="text" id="address" name="address" required>
+      <label for="city">City</label>
+      <input type="text" id="city" name="city" required>
+      <label for="postal-code">Postal Code</label>
+      <input type="text" id="postal-code" name="postal-code" required>
+    </section>
+
+    <section class="payment-method">
+      <h2>2 Payment Method</h2>
+      <label><input type="radio" name="payment-method" value="card" checked> Credit or Debit Card</label>
+      <label><input type="radio" name="payment-method" value="mobile-money"> Mobile Money</label>
+      <label for="card-number">Card Number</label>
+      <input type="text" id="card-number" name="card-number" required maxlength="19">
+      <label for="expiry">Expiry Date</label>
+      <input type="text" id="expiry" name="expiry" required maxlength="5">
+      <label for="cvv">CVV</label>
+      <input type="text" id="cvv" name="cvv" required maxlength="4">
+      <label for="cardholder-name">Cardholder Name</label>
+      <input type="text" id="cardholder-name" name="cardholder-name" required>
+    </section>
+
+    <section class="terms-consent">
+      <h2>3 Terms &amp; Consent</h2>
+      <label for="terms"><input type="checkbox" id="terms" name="terms" required> I agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a> (Required)</label>
+      <label for="marketing"><input type="checkbox" id="marketing" name="marketing"> I consent to receiving marketing communications (Optional)</label>
+    </section>
+
+    <button class="btn-place-order">Place Order</button>
+  </main>
+
+  <aside class="summary-card">
+    <h3>Order Summary</h3>
+    <dl>
+      <dt>iPhone 15 Pro 256GB</dt><dd>R 18,999</dd>
+      <dt>Silicone Case</dt><dd>R 599</dd>
+      <dt>20W Power Adapter</dt><dd>R 399</dd>
+      <dt>Once-Off Subtotal</dt><dd>R 19,997.00</dd>
+      <dt>Monthly Plan</dt><dd>R 799.00</dd>
+      <dt>VAT (15%)</dt><dd>R 2,999.55</dd>
+      <dt>Trade-In Credit</dt><dd>- R 2,500.00</dd>
+      <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
+    </dl>
+  </aside>
+
+  <script>${LITE_MODE_JS}</script>
 </body>
 </html>`;
 
