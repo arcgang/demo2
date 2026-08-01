@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse, Milestone } from './order-status-scenarios';
+import { issueEsim, getOrder, getActivation } from './activation-store';
 
 function escapeHtml(str: string): string {
   return str
@@ -9,16 +10,6 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
-export const ordersRouter = Router();
-
-const MILESTONE_LABELS: Record<string, string> = {
-  order_placed: 'Order Placed',
-  payment_confirmed: 'Payment Confirmed',
-  verification_complete: 'Verification Complete',
-  esim_issued: 'eSIM Issued',
-  activation_complete: 'Activation Complete',
-};
 
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
@@ -33,6 +24,16 @@ function formatTimestamp(iso: string): string {
   });
 }
 
+export const ordersRouter = Router();
+
+const MILESTONE_LABELS: Record<string, string> = {
+  order_placed: 'Order Placed',
+  payment_confirmed: 'Payment Confirmed',
+  verification_complete: 'Verification Complete',
+  esim_issued: 'eSIM Issued',
+  activation_complete: 'Activation Complete',
+};
+
 function renderMilestone(m: Milestone): string {
   const label = MILESTONE_LABELS[m.step] ?? m.step;
   const cssClass = `milestone milestone--${m.state}`;
@@ -42,7 +43,7 @@ function renderMilestone(m: Milestone): string {
     : '';
 
   const nextStepHtml = m.next_step
-    ? `<p class="milestone__next-step">${m.next_step}</p>`
+    ? `<p class="milestone__next-step">${escapeHtml(m.next_step)}</p>`
     : '';
 
   const iconMap: Record<string, string> = {
@@ -63,18 +64,97 @@ function renderMilestone(m: Milestone): string {
       </div>`;
 }
 
+function buildLiveMilestones(orderId: string): Milestone[] {
+  const order = getOrder(orderId);
+  const activation = getActivation(orderId);
+
+  const orderCreatedAt = order?.createdAt ?? new Date().toISOString();
+  const paymentConfirmedAt = order?.paymentStatus === 'CONFIRMED'
+    ? new Date(new Date(orderCreatedAt).getTime() + 5 * 60 * 1000).toISOString()
+    : null;
+  const verificationCompletedAt = (order?.verificationStatus === 'COMPLETED' && paymentConfirmedAt)
+    ? new Date(new Date(paymentConfirmedAt).getTime() + 2 * 60 * 1000).toISOString()
+    : null;
+
+  const paymentState = order?.paymentStatus === 'CONFIRMED' ? 'completed' : 'pending';
+  const verificationState = order?.verificationStatus === 'COMPLETED' ? 'completed' : 'pending';
+  const esimState = activation ? 'completed' : (verificationState === 'completed' ? 'pending' : 'pending');
+  const activationState = 'pending' as const;
+
+  return [
+    {
+      step: 'order_placed' as const,
+      state: 'completed' as const,
+      timestamp: orderCreatedAt,
+      next_step: null,
+    },
+    {
+      step: 'payment_confirmed' as const,
+      state: paymentState as 'completed' | 'pending' | 'blocked',
+      timestamp: paymentState === 'completed' ? paymentConfirmedAt : null,
+      next_step: paymentState !== 'completed' ? 'Awaiting payment confirmation.' : null,
+    },
+    {
+      step: 'verification_complete' as const,
+      state: verificationState as 'completed' | 'pending' | 'blocked',
+      timestamp: verificationState === 'completed' ? verificationCompletedAt : null,
+      next_step: verificationState !== 'completed' ? 'Identity verification is under review.' : null,
+    },
+    {
+      step: 'esim_issued' as const,
+      state: esimState as 'completed' | 'pending' | 'blocked',
+      timestamp: esimState === 'completed' ? (activation?.updatedAt ?? null) : null,
+      next_step: esimState !== 'completed' ? 'eSIM will be issued once verification is complete.' : null,
+    },
+    {
+      step: 'activation_complete' as const,
+      state: activationState,
+      timestamp: null,
+      next_step: 'Activation will begin after eSIM issuance.',
+    },
+  ];
+}
+
+// POST /orders/:id/esim/issue — eSIM issuance endpoint
+ordersRouter.post('/:id/esim/issue', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = issueEsim(id);
+
+  switch (result.outcome) {
+    case 'NOT_FOUND':
+      res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      return;
+    case 'PAYMENT_PENDING':
+      res.status(403).json({ errorCode: 'PAYMENT_PENDING', message: 'Payment has not been confirmed.' });
+      return;
+    case 'VERIFICATION_PENDING':
+      res.status(403).json({ errorCode: 'VERIFICATION_PENDING', message: 'Identity verification has not been completed.' });
+      return;
+    case 'ALREADY_ISSUED':
+    case 'ISSUED':
+      res.status(200).json({
+        orderId: result.orderId,
+        activationCode: result.activationCode,
+        smdpAddress: result.smdpAddress,
+        esimReference: result.esimReference,
+      });
+      return;
+  }
+});
+
 // GET /orders/:id — Order Details page (Screen 6)
 ordersRouter.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
-  const scenario = (req.query.scenario as string) ?? 'activation_complete';
+  const scenario = req.query.scenario as string | undefined;
 
-  const status = buildStatusResponse(id, scenario);
-  const milestones = status ? status.milestones : [];
+  const milestones: Milestone[] = scenario
+    ? (buildStatusResponse(id, scenario)?.milestones ?? buildLiveMilestones(id))
+    : buildLiveMilestones(id);
 
   const milestonesHtml = milestones.map(renderMilestone).join('');
 
   const overallState = milestones.length > 0 && milestones.every((m) => m.state === 'completed')
-    ? 'Order Complete'
+    ? 'Order Fulfilled'
     : 'In Progress';
 
   const html = `<!DOCTYPE html>
@@ -186,44 +266,37 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
 // GET /orders/:id/esim-activation — eSIM Activation page (Screen 5)
 ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
   const { id } = req.params;
-  const scenario = (req.query.scenario as string) ?? 'activation_complete';
 
-  const status = buildStatusResponse(id, scenario);
-  const milestones = status ? status.milestones : [];
+  // Call the issuance logic to get live activation data
+  const result = issueEsim(id);
 
-  const paymentMilestone = milestones.find((m) => m.step === 'payment_confirmed');
-  const verificationMilestone = milestones.find((m) => m.step === 'verification_complete');
+  const isReady = result.outcome === 'ISSUED' || result.outcome === 'ALREADY_ISSUED';
+  const isPaymentBlocked = result.outcome === 'PAYMENT_PENDING' || result.outcome === 'NOT_FOUND';
+  const isVerificationBlocked = result.outcome === 'VERIFICATION_PENDING';
 
-  const paymentComplete = paymentMilestone?.state === 'completed';
-  const verificationComplete = verificationMilestone?.state === 'completed';
-  const isReadyToActivate = paymentComplete && verificationComplete;
+  const activation = isReady
+    ? { activationCode: result.activationCode, smdpAddress: result.smdpAddress, esimReference: result.esimReference }
+    : null;
 
-  const verificationBlocked = verificationMilestone?.state === 'blocked';
-  const verificationPending = verificationMilestone?.state === 'pending';
+  // Look up the persisted activation to get the eSIM reference (for aside card)
+  const storedActivation = getActivation(id);
 
   let statusValue: string;
   let statusBannerHtml: string;
 
-  if (isReadyToActivate) {
+  if (isReady) {
     statusValue = 'Ready to Activate';
     statusBannerHtml = `
       <div class="esim-status-banner esim-status-banner--ready">
         <strong>Your eSIM is ready to activate</strong>
         <p>Payment confirmed and identity verification completed. You can now activate your eSIM.</p>
       </div>`;
-  } else if (verificationBlocked) {
+  } else if (isVerificationBlocked) {
     statusValue = 'Verification Action Required';
     statusBannerHtml = `
       <div class="esim-status-banner esim-status-banner--blocked">
-        <strong>Verification blocked — action required</strong>
+        <strong>Identity verification pending</strong>
         <p>Your identity verification could not be completed. Please resubmit your documents to proceed.</p>
-      </div>`;
-  } else if (verificationPending) {
-    statusValue = 'Verification Pending';
-    statusBannerHtml = `
-      <div class="esim-status-banner esim-status-banner--pending">
-        <strong>Verification pending</strong>
-        <p>Your identity verification is under review. eSIM activation will be available once verification is complete.</p>
       </div>`;
   } else {
     statusValue = 'Payment Pending';
@@ -234,12 +307,12 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
       </div>`;
   }
 
-  const qrAndControlsHtml = isReadyToActivate ? `
+  const qrAndControlsHtml = (isReady && activation) ? `
       <section class="qr-section">
         <h2>Scan QR Code to Activate</h2>
         <p>Scan this code with your device</p>
         <p>Open your device camera and point it at the QR code</p>
-        <div class="qr-code-placeholder" aria-label="QR code for eSIM activation">[QR Code]</div>
+        <img src="/api/qr?data=${encodeURIComponent(activation.activationCode)}" alt="QR code for eSIM activation" class="qr-code-img">
         <p>How to scan: Go to Settings &rarr; Cellular/Mobile Data &rarr; Add eSIM &rarr; Use QR Code.</p>
 
         <div class="manual-activation">
@@ -250,8 +323,8 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
             <li>Tap Add Cellular Plan or Add eSIM</li>
             <li>Select Enter Details Manually</li>
             <li>Enter the following details:<br>
-              SM-DP+ Address: <code>smdp.vodacom.co.za</code><br>
-              Activation Code: <code>LPA:1$smdp.vodacom.co.za$ESIM-7001-2026-AMINA</code>
+              SM-DP+ Address: <code>${escapeHtml(activation.smdpAddress)}</code><br>
+              Activation Code: <code>${escapeHtml(activation.activationCode)}</code>
             </li>
             <li>Tap Add and wait for the eSIM to download and activate</li>
           </ol>
@@ -262,6 +335,8 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
         <button>Download eSIM Profile</button>
         <button>Check Connection Status</button>
       </div>` : '';
+
+  const esimRefValue = storedActivation ? escapeHtml(storedActivation.esimReference) : 'Pending';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -312,12 +387,12 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
       <dt>Order Number</dt><dd>${escapeHtml(id)}</dd>
       <dt>Order Date</dt><dd>28 July 2026</dd>
       <dt>Customer</dt><dd>Amina Dlamini</dd>
-      <dt>eSIM Reference</dt><dd>ESIM-7001-2026</dd>
+      <dt>eSIM Reference</dt><dd>${esimRefValue}</dd>
       <dt>Plan</dt><dd>Unlimited 20GB</dd>
     </dl>
     <p class="reference-card__status">Status: ${statusValue}</p>
     <div class="secure-note">
-      <p>Secure Activation — Your eSIM profile is encrypted and can only be activated on your registered device.</p>
+      <p>Secure Activation &mdash; Your eSIM profile is encrypted and can only be activated on your registered device.</p>
     </div>
   </aside>
 
