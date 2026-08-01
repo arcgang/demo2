@@ -90,8 +90,55 @@ const IPHONE15PRO_RECOMMENDATIONS: DeviceRecommendationsSeed = {
   ],
 };
 
+// Galaxy S24 seed — includes a required non-PLAN accessory so that contract
+// tests can assert a meaningful non-zero onceOffSubtotal and vatAmount.
+const GALAXY_S24_RECOMMENDATIONS: DeviceRecommendationsSeed = {
+  deviceId: 'prod_za_galaxy_s24_256',
+  attachments: [
+    // Plans — required (mutually exclusive; customer picks one)
+    {
+      id: 'plan_za_galaxy_1gb',
+      name: 'Galaxy Plan 1GB',
+      type: 'PLAN',
+      required: true,
+      pricingRule: { onceOff: 0, monthly: 199 },
+    },
+    {
+      id: 'plan_za_galaxy_5gb',
+      name: 'Galaxy Plan 5GB',
+      type: 'PLAN',
+      required: true,
+      pricingRule: { onceOff: 0, monthly: 399 },
+    },
+    // Required non-plan accessory — yields non-zero onceOffSubtotal in pricingSummary
+    {
+      id: 'acc_za_galaxy_s24_charger',
+      name: 'USB-C 45W Charger',
+      type: 'ACCESSORY',
+      required: true,
+      pricingRule: { onceOff: 499, monthly: 0 },
+    },
+    // Optional accessories
+    {
+      id: 'acc_za_galaxy_buds2',
+      name: 'Galaxy Buds2',
+      type: 'ACCESSORY',
+      required: false,
+      pricingRule: { onceOff: 2999, monthly: 0 },
+    },
+    {
+      id: 'acc_za_galaxy_s24_clear_case',
+      name: 'S24 Clear Case',
+      type: 'ACCESSORY',
+      required: false,
+      pricingRule: { onceOff: 499, monthly: 0 },
+    },
+  ],
+};
+
 const DEVICE_RECOMMENDATIONS = new Map<string, DeviceRecommendationsSeed>([
   [IPHONE15PRO_RECOMMENDATIONS.deviceId, IPHONE15PRO_RECOMMENDATIONS],
+  [GALAXY_S24_RECOMMENDATIONS.deviceId, GALAXY_S24_RECOMMENDATIONS],
 ]);
 
 export function getDeviceRecommendations(deviceId: string): DeviceRecommendationsSeed | undefined {

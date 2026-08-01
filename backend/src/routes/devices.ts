@@ -16,11 +16,21 @@ router.get('/:id/recommendations', (req: Request, res: Response) => {
     return;
   }
 
-  const requiredAttachments: SelectedAttachment[] = seed.attachments
-    .filter(a => a.required)
-    .map(a => ({ id: a.id, type: a.type, required: a.required, pricingRule: a.pricingRule }));
+  // Plans are mutually exclusive: a customer picks exactly one.
+  // Use only the cheapest required plan as a "from" baseline so monthlyTotal
+  // reflects a real minimum customer scenario rather than an impossible sum.
+  const requiredPlans = seed.attachments.filter(a => a.required && a.type === 'PLAN');
+  const cheapestPlan = requiredPlans.length > 0
+    ? requiredPlans.reduce((min, p) => p.pricingRule.monthly < min.pricingRule.monthly ? p : min)
+    : null;
+  const requiredNonPlans = seed.attachments.filter(a => a.required && a.type !== 'PLAN');
 
-  const pricingSummary = calculateRecommendationsPricing(requiredAttachments);
+  const pricingInputs: SelectedAttachment[] = [
+    ...(cheapestPlan ? [cheapestPlan] : []),
+    ...requiredNonPlans,
+  ].map(a => ({ id: a.id, type: a.type, required: a.required, pricingRule: a.pricingRule }));
+
+  const pricingSummary = calculateRecommendationsPricing(pricingInputs);
 
   res.status(200).json({
     deviceId: seed.deviceId,

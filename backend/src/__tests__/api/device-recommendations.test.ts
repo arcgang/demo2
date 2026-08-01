@@ -318,11 +318,10 @@ describe('GET /api/devices/:id/recommendations — AC-6 iPhone 15 Pro plan price
     }
   });
 
-  it('plan names contain expected identifiers', () => {
+  it('plan names match expected names exactly', () => {
     const names = plans.map(p => p.name);
     for (const expected of EXPECTED_PLANS) {
-      const match = names.find(n => n.toLowerCase().includes(expected.name.toLowerCase().split(' ')[1]));
-      expect(match).toBeDefined();
+      expect(names.some(n => n === expected.name)).toBe(true);
     }
   });
 });
@@ -432,14 +431,50 @@ describe('GET /api/devices/:id/recommendations — AC-9 pricingSummary shape', (
     expect(body.pricingSummary.vatAmount).toBeGreaterThanOrEqual(0);
   });
 
-  it('pricingSummary has a numeric monthlyTotal', () => {
-    expect(typeof body.pricingSummary.monthlyTotal).toBe('number');
-    expect(body.pricingSummary.monthlyTotal).toBeGreaterThanOrEqual(0);
+  it('pricingSummary monthlyTotal equals the cheapest required plan price (R299 — from-price baseline)', () => {
+    // Plans are mutually exclusive; the server uses only the cheapest required plan
+    // so monthlyTotal is a valid "from" price rather than an impossible sum.
+    expect(body.pricingSummary.monthlyTotal).toBe(299);
   });
 
   it('vatAmount equals onceOffSubtotal * 0.15 (rounded to 2dp)', () => {
     const expected = parseFloat((body.pricingSummary.onceOffSubtotal * 0.15).toFixed(2));
     expect(body.pricingSummary.vatAmount).toBeCloseTo(expected, 2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AC-9b  pricingSummary VAT path — device with required non-plan accessory
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/devices/:id/recommendations — AC-9b pricingSummary VAT on non-zero onceOff', () => {
+  // Galaxy S24 seed has a required USB-C 45W Charger (onceOff: R499) plus two
+  // required plans (R199 cheapest). Expected summary:
+  //   onceOffSubtotal = 499, vatAmount = 499 * 0.15 = 74.85, monthlyTotal = 199
+  const GALAXY_S24_ID = 'prod_za_galaxy_s24_256';
+  let app: Application;
+  let summary: { onceOffSubtotal: number; vatRate: number; vatAmount: number; monthlyTotal: number };
+
+  beforeAll(async () => {
+    app = getApp();
+    const { body } = await getRecommendations(app, GALAXY_S24_ID);
+    summary = (body as RecommendationsResponse).pricingSummary;
+  });
+
+  it('onceOffSubtotal is 499 (required charger only)', () => {
+    expect(summary.onceOffSubtotal).toBe(499);
+  });
+
+  it('vatAmount is 74.85 (499 * 0.15)', () => {
+    expect(summary.vatAmount).toBeCloseTo(74.85, 2);
+  });
+
+  it('monthlyTotal is 199 (cheapest required plan as from-price)', () => {
+    expect(summary.monthlyTotal).toBe(199);
+  });
+
+  it('vatRate is 0.15', () => {
+    expect(summary.vatRate).toBe(0.15);
   });
 });
 
