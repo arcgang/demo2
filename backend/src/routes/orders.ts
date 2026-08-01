@@ -4,6 +4,8 @@ import { issueEsim } from '../modules/activation/activationOrchestrationService'
 import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
 import { getOrderByReference } from '../modules/order/orderStore';
 import { getJourneyAuditTrail } from '../modules/consentAudit/consentAndAuditService';
+import { hasTimelineEvents, getTimelineEvents } from '../modules/statusTimeline/timelineStore';
+import { computeNextPollMs } from '../modules/statusTimeline/timelineService';
 
 const router = Router();
 
@@ -98,6 +100,23 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
       actorRef: e.actorRef,
     })),
   });
+});
+
+router.get('/:id/status-timeline', (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!hasTimelineEvents(id)) {
+    res.status(404).json({
+      errorCode: 'ORDER_NOT_FOUND',
+      message: `No timeline events found for order "${id}".`,
+    });
+    return;
+  }
+
+  const timeline = getTimelineEvents(id);
+  const nextPollMs = computeNextPollMs(timeline);
+
+  res.status(200).json({ orderId: id, timeline, nextPollMs });
 });
 
 router.get('/:id/status', (req: Request, res: Response) => {
