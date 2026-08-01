@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { getDeviceRecommendations } from '../modules/devices/deviceRecommendationsData';
 import { calculateRecommendationsPricing, SelectedAttachment } from '../modules/devices/recommendationsPricingCalculator';
+import { getMarket } from '../modules/market/marketConfig';
 
 const router = Router();
 
 router.get('/:id/recommendations', (req: Request, res: Response) => {
   const { id } = req.params;
+  const marketCode = (req.query.market as string | undefined) ?? 'ZA';
 
   const seed = getDeviceRecommendations(id);
   if (!seed) {
@@ -15,6 +17,9 @@ router.get('/:id/recommendations', (req: Request, res: Response) => {
     });
     return;
   }
+
+  const market = getMarket(marketCode);
+  const vatRate = market ? market.vatRate : 0.15;
 
   // Plans are mutually exclusive: a customer picks exactly one.
   // Use only the cheapest required plan as a "from" baseline so monthlyTotal
@@ -30,7 +35,7 @@ router.get('/:id/recommendations', (req: Request, res: Response) => {
     ...requiredNonPlans,
   ].map(a => ({ id: a.id, type: a.type, required: a.required, pricingRule: a.pricingRule }));
 
-  const pricingSummary = calculateRecommendationsPricing(pricingInputs);
+  const pricingSummary = calculateRecommendationsPricing(pricingInputs, vatRate);
 
   res.status(200).json({
     deviceId: seed.deviceId,

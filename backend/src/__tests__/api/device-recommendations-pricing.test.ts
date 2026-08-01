@@ -25,22 +25,22 @@ import {
 
 describe('calculateRecommendationsPricing — empty selection', () => {
   it('returns zero onceOffSubtotal for empty attachments', () => {
-    const result: PricingResult = calculateRecommendationsPricing([]);
+    const result: PricingResult = calculateRecommendationsPricing([], 0.15);
     expect(result.onceOffSubtotal).toBe(0);
   });
 
   it('returns zero vatAmount for empty attachments', () => {
-    const result: PricingResult = calculateRecommendationsPricing([]);
+    const result: PricingResult = calculateRecommendationsPricing([], 0.15);
     expect(result.vatAmount).toBe(0);
   });
 
   it('returns zero monthlyTotal for empty attachments', () => {
-    const result: PricingResult = calculateRecommendationsPricing([]);
+    const result: PricingResult = calculateRecommendationsPricing([], 0.15);
     expect(result.monthlyTotal).toBe(0);
   });
 
   it('always returns vatRate of 0.15', () => {
-    const result: PricingResult = calculateRecommendationsPricing([]);
+    const result: PricingResult = calculateRecommendationsPricing([], 0.15);
     expect(result.vatRate).toBe(0.15);
   });
 });
@@ -56,18 +56,18 @@ describe('calculateRecommendationsPricing — once-off items (accessories)', () 
   ];
 
   it('onceOffSubtotal is the sum of all onceOff pricingRule values', () => {
-    const result = calculateRecommendationsPricing(accessories);
+    const result = calculateRecommendationsPricing(accessories, 0.15);
     expect(result.onceOffSubtotal).toBe(5798);
   });
 
   it('vatAmount is onceOffSubtotal * 0.15 rounded to 2 decimal places', () => {
-    const result = calculateRecommendationsPricing(accessories);
+    const result = calculateRecommendationsPricing(accessories, 0.15);
     const expected = parseFloat((5798 * 0.15).toFixed(2));
     expect(result.vatAmount).toBeCloseTo(expected, 2);
   });
 
   it('monthlyTotal is 0 when no monthly charges are selected', () => {
-    const result = calculateRecommendationsPricing(accessories);
+    const result = calculateRecommendationsPricing(accessories, 0.15);
     expect(result.monthlyTotal).toBe(0);
   });
 });
@@ -84,17 +84,17 @@ describe('calculateRecommendationsPricing — monthly items (plan + add-ons)', (
   ];
 
   it('monthlyTotal is the sum of all monthly pricingRule values', () => {
-    const result = calculateRecommendationsPricing(monthlyItems);
+    const result = calculateRecommendationsPricing(monthlyItems, 0.15);
     expect(result.monthlyTotal).toBe(1147);
   });
 
   it('onceOffSubtotal is 0 when no once-off charges are selected', () => {
-    const result = calculateRecommendationsPricing(monthlyItems);
+    const result = calculateRecommendationsPricing(monthlyItems, 0.15);
     expect(result.onceOffSubtotal).toBe(0);
   });
 
   it('vatAmount is 0 when onceOffSubtotal is 0', () => {
-    const result = calculateRecommendationsPricing(monthlyItems);
+    const result = calculateRecommendationsPricing(monthlyItems, 0.15);
     expect(result.vatAmount).toBe(0);
   });
 });
@@ -112,22 +112,22 @@ describe('calculateRecommendationsPricing — mixed selection', () => {
   ];
 
   it('onceOffSubtotal sums only onceOff fields (4999 + 799 = 5798)', () => {
-    const result = calculateRecommendationsPricing(mixed);
+    const result = calculateRecommendationsPricing(mixed, 0.15);
     expect(result.onceOffSubtotal).toBe(5798);
   });
 
   it('monthlyTotal sums only monthly fields (1299 + 299 = 1598)', () => {
-    const result = calculateRecommendationsPricing(mixed);
+    const result = calculateRecommendationsPricing(mixed, 0.15);
     expect(result.monthlyTotal).toBe(1598);
   });
 
   it('vatAmount is 5798 * 0.15 = 869.70', () => {
-    const result = calculateRecommendationsPricing(mixed);
+    const result = calculateRecommendationsPricing(mixed, 0.15);
     expect(result.vatAmount).toBeCloseTo(869.70, 2);
   });
 
   it('vatRate is always 0.15 regardless of selection', () => {
-    const result = calculateRecommendationsPricing(mixed);
+    const result = calculateRecommendationsPricing(mixed, 0.15);
     expect(result.vatRate).toBe(0.15);
   });
 });
@@ -142,7 +142,7 @@ describe('calculateRecommendationsPricing — VAT precision', () => {
     const items: SelectedAttachment[] = [
       { id: 'acc_screen', type: 'ACCESSORY', required: false, pricingRule: { onceOff: 299, monthly: 0 } },
     ];
-    const result = calculateRecommendationsPricing(items);
+    const result = calculateRecommendationsPricing(items, 0.15);
     const str = result.vatAmount.toString();
     const decimals = str.includes('.') ? str.split('.')[1].length : 0;
     expect(decimals).toBeLessThanOrEqual(2);
@@ -152,7 +152,7 @@ describe('calculateRecommendationsPricing — VAT precision', () => {
     const items: SelectedAttachment[] = [
       { id: 'acc_adapter', type: 'ACCESSORY', required: false, pricingRule: { onceOff: 399, monthly: 0 } },
     ];
-    const result = calculateRecommendationsPricing(items);
+    const result = calculateRecommendationsPricing(items, 0.15);
     expect(result.vatAmount).toBeCloseTo(59.85, 2);
   });
 });
@@ -163,7 +163,7 @@ describe('calculateRecommendationsPricing — VAT precision', () => {
 
 describe('calculateRecommendationsPricing — result shape completeness', () => {
   it('result always contains onceOffSubtotal, vatRate, vatAmount, monthlyTotal', () => {
-    const result = calculateRecommendationsPricing([]);
+    const result = calculateRecommendationsPricing([], 0.15);
     expect(Object.prototype.hasOwnProperty.call(result, 'onceOffSubtotal')).toBe(true);
     expect(Object.prototype.hasOwnProperty.call(result, 'vatRate')).toBe(true);
     expect(Object.prototype.hasOwnProperty.call(result, 'vatAmount')).toBe(true);
@@ -171,9 +171,10 @@ describe('calculateRecommendationsPricing — result shape completeness', () => 
   });
 
   it('all numeric result fields are numbers (not NaN or undefined)', () => {
-    const result = calculateRecommendationsPricing([
-      { id: 'plan_red_5gb', type: 'PLAN', required: true, pricingRule: { onceOff: 0, monthly: 299 } },
-    ]);
+    const result = calculateRecommendationsPricing(
+      [{ id: 'plan_red_5gb', type: 'PLAN', required: true, pricingRule: { onceOff: 0, monthly: 299 } }],
+      0.15,
+    );
     expect(Number.isFinite(result.onceOffSubtotal)).toBe(true);
     expect(Number.isFinite(result.vatRate)).toBe(true);
     expect(Number.isFinite(result.vatAmount)).toBe(true);
@@ -200,17 +201,17 @@ describe('calculateRecommendationsPricing — iPhone 15 Pro full bundle from spe
   ];
 
   it('onceOffSubtotal is 4999 (AirPods only)', () => {
-    const result = calculateRecommendationsPricing(attachmentSelection);
+    const result = calculateRecommendationsPricing(attachmentSelection, 0.15);
     expect(result.onceOffSubtotal).toBe(4999);
   });
 
   it('monthlyTotal is 948 (799 + 149)', () => {
-    const result = calculateRecommendationsPricing(attachmentSelection);
+    const result = calculateRecommendationsPricing(attachmentSelection, 0.15);
     expect(result.monthlyTotal).toBe(948);
   });
 
   it('vatAmount is 749.85 (4999 * 0.15)', () => {
-    const result = calculateRecommendationsPricing(attachmentSelection);
+    const result = calculateRecommendationsPricing(attachmentSelection, 0.15);
     expect(result.vatAmount).toBeCloseTo(749.85, 2);
   });
 });

@@ -20,6 +20,7 @@ router.get('/:marketId', (req: Request, res: Response) => {
     marketName: market.marketName,
     locale: market.language,
     currency: market.currency,
+    currencySymbol: market.currencySymbol,
     taxLabel: market.taxLabel,
     vatRate: market.vatRate,
     enabledPaymentMethods: market.paymentMethods,
