@@ -1,5 +1,6 @@
 import express, { Application } from 'express';
 import ordersRouter from './routes/orders';
+import checkoutRouter from './routes/checkout';
 import onboardingRouter from './routes/onboarding';
 import upgradeRouter from './routes/upgrade';
 import journeysRouter from './routes/journeys';
@@ -11,6 +12,7 @@ export function createApp(): Application {
   const app = express();
   app.use(express.json());
   app.use('/api/orders', ordersRouter);
+  app.use('/api/checkout', checkoutRouter);
   app.use('/api/onboarding', onboardingRouter);
   app.use('/api/upgrade', upgradeRouter);
   app.use('/api/journeys', journeysRouter);
