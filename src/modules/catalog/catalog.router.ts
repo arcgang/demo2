@@ -907,6 +907,8 @@ catalogRouter.get('/product/:slug', (req: Request, res: Response) => {
       });
       document.querySelectorAll('.btn-color-selector').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          var price = parseInt(btn.getAttribute('data-price') || '0', 10);
+          updatePrice(price);
           document.querySelectorAll('.btn-color-selector').forEach(function (b) { b.classList.remove('active'); });
           btn.classList.add('active');
         });
