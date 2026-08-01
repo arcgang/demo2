@@ -1,13 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { buildEligibilityResult } from '../modules/eligibility/eligibility.fixtures';
+import { resolveToken } from '../modules/auth/resolve-token';
 
 const router = Router();
-
-function resolveToken(req: Request): string | null {
-  const header = req.headers['authorization'];
-  if (!header || !header.startsWith('Bearer ')) return null;
-  return header.slice('Bearer '.length).trim() || null;
-}
 
 router.get('/eligibility', (req: Request, res: Response) => {
   const token = resolveToken(req);

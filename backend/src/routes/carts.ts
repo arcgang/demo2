@@ -1,15 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { buildEligibilityResult } from '../modules/eligibility/eligibility.fixtures';
+import { resolveToken } from '../modules/auth/resolve-token';
 
 const router = Router();
 
 const UPGRADE_ONLY_LINE_TYPE = 'UPGRADE_OFFER';
-
-function resolveToken(req: Request): string | null {
-  const header = req.headers['authorization'];
-  if (!header || !header.startsWith('Bearer ')) return null;
-  return header.slice('Bearer '.length).trim() || null;
-}
 
 function hasUpgradeOnlyLine(lines: unknown[]): boolean {
   return lines.some(
@@ -43,7 +38,7 @@ router.post('/:cartId/items', (req: Request, res: Response) => {
     return;
   }
 
-  res.status(200).json({ cartId: req.params['cartId'], status: 'UPDATED' });
+  res.status(200).json({ cartId: req.params['cartId'], status: 'UPDATED', eligibility });
 });
 
 export default router;
