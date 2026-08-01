@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import marketsRouter from './modules/market-context/marketsRouter';
 import { upsellOffersRouter } from './modules/catalog/offers/upsell-offers.router';
+import { catalogProductsRouter } from './modules/catalog/products/catalog-products.router';
 import { catalogRouter } from './modules/catalog/catalog.router';
 import { ordersRouter } from './modules/orders/orders.router';
 import { upgradeRouter } from './modules/upgrade/upgrade.router';
@@ -14,6 +15,7 @@ export function createApp() {
   app.use(express.urlencoded({ extended: false }));
   app.use('/api/markets', marketsRouter);
   app.use('/api/offers', upsellOffersRouter);
+  app.use('/api/catalog', catalogProductsRouter);
   app.use('/api/orders', apiOrdersRouter);
   app.use('/orders', ordersRouter);
   app.use('/', upgradeRouter);
