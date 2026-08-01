@@ -1,4 +1,4 @@
-import { MARKETS, PRODUCTS, PRODUCT_MARKETS } from '../../data/seed';
+import { prisma } from '../../lib/prisma';
 import { MarketContext } from '../market/market-context.service';
 
 export interface ProductListItem {
@@ -43,59 +43,78 @@ export interface CatalogFilters {
 }
 
 export class CatalogService {
-  listProducts(market: MarketContext, filters: CatalogFilters): ProductListItem[] {
-    const pmIndex = this.buildProductMarketIndex(market.code);
+  async listProducts(market: MarketContext, filters: CatalogFilters): Promise<ProductListItem[]> {
+    const where: Record<string, unknown> = {
+      available: true,
+      purchasable: true,
+      market: { code: market.code },
+    };
 
-    return PRODUCTS.filter((product) => {
-      const pm = pmIndex.get(product.id);
-      if (!pm || !pm.available || !pm.purchasable) return false;
+    const rows = await prisma.productMarket.findMany({
+      where,
+      include: {
+        product: true,
+        market: true,
+      },
+    });
 
-      if (filters.category && product.category.toLowerCase() !== filters.category.toLowerCase()) {
-        return false;
-      }
+    return rows
+      .filter((row) => {
+        const product = row.product;
 
-      if (filters.brand) {
-        const brand = filters.brand.toLowerCase();
-        if (!product.name.toLowerCase().includes(brand)) return false;
-      }
+        if (filters.category && product.category.toLowerCase() !== filters.category.toLowerCase()) {
+          return false;
+        }
 
-      const price = pm.price;
+        if (filters.brand) {
+          const brand = filters.brand.toLowerCase();
+          if (!product.name.toLowerCase().includes(brand)) return false;
+        }
 
-      if (filters.priceMin !== undefined && price < filters.priceMin) return false;
-      if (filters.priceMax !== undefined && price > filters.priceMax) return false;
+        if (filters.priceMin !== undefined && row.price < filters.priceMin) return false;
+        if (filters.priceMax !== undefined && row.price > filters.priceMax) return false;
 
-      if (filters.storage && !product.name.toLowerCase().includes(filters.storage.toLowerCase())) {
-        return false;
-      }
+        if (filters.storage && !product.name.toLowerCase().includes(filters.storage.toLowerCase())) {
+          return false;
+        }
 
-      if (filters.inStock && !pm.purchasable) return false;
-
-      return true;
-    }).map((product) => {
-      const pm = pmIndex.get(product.id)!;
-      return {
-        id: product.id,
-        name: product.name,
-        category: product.category,
-        price: pm.price,
+        return true;
+      })
+      .map((row) => ({
+        id: row.product.id,
+        name: row.product.name,
+        category: row.product.category,
+        price: row.price,
         currency: market.currency,
         taxRate: market.taxRate,
         taxLabel: market.taxLabel,
-        purchasable: pm.purchasable,
-        available: pm.available,
-        badges: product.badges,
-        imageUrl: product.imageUrl,
-      };
-    });
+        purchasable: row.purchasable,
+        available: row.available,
+        badges: row.product.badges,
+        imageUrl: row.product.imageUrl ?? undefined,
+      }));
   }
 
-  getProduct(productId: string, market: MarketContext): ProductDetail | null {
-    const product = PRODUCTS.find((p) => p.id === productId);
-    if (!product) return null;
+  async getProduct(productId: string, market: MarketContext): Promise<ProductDetail | null> {
+    const pm = await prisma.productMarket.findFirst({
+      where: {
+        productId,
+        market: { code: market.code },
+      },
+      include: {
+        product: {
+          include: {
+            plans: true,
+            accessories: { include: { accessory: true } },
+          },
+        },
+        market: true,
+      },
+    });
 
-    const pmIndex = this.buildProductMarketIndex(market.code);
-    const pm = pmIndex.get(productId);
     if (!pm || !pm.available || !pm.purchasable) return null;
+
+    const product = pm.product;
 
     return {
       id: product.id,
@@ -108,33 +127,18 @@ export class CatalogService {
       purchasable: pm.purchasable,
       available: pm.available,
       badges: product.badges,
-      imageUrl: product.imageUrl,
+      imageUrl: product.imageUrl ?? undefined,
       plans: product.plans.map((p) => ({
         id: p.id,
         name: p.name,
-        dataAllowance: p.dataAllowance,
+        dataAllowance: p.dataAllowance ?? undefined,
         monthlyPrice: p.monthlyPrice,
-        currency: market.currency,
+        currency: p.currency,
       })),
-      recommendedAccessories: product.recommendedAccessories,
+      recommendedAccessories: pm.product.accessories.map((pa) => ({
+        id: pa.accessory.id,
+        name: pa.accessory.name,
+      })),
     };
-  }
-
-  private buildProductMarketIndex(
-    marketCode: string,
-  ): Map<string, { price: number; available: boolean; purchasable: boolean }> {
-    const index = new Map<string, { price: number; available: boolean; purchasable: boolean }>();
-    const market = MARKETS.find((m) => m.code === marketCode.toUpperCase());
-    if (!market) return index;
-    for (const pm of PRODUCT_MARKETS) {
-      if (pm.marketId === market.id) {
-        index.set(pm.productId, {
-          price: pm.price,
-          available: pm.available,
-          purchasable: pm.purchasable,
-        });
-      }
-    }
-    return index;
   }
 }

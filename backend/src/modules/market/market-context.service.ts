@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { MARKETS, MarketSeed } from '../../data/seed';
+import { prisma } from '../../lib/prisma';
 
 export interface MarketContext {
   code: string;
@@ -11,17 +11,12 @@ export interface MarketContext {
 }
 
 export class MarketContextService {
-  private readonly markets: Map<string, MarketSeed>;
-
-  constructor() {
-    this.markets = new Map(MARKETS.map((m) => [m.code, m]));
+  async listMarkets(): Promise<MarketContext[]> {
+    const markets = await prisma.market.findMany();
+    return markets.map(this.toContext);
   }
 
-  listMarkets(): MarketContext[] {
-    return MARKETS.map(this.toContext);
-  }
-
-  resolve(req: Request): MarketContext | null {
+  async resolve(req: Request): Promise<MarketContext | null> {
     const code =
       (req.query['market'] as string | undefined) ??
       (req.headers['x-market-code'] as string | undefined);
@@ -29,12 +24,21 @@ export class MarketContextService {
     return this.getByCode(code);
   }
 
-  getByCode(code: string): MarketContext | null {
-    const market = this.markets.get(code.toUpperCase());
+  async getByCode(code: string): Promise<MarketContext | null> {
+    const market = await prisma.market.findUnique({
+      where: { code: code.toUpperCase() },
+    });
     return market ? this.toContext(market) : null;
   }
 
-  private toContext(m: MarketSeed): MarketContext {
+  private toContext(m: {
+    code: string;
+    name: string;
+    currency: string;
+    taxRate: number;
+    taxLabel: string;
+    defaultLanguage: string;
+  }): MarketContext {
     return {
       code: m.code,
       name: m.name,
