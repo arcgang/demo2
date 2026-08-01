@@ -48,6 +48,15 @@ export function buildEligibilityResult(token: string): EligibilityResult | null 
   const plan = PLAN_BY_TOKEN[token];
   const days = daysUntil(seed.contractEndDate);
 
+  if (days < 0) {
+    return {
+      status: 'NOT_ELIGIBLE',
+      currentPlan: { name: plan.name, monthlyCost: plan.monthlyCost, contractEndDate: seed.contractEndDate },
+      nextStepGuidance: ['Contact Support', 'View your current plan'],
+      availableUpgradeOfferIds: [],
+    };
+  }
+
   if (days <= 90) {
     return {
       status: 'ELIGIBLE',

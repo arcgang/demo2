@@ -340,4 +340,15 @@ describe('POST /api/carts/:cartId/items — eligibility gate', () => {
     const { status } = await addCartItem(app, 'cart_demo_002', 'offer_upgrade_only_001', 'token_eligible');
     expect(status).not.toBe(403);
   });
+
+  it('CONDITIONALLY_ELIGIBLE customer adding an upgrade-only offer returns HTTP 200', async () => {
+    const { status } = await addCartItem(app, 'cart_demo_003', 'offer_upgrade_only_001', 'token_cond');
+    expect(status).toBe(200);
+  });
+
+  it('CONDITIONALLY_ELIGIBLE cart response body contains eligibility.status === CONDITIONALLY_ELIGIBLE', async () => {
+    const { body } = await addCartItem(app, 'cart_demo_003', 'offer_upgrade_only_001', 'token_cond');
+    const result = body as { eligibility: EligibilityResult };
+    expect(result.eligibility.status).toBe('CONDITIONALLY_ELIGIBLE');
+  });
 });
