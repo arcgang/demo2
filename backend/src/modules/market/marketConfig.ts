@@ -8,6 +8,7 @@ export interface MarketConfig {
   paymentMethods: string[];
   mobileMoneyEnabled: boolean;
   cardPaymentEnabled: boolean;
+  portingSupported: boolean;
 }
 
 const MARKETS: Record<string, MarketConfig> = {
@@ -21,6 +22,7 @@ const MARKETS: Record<string, MarketConfig> = {
     paymentMethods: ['CARD_TOKEN', 'MOBILE_MONEY'],
     mobileMoneyEnabled: true,
     cardPaymentEnabled: true,
+    portingSupported: true,
   },
   TZ: {
     marketCode: 'TZ',
@@ -32,6 +34,7 @@ const MARKETS: Record<string, MarketConfig> = {
     paymentMethods: ['CARD_TOKEN', 'MOBILE_MONEY'],
     mobileMoneyEnabled: true,
     cardPaymentEnabled: true,
+    portingSupported: true,
   },
   MZ: {
     marketCode: 'MZ',
@@ -43,6 +46,7 @@ const MARKETS: Record<string, MarketConfig> = {
     paymentMethods: ['CARD_TOKEN', 'MOBILE_MONEY'],
     mobileMoneyEnabled: true,
     cardPaymentEnabled: true,
+    portingSupported: true,
   },
 };
 

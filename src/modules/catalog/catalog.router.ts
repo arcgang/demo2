@@ -2,8 +2,278 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
+import { getJourneyFields, FieldDefinition } from '../../../backend/src/modules/journeyFields/journeyFieldsRegistry';
 
 export const catalogRouter = Router();
+
+// ─── Storefront product data (wireframe_product_listing.html SKUs) ─────────────
+
+interface StorefrontProduct {
+  slug: string;
+  name: string;
+  price: number;
+  monthlyFrom: number;
+  badges: string[];
+  brand: string;
+  storage: string;
+  availability: 'In Stock' | 'Pre-Order';
+  isPurchasable: boolean;
+  category: string;
+}
+
+const STOREFRONT_SMARTPHONES: StorefrontProduct[] = [
+  { slug: 'iphone-15-pro', name: 'iPhone 15 Pro 256GB', price: 24999, monthlyFrom: 899, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+  { slug: 'samsung-s24-ultra', name: 'Samsung Galaxy S24 Ultra 256GB', price: 22999, monthlyFrom: 799, badges: ['5G'], brand: 'Samsung', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+  { slug: 'iphone-15', name: 'iPhone 15 128GB', price: 18999, monthlyFrom: 699, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+  { slug: 'samsung-s24', name: 'Samsung Galaxy S24 256GB', price: 16999, monthlyFrom: 599, badges: ['5G'], brand: 'Samsung', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+  { slug: 'samsung-a54', name: 'Samsung Galaxy A54 128GB', price: 8999, monthlyFrom: 349, badges: ['5G'], brand: 'Samsung', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+  { slug: 'iphone-14', name: 'iPhone 14 128GB', price: 15999, monthlyFrom: 579, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+];
+
+const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
+  smartphones: 'Smartphones',
+  tablets: 'Tablets',
+  'sim-esim': 'SIM & eSIM',
+  accessories: 'Accessories',
+};
+
+function fmtStorefrontPrice(amount: number): string {
+  return 'R ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function renderSharedHeader(): string {
+  return `<header class="header">
+  <a href="/">Vodacom</a>
+  <nav>
+    <a href="/catalog">Devices</a>
+    <a href="/plans">Plans</a>
+    <a href="/accessories">Accessories</a>
+    <a href="/support">Support</a>
+  </nav>
+  <span class="market-indicator">South Africa - ZAR</span>
+  <span class="cart-badge">Cart</span>
+  <button class="btn-account">Account</button>
+</header>`;
+}
+
+function renderSharedFooter(): string {
+  return `<footer class="footer">
+  <div class="footer-columns">
+    <div class="footer-col">
+      <h4>About Vodacom</h4>
+      <ul>
+        <li><a href="/about">About Us</a></li>
+        <li><a href="/careers">Careers</a></li>
+        <li><a href="/press">Press</a></li>
+        <li><a href="/investors">Investors</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Support</h4>
+      <ul>
+        <li><a href="/support">Support Centre</a></li>
+        <li><a href="/contact">Contact Us</a></li>
+        <li><a href="/faq">FAQs</a></li>
+        <li><a href="/stores">Store Locator</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="/terms">Terms &amp; Conditions</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/cookies">Cookie Policy</a></li>
+        <li><a href="/accessibility">Accessibility</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Follow Us</h4>
+      <ul>
+        <li><a href="#">Facebook</a></li>
+        <li><a href="#">Twitter</a></li>
+        <li><a href="#">Instagram</a></li>
+        <li><a href="#">LinkedIn</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="footer-copyright">&copy; 2026 Vodacom Group. All rights reserved.</p>
+</footer>`;
+}
+
+function renderPage(title: string, body: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+</head>
+<body>
+${renderSharedHeader()}
+${body}
+${renderSharedFooter()}
+</body>
+</html>`;
+}
+
+// ─── Home page (Screen 9: wireframe_storefront_home.html) ─────────────────────
+
+catalogRouter.get('/', (_req: Request, res: Response) => {
+  const body = `
+  <section class="hero">
+    <h1>Welcome to Vodacom Shop</h1>
+    <p>Discover devices, plans, and bundles tailored to your market</p>
+    <a href="/catalog">Shop Devices</a>
+    <a href="/plans">Explore Plans</a>
+  </section>
+
+  <section class="categories">
+    <h2>Shop by Category</h2>
+    <div class="category-tiles">
+      <a href="/catalog?category=smartphones">
+        <h3>Smartphones</h3>
+        <p>Latest devices from top brands</p>
+        <span>Browse</span>
+      </a>
+      <a href="/catalog?category=tablets">
+        <h3>Tablets</h3>
+        <p>Work and play on the go</p>
+        <span>Browse</span>
+      </a>
+      <a href="/catalog?category=sim-esim">
+        <h3>SIM &amp; eSIM</h3>
+        <p>Get connected instantly</p>
+        <span>Browse</span>
+      </a>
+      <a href="/catalog?category=accessories">
+        <h3>Accessories</h3>
+        <p>Complete your setup</p>
+        <span>Browse</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="trade-in-banner">
+    <h2>Trade in your old device and save</h2>
+    <p>Get up to R 5,000 credit towards your next purchase</p>
+    <a href="/upgrade/trade-in">Get a Valuation</a>
+  </section>`;
+
+  res.status(200).type('text/html').send(renderPage('Vodacom Shop - Welcome', body));
+});
+
+// ─── Product listing page (Screen 8: wireframe_product_listing.html) ──────────
+
+catalogRouter.get('/catalog', (req: Request, res: Response) => {
+  const category = req.query.category as string | undefined;
+  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
+
+  const products = STOREFRONT_SMARTPHONES;
+  const categoryLabel = category ? (CATEGORY_DISPLAY_NAMES[category] ?? category) : 'All Devices';
+
+  const liteBanner = liteMode
+    ? `<div class="lite-banner">Lite Mode Active - Optimized for faster browsing</div>`
+    : '';
+
+  const productCards = products.map(p => {
+    const badges = p.badges.map(b => `<span class="badge">${b}</span>`).join('');
+    const cta = p.isPurchasable
+      ? `<a href="/product/${p.slug}" class="btn-view-details">View Details</a><button class="btn-add-to-cart" data-slug="${p.slug}">Add to Cart</button>`
+      : `<a href="/product/${p.slug}" class="btn-view-details">View Details</a>`;
+    return `
+      <div class="product-card" data-brand="${p.brand}" data-price="${p.price}" data-storage="${p.storage}" data-availability="${p.availability}" data-purchasable="${p.isPurchasable}">
+        <div class="product-badges">${badges}</div>
+        <h3>${p.name}</h3>
+        <p class="product-price">${fmtStorefrontPrice(p.price)}</p>
+        <p class="product-monthly">or from R ${p.monthlyFrom}/month</p>
+        ${cta}
+      </div>`;
+  }).join('\n');
+
+  const body = `
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo;
+    <a href="/catalog">Devices</a>
+    ${category ? ` &rsaquo; <span>${categoryLabel}</span>` : ''}
+  </nav>
+
+  <div class="catalog-layout">
+    <aside class="filter-sidebar">
+      <h3>Brand</h3>
+      <label><input name="brand-apple" type="checkbox" id="brand-apple" checked> Apple</label>
+      <label><input name="brand-samsung" type="checkbox" id="brand-samsung" checked> Samsung</label>
+      <label><input name="brand-huawei" type="checkbox" id="brand-huawei"> Huawei</label>
+      <label><input name="brand-xiaomi" type="checkbox" id="brand-xiaomi"> Xiaomi</label>
+
+      <h3>Price Range</h3>
+      <label><input type="checkbox" name="price-1" id="price-1"> Under R 5,000</label>
+      <label><input type="checkbox" name="price-2" id="price-2" checked> R 5,000 - R 15,000</label>
+      <label><input type="checkbox" name="price-3" id="price-3" checked> R 15,000 - R 25,000</label>
+      <label><input type="checkbox" name="price-4" id="price-4"> Over R 25,000</label>
+
+      <h3>Storage</h3>
+      <label><input type="checkbox" name="storage-128" id="storage-128"> 128GB</label>
+      <label><input type="checkbox" name="storage-256" id="storage-256" checked> 256GB</label>
+      <label><input type="checkbox" name="storage-512" id="storage-512"> 512GB</label>
+
+      <h3>Availability</h3>
+      <label><input type="checkbox" name="avail-stock" id="avail-stock" checked> In Stock</label>
+      <label><input type="checkbox" name="avail-preorder" id="avail-preorder"> Pre-Order</label>
+    </aside>
+
+    <main class="product-listing">
+      <h1>${categoryLabel}</h1>
+      ${liteBanner}
+      <div class="product-grid">
+        ${productCards}
+      </div>
+      <nav class="pagination">
+        <a href="#" class="page-1">1</a>
+        <a href="#">2</a>
+        <a href="#">3</a>
+        <a href="#">Next</a>
+      </nav>
+    </main>
+  </div>
+
+  <script>
+    (function() {
+      var cards = Array.from(document.querySelectorAll('.product-card'));
+      function applyFilters() {
+        var checkedBrands = Array.from(document.querySelectorAll('[name^="brand-"]:checked')).map(function(el) {
+          return (el.getAttribute('name') || '').replace('brand-', '').toLowerCase();
+        });
+        var checkedStorages = Array.from(document.querySelectorAll('[name^="storage-"]:checked')).map(function(el) {
+          return (el.getAttribute('name') || '').replace('storage-', '') + 'GB';
+        });
+        var checkedAvail = Array.from(document.querySelectorAll('[name^="avail-"]:checked')).map(function(el) {
+          var n = el.getAttribute('name');
+          return n === 'avail-stock' ? 'In Stock' : 'Pre-Order';
+        });
+        var priceRanges = [];
+        var el1 = document.getElementById('price-1'); if (el1 && el1.checked) priceRanges.push([0, 5000]);
+        var el2 = document.getElementById('price-2'); if (el2 && el2.checked) priceRanges.push([5000, 15000]);
+        var el3 = document.getElementById('price-3'); if (el3 && el3.checked) priceRanges.push([15000, 25000]);
+        var el4 = document.getElementById('price-4'); if (el4 && el4.checked) priceRanges.push([25000, Infinity]);
+        cards.forEach(function(card) {
+          var brand = (card.getAttribute('data-brand') || '').toLowerCase();
+          var storage = card.getAttribute('data-storage') || '';
+          var price = parseInt(card.getAttribute('data-price') || '0', 10);
+          var avail = card.getAttribute('data-availability') || '';
+          var brandMatch = checkedBrands.length === 0 || checkedBrands.includes(brand);
+          var storageMatch = checkedStorages.length === 0 || checkedStorages.includes(storage);
+          var availMatch = checkedAvail.length === 0 || checkedAvail.includes(avail);
+          var priceMatch = priceRanges.length === 0 || priceRanges.some(function(r) { return price >= r[0] && price <= r[1]; });
+          card.style.display = (brandMatch && storageMatch && availMatch && priceMatch) ? '' : 'none';
+        });
+      }
+      document.querySelectorAll('.filter-sidebar input[type="checkbox"]').forEach(function(cb) {
+        cb.addEventListener('change', applyFilters);
+      });
+    })();
+  </script>`;
+
+  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body));
+});
 
 function renderOfferCard(offer: PrepaidUpsellOffer): string {
   const price = offer.pricingSummary.recurringAmount ?? offer.pricingSummary.onceOffAmount ?? 0;
@@ -366,6 +636,189 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <section class="product-details">
     <h2>Complete your purchase</h2>
   </section>
+</body>
+</html>`;
+
+  res.status(200).type('text/html').send(html);
+});
+
+// ---------------------------------------------------------------------------
+// GET /checkout?journey=<type>[&step=<n>]
+// Renders the checkout form driven by the journey-fields config.
+// Customer Details and Terms & Consent sections are dynamic; Payment section
+// is static (PCI-DSS card tokenization UI does not change by journey type).
+// ---------------------------------------------------------------------------
+
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderField(field: FieldDefinition): string {
+  const id = escapeHtml(field.name);
+  const label = escapeHtml(field.label);
+  // Plain text markers keep them readable by regex that cannot cross HTML tag boundaries
+  const optionalBadge = field.required ? '' : ' (Optional)';
+  const requiredIndicator = field.required ? ' *' : '';
+  const requiredAttr = field.required ? ' required aria-required="true"' : '';
+
+  if (field.inputType === 'checkbox') {
+    return `
+    <div class="field-group">
+      <input type="checkbox" id="${id}" name="${id}"${requiredAttr}>
+      <label for="${id}">${label}${requiredIndicator}${optionalBadge}</label>
+    </div>`;
+  }
+
+  if (field.inputType === 'select') {
+    return `
+    <div class="field-group">
+      <label for="${id}">${label}${requiredIndicator}${optionalBadge}</label>
+      <select id="${id}" name="${id}"${requiredAttr}>
+        <option value="">Select ${label}</option>
+      </select>
+    </div>`;
+  }
+
+  return `
+    <div class="field-group">
+      <label for="${id}">${label}${requiredIndicator}${optionalBadge}</label>
+      <input type="${field.inputType}" id="${id}" name="${id}"${requiredAttr}>
+    </div>`;
+}
+
+catalogRouter.get('/checkout', (req: Request, res: Response) => {
+  const journeyType = (req.query['journey'] as string) ?? 'purchase';
+  const stepParam = req.query['step'];
+  const currentStep = stepParam !== undefined ? parseInt(String(stepParam), 10) : undefined;
+
+  const allFields = getJourneyFields(journeyType);
+  if (!allFields) {
+    res.status(400).type('text/html').send(`<h1>Unknown journey type: ${escapeHtml(journeyType)}</h1>`);
+    return;
+  }
+
+  // When a step is provided, show only fields for that step (RICA fields gated to step 3).
+  // When no step is provided, default to step 1 (Customer Details) so payment-step
+  // fields never bleed into the Customer Details section alongside the static Payment Method UI.
+  const effectiveStep = currentStep ?? 1;
+  const customerFields = allFields.filter(f => {
+    if (f.inputType === 'checkbox' || f.name === 'marketingConsent') return false;
+    return f.collectionStep === effectiveStep;
+  });
+
+  const customerFieldsHtml = customerFields.map(renderField).join('');
+
+  // marketingConsent is always optional; render it in Terms & Consent
+  const marketingField: FieldDefinition = {
+    name: 'marketingConsent',
+    label: 'I consent to receiving marketing communications from Vodacom about products, services, and special offers',
+    inputType: 'checkbox',
+    required: false,
+    businessPurpose: '',
+    collectionStep: 1,
+  };
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout - Vodacom Shop</title>
+  <style>
+    .required-indicator { color: #c00; margin-left: 2px; }
+    .optional-label { color: #666; font-size: 0.875em; margin-left: 4px; }
+    .field-group { margin-bottom: 1rem; }
+    .field-group label { display: block; margin-bottom: 0.25rem; }
+    .field-group input, .field-group select { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+    .field-group input[type="checkbox"] { width: auto; margin-right: 0.5rem; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/">Vodacom Shop</a>
+  </header>
+
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo;
+    <a href="/cart">Cart</a> &rsaquo;
+    Checkout
+  </nav>
+
+  <main class="main-content">
+    <h1>Checkout</h1>
+
+    <section class="customer-details">
+      <h2>Customer Details</h2>
+      <form id="checkout-form" method="post" action="/checkout/submit">
+        ${customerFieldsHtml}
+
+        <h2>2 Payment Method</h2>
+        <fieldset>
+          <legend>Select payment method</legend>
+          <label>
+            <input type="radio" name="payment-method" value="card" checked>
+            Credit or Debit Card
+          </label>
+          <label>
+            <input type="radio" name="payment-method" value="mobile-money">
+            Mobile Money
+          </label>
+        </fieldset>
+
+        <h2>3 Terms &amp; Consent</h2>
+        <div class="field-group">
+          <input type="checkbox" id="terms" name="terms" required aria-required="true">
+          <label for="terms">
+            I agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a>
+            <span class="required-indicator" aria-hidden="true">*</span>
+            <span class="required-label">(Required)</span>
+          </label>
+        </div>
+        ${renderField(marketingField)}
+
+        <button type="submit">Place Order</button>
+      </form>
+    </section>
+  </main>
+
+  <aside class="summary-card">
+    <h3>Order Summary</h3>
+    <p>iPhone 15 Pro 256GB &mdash; Qty: 1 &mdash; R 18,999</p>
+    <p>Silicone Case &mdash; Qty: 1 &mdash; R 599</p>
+    <p>20W Power Adapter &mdash; Qty: 1 &mdash; R 399</p>
+    <dl>
+      <dt>Once-Off Subtotal</dt><dd>R 19,997.00</dd>
+      <dt>Monthly Plan</dt><dd>R 799.00</dd>
+      <dt>VAT (15%)</dt><dd>R 2,999.55</dd>
+      <dt>Trade-In Credit</dt><dd>- R 2,500.00</dd>
+      <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
+    </dl>
+    <p>+ R 799.00/month</p>
+  </aside>
+
+  <footer class="footer">
+    <h4>About Vodacom</h4>
+    <a href="#">About Us</a>
+    <a href="#">Careers</a>
+    <h4>Support</h4>
+    <a href="#">Contact Us</a>
+    <a href="#">FAQs</a>
+    <h4>Legal</h4>
+    <a href="#">Terms &amp; Conditions</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Cookie Policy</a>
+    <a href="#">Accessibility</a>
+    <h4>Connect</h4>
+    <a href="#">Facebook</a>
+    <a href="#">Twitter</a>
+    <a href="#">Instagram</a>
+    <a href="#">LinkedIn</a>
+    <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
+  </footer>
 </body>
 </html>`;
 
