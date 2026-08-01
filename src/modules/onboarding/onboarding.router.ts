@@ -230,23 +230,99 @@ onboardingRouter.post('/porting', (req: Request, res: Response) => {
   }
 
   const errors = buildFieldErrors(stringFields);
+  const marketCode = stringFields.marketCode ?? '';
 
   if (errors.length > 0) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    if (req.is('application/json')) {
+      res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+      return;
+    }
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Port Your Number - Vodacom Shop</title>
+  <style>
+    .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+    .form-group label { font-weight: 600; }
+    .form-group input { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    .form-group input[aria-invalid="true"] { border-color: #c62828; }
+    .field-error { color: #c62828; font-size: 0.875rem; }
+    .porting-skip { margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/">Vodacom Shop</a>
+    <nav>
+      <a href="/catalog">Devices</a>
+      <a href="/plans">Plans</a>
+      <a href="/support">Support</a>
+    </nav>
+  </header>
+
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo;
+    <a href="/onboarding">Onboarding</a> &rsaquo;
+    Port Your Number
+  </nav>
+
+  <main class="main-content">
+    <h1>Port Your Number</h1>
+    <p>Transfer your existing number to Vodacom. This is an optional step — you can skip it if you are not porting.</p>
+
+    ${renderPortingForm(marketCode, errors, stringFields)}
+  </main>
+</body>
+</html>`;
+    res.status(422).type('text/html').send(html);
     return;
   }
 
-  const marketCode = stringFields.marketCode ?? '';
   if (marketCode && !PORTING_SUPPORTED_MARKETS.has(marketCode)) {
-    res.status(403).json({
-      errorCode: 'PORTING_NOT_SUPPORTED',
-      message: `Porting is not supported in market "${marketCode}".`,
-    });
+    if (req.is('application/json')) {
+      res.status(403).json({
+        errorCode: 'PORTING_NOT_SUPPORTED',
+        message: `Porting is not supported in market "${marketCode}".`,
+      });
+      return;
+    }
+    res.status(403).type('text/html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Porting Not Available - Vodacom Shop</title>
+</head>
+<body>
+  <header class="header"><a href="/">Vodacom Shop</a></header>
+  <main>
+    <h1>Number Porting Not Available</h1>
+    <p>Number porting is not available in your market (${escapeHtml(marketCode)}).</p>
+    <a href="/onboarding/porting/skip?market=${escapeHtml(marketCode)}">Continue without porting</a>
+  </main>
+</body>
+</html>`);
     return;
   }
 
-  res.status(201).json({
-    status: 'pending_porting',
-    message: 'Porting request received. We will contact you to confirm the transfer.',
-  });
+  res.redirect(303, '/onboarding/porting/confirmation');
+});
+
+// GET /porting/confirmation — porting request received confirmation page
+onboardingRouter.get('/porting/confirmation', (req: Request, res: Response) => {
+  res.status(200).type('text/html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Porting Request Received - Vodacom Shop</title>
+</head>
+<body>
+  <header class="header"><a href="/">Vodacom Shop</a></header>
+  <main>
+    <h1>Porting Request Received</h1>
+    <p>Your number porting request has been received. We will contact you to confirm the transfer.</p>
+    <a href="/onboarding/next">Continue</a>
+  </main>
+</body>
+</html>`);
 });

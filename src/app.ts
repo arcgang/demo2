@@ -7,6 +7,7 @@ import { onboardingRouter } from './modules/onboarding/onboarding.router';
 export const app = express();
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 app.use('/api/offers', upsellOffersRouter);
 app.use('/orders', ordersRouter);
