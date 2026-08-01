@@ -2,6 +2,7 @@ export interface MarketConfig {
   marketCode: string;
   marketName: string;
   currency: string;
+  currencySymbol: string;
   language: string;
   taxLabel: string;
   vatRate: number;
@@ -17,6 +18,7 @@ const MARKETS: Record<string, MarketConfig> = {
     marketCode: 'ZA',
     marketName: 'South Africa',
     currency: 'ZAR',
+    currencySymbol: 'R',
     language: 'en-ZA',
     taxLabel: 'VAT',
     vatRate: 0.15,
@@ -30,6 +32,7 @@ const MARKETS: Record<string, MarketConfig> = {
     marketCode: 'TZ',
     marketName: 'Tanzania',
     currency: 'TZS',
+    currencySymbol: 'TZS',
     language: 'sw-TZ',
     taxLabel: 'VAT',
     vatRate: 0.18,
@@ -43,6 +46,7 @@ const MARKETS: Record<string, MarketConfig> = {
     marketCode: 'MZ',
     marketName: 'Mozambique',
     currency: 'MZN',
+    currencySymbol: 'MT',
     language: 'pt-MZ',
     taxLabel: 'IVA',
     vatRate: 0.17,

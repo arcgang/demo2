@@ -3,32 +3,9 @@ import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
 import { getDefaultMarketContext, MarketContext } from '../market/marketConfig';
+import { getProductsForStorefront } from './catalogData';
 
 export const catalogRouter = Router();
-
-// ─── Storefront product data (wireframe_product_listing.html SKUs) ─────────────
-
-interface StorefrontProduct {
-  slug: string;
-  name: string;
-  price: number;
-  monthlyFrom: number;
-  badges: string[];
-  brand: string;
-  storage: string;
-  availability: 'In Stock' | 'Pre-Order';
-  isPurchasable: boolean;
-  category: string;
-}
-
-const STOREFRONT_SMARTPHONES: StorefrontProduct[] = [
-  { slug: 'iphone-15-pro', name: 'iPhone 15 Pro 256GB', price: 24999, monthlyFrom: 899, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-  { slug: 'samsung-s24-ultra', name: 'Samsung Galaxy S24 Ultra 256GB', price: 22999, monthlyFrom: 799, badges: ['5G'], brand: 'Samsung', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-  { slug: 'iphone-15', name: 'iPhone 15 128GB', price: 18999, monthlyFrom: 699, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-  { slug: 'samsung-s24', name: 'Samsung Galaxy S24 256GB', price: 16999, monthlyFrom: 599, badges: ['5G'], brand: 'Samsung', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-  { slug: 'samsung-a54', name: 'Samsung Galaxy A54 128GB', price: 8999, monthlyFrom: 349, badges: ['5G'], brand: 'Samsung', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-  { slug: 'iphone-14', name: 'iPhone 14 128GB', price: 15999, monthlyFrom: 579, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-];
 
 const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   smartphones: 'Smartphones',
@@ -37,11 +14,11 @@ const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   accessories: 'Accessories',
 };
 
-function fmtStorefrontPrice(amount: number): string {
-  return 'R ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+function fmtCurrency(ctx: MarketContext, amount: number): string {
+  return ctx.currencySymbol + ' ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-function renderSharedHeader(): string {
+function renderSharedHeader(ctx: MarketContext): string {
   return `<header class="header">
   <a href="/">Vodacom</a>
   <nav>
@@ -50,7 +27,7 @@ function renderSharedHeader(): string {
     <a href="/accessories">Accessories</a>
     <a href="/support">Support</a>
   </nav>
-  <span class="market-indicator">South Africa - ZAR</span>
+  <span class="market-indicator">${ctx.marketName} - ${ctx.currency}</span>
   <span class="cart-badge">Cart</span>
   <button class="btn-account">Account</button>
 </header>`;
@@ -105,7 +82,8 @@ function renderMarketContextScript(ctx: MarketContext): string {
 }
 
 function renderPage(title: string, body: string, ctx?: MarketContext): string {
-  const marketScript = renderMarketContextScript(ctx ?? getDefaultMarketContext());
+  const marketCtx = ctx ?? getDefaultMarketContext();
+  const marketScript = renderMarketContextScript(marketCtx);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -114,7 +92,7 @@ function renderPage(title: string, body: string, ctx?: MarketContext): string {
   ${marketScript}
 </head>
 <body>
-${renderSharedHeader()}
+${renderSharedHeader(marketCtx)}
 ${body}
 ${renderSharedFooter()}
 </body>
@@ -124,6 +102,7 @@ ${renderSharedFooter()}
 // ─── Home page (Screen 9: wireframe_storefront_home.html) ─────────────────────
 
 catalogRouter.get('/', (_req: Request, res: Response) => {
+  const marketCtx = getDefaultMarketContext();
   const body = `
   <section class="hero">
     <h1>Welcome to Vodacom Shop</h1>
@@ -160,11 +139,11 @@ catalogRouter.get('/', (_req: Request, res: Response) => {
 
   <section class="trade-in-banner">
     <h2>Trade in your old device and save</h2>
-    <p>Get up to R 5,000 credit towards your next purchase</p>
+    <p>Get up to ${fmtCurrency(marketCtx, 5000)} credit towards your next purchase</p>
     <a href="/upgrade/trade-in">Get a Valuation</a>
   </section>`;
 
-  res.status(200).type('text/html').send(renderPage('Vodacom Shop - Welcome', body));
+  res.status(200).type('text/html').send(renderPage('Vodacom Shop - Welcome', body, marketCtx));
 });
 
 // ─── Product listing page (Screen 8: wireframe_product_listing.html) ──────────
@@ -173,7 +152,8 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
   const category = req.query.category as string | undefined;
   const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
 
-  const products = STOREFRONT_SMARTPHONES;
+  const marketCtx = getDefaultMarketContext();
+  const products = getProductsForStorefront(category);
   const categoryLabel = category ? (CATEGORY_DISPLAY_NAMES[category] ?? category) : 'All Devices';
 
   const liteBanner = liteMode
@@ -189,8 +169,8 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       <div class="product-card" data-brand="${p.brand}" data-price="${p.price}" data-storage="${p.storage}" data-availability="${p.availability}" data-purchasable="${p.isPurchasable}">
         <div class="product-badges">${badges}</div>
         <h3>${p.name}</h3>
-        <p class="product-price">${fmtStorefrontPrice(p.price)}</p>
-        <p class="product-monthly">or from R ${p.monthlyFrom}/month</p>
+        <p class="product-price">${fmtCurrency(marketCtx, p.price)}</p>
+        <p class="product-monthly">or from ${fmtCurrency(marketCtx, p.monthlyFrom)}/month</p>
         ${cta}
       </div>`;
   }).join('\n');
@@ -211,10 +191,10 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       <label><input name="brand-xiaomi" type="checkbox" id="brand-xiaomi"> Xiaomi</label>
 
       <h3>Price Range</h3>
-      <label><input type="checkbox" name="price-1" id="price-1"> Under R 5,000</label>
-      <label><input type="checkbox" name="price-2" id="price-2" checked> R 5,000 - R 15,000</label>
-      <label><input type="checkbox" name="price-3" id="price-3" checked> R 15,000 - R 25,000</label>
-      <label><input type="checkbox" name="price-4" id="price-4"> Over R 25,000</label>
+      <label><input type="checkbox" name="price-1" id="price-1"> Under ${fmtCurrency(marketCtx, 5000)}</label>
+      <label><input type="checkbox" name="price-2" id="price-2" checked> ${fmtCurrency(marketCtx, 5000)} - ${fmtCurrency(marketCtx, 15000)}</label>
+      <label><input type="checkbox" name="price-3" id="price-3" checked> ${fmtCurrency(marketCtx, 15000)} - ${fmtCurrency(marketCtx, 25000)}</label>
+      <label><input type="checkbox" name="price-4" id="price-4"> Over ${fmtCurrency(marketCtx, 25000)}</label>
 
       <h3>Storage</h3>
       <label><input type="checkbox" name="storage-128" id="storage-128"> 128GB</label>
@@ -278,10 +258,10 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
     })();
   </script>`;
 
-  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body));
+  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body, marketCtx));
 });
 
-function renderOfferCard(offer: PrepaidUpsellOffer): string {
+function renderOfferCard(offer: PrepaidUpsellOffer, ctx: MarketContext): string {
   const price = offer.pricingSummary.recurringAmount ?? offer.pricingSummary.onceOffAmount ?? 0;
   const badge = offer.badge ? `<span class="offer-badge">${offer.badge}</span>` : '';
   return `
@@ -289,15 +269,15 @@ function renderOfferCard(offer: PrepaidUpsellOffer): string {
       ${badge}
       <h4>${offer.title}</h4>
       <p>${offer.description}</p>
-      <p class="offer-price">R ${price}/month</p>
+      <p class="offer-price">${fmtCurrency(ctx, price)}/month</p>
       ${offer.pricingSummary.discountLabel ? `<p class="offer-discount">${offer.pricingSummary.discountLabel}</p>` : ''}
       <button class="btn-upsell-cta" data-offer-id="${offer.offerId}">${offer.ctaLabel}</button>
     </div>`;
 }
 
-function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
+function renderUpsellPanel(offers: PrepaidUpsellOffer[], ctx: MarketContext): string {
   if (offers.length === 0) return '';
-  const cards = offers.map(renderOfferCard).join('\n');
+  const cards = offers.map(o => renderOfferCard(o, ctx)).join('\n');
   return `
   <div class="upsell-panel recommended-panel promotional-section">
     <h3>Recommended for You</h3>
@@ -310,27 +290,23 @@ function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
 catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const { slug } = req.params;
   const context = (req.query['context'] as string) ?? '';
+  const marketCtx = getDefaultMarketContext();
   const offers = context ? getUpsellOffersByContext(context) : [];
-  const upsellPanel = renderUpsellPanel(offers);
+  const upsellPanel = renderUpsellPanel(offers, marketCtx);
 
-  // Fetch recommendations from the device recommendations data layer
-  // (equivalent to GET /api/devices/:id/recommendations in the backend)
   const rec = getRecommendationsBySlug(slug);
   if (!rec) {
     res.status(404).type('text/html').send(`<h1>Device not found</h1>`);
     return;
   }
 
-  const marketCtx = getDefaultMarketContext();
-
   const plans = rec.attachments.filter(a => a.type === 'PLAN');
   const addons = rec.attachments.filter(a => a.type === 'ADDON');
 
-  // Pre-select the plan marked as defaultChecked, or the first plan
   const defaultPlan = plans.find(p => p.defaultChecked) ?? plans[0];
 
   function fmtPrice(n: number): string {
-    return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return fmtCurrency(marketCtx, parseFloat(n.toFixed(2)));
   }
 
   const planRadios = plans.map(p => `
@@ -338,16 +314,15 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
           <input type="radio" name="plan" value="${p.id}" data-monthly="${p.monthly}" required${p === defaultPlan ? ' checked' : ''}>
           <span class="plan-name">${p.name}</span>
           <span class="plan-desc">${p.description}</span>
-          <span class="plan-price">R ${p.monthly}/month</span>
+          <span class="plan-price">${fmtCurrency(marketCtx, p.monthly)}/month</span>
         </label>`).join('');
 
   const addonCheckboxes = addons.map(a => `
       <label class="addon-option">
         <input type="checkbox" name="${a.checkboxName ?? a.id}" data-monthly="${a.monthly}" data-addon-name="${a.name}"${a.defaultChecked ? ' checked' : ''}>
-        ${a.name} &mdash; ${a.description} &mdash; + R ${a.monthly}/month
+        ${a.name} &mdash; ${a.description} &mdash; + ${fmtCurrency(marketCtx, a.monthly)}/month
       </label>`).join('');
 
-  // Initial recurring charges section: show selected plan + default-checked add-ons
   const defaultPlanMonthly = defaultPlan ? defaultPlan.monthly : 0;
   const defaultAddons = addons.filter(a => a.defaultChecked);
   const defaultAddonMonthly = defaultAddons.reduce((s, a) => s + a.monthly, 0);
@@ -453,19 +428,18 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       var _marketCtxEl = document.getElementById('market-context-data');
       var _marketConfig = _marketCtxEl ? JSON.parse(_marketCtxEl.textContent || '{}') : {};
       var VAT_RATE = typeof _marketConfig.vatRate === 'number' ? _marketConfig.vatRate : ${marketCtx.vatRate};
+      var CURRENCY_SYMBOL = typeof _marketConfig.currencySymbol === 'string' ? _marketConfig.currencySymbol : '${marketCtx.currencySymbol}';
 
       function fmt(n) {
-        return 'R ' + n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+        return CURRENCY_SYMBOL + ' ' + n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
       }
 
       function update() {
         var sel = document.querySelector('input[name="plan"]:checked');
         var planMonthly = sel ? parseInt(sel.getAttribute('data-monthly') || '0', 10) : 0;
 
-        // Rebuild recurring-charges dl dynamically
         var recurringDl = document.getElementById('recurring-charges');
 
-        // Update or clear the plan row
         var planNameDt = document.getElementById('selected-plan-name');
         var planPriceDd = document.getElementById('selected-plan-price');
         if (sel) {
@@ -478,12 +452,10 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
           planPriceDd.textContent = '';
         }
 
-        // Remove all existing add-on rows
         recurringDl.querySelectorAll('[data-addon-id]').forEach(function (el) {
           el.parentNode.removeChild(el);
         });
 
-        // Add a row for each checked add-on
         var addonMonthly = 0;
         document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
           var monthly = parseInt(cb.getAttribute('data-monthly') || '0', 10);
@@ -558,15 +530,16 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
 
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
+  const marketCtx = getDefaultMarketContext();
   const offers = context ? getUpsellOffersByContext(context) : [];
-
-  const upsellPanel = renderUpsellPanel(offers);
+  const upsellPanel = renderUpsellPanel(offers, marketCtx);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
+  ${renderMarketContextScript(marketCtx)}
 </head>
 <body>
   <header class="header">
@@ -589,8 +562,8 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <section class="product-hero">
     <h1>iPhone 15 Pro 256GB</h1>
     <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
+    <p class="product-price">${fmtCurrency(marketCtx, 24999)}</p>
+    <p>or from ${fmtCurrency(marketCtx, 899)}/month with a plan</p>
 
     <div class="color-selector">
       <span>Color</span>
@@ -626,19 +599,19 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <div class="plan-card" data-plan-id="plan_red_5gb">
         <h4>Vodacom Red 5GB</h4>
         <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
+        <p class="plan-price">${fmtCurrency(marketCtx, 299)}/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
       <div class="plan-card" data-plan-id="plan_unlimited_20gb">
         <h4>Vodacom Unlimited 20GB</h4>
         <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
+        <p class="plan-price">${fmtCurrency(marketCtx, 799)}/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
       <div class="plan-card" data-plan-id="plan_red_premium">
         <h4>Vodacom Red Premium</h4>
         <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
+        <p class="plan-price">${fmtCurrency(marketCtx, 1299)}/month</p>
         <button class="btn-select-plan">Select Plan</button>
       </div>
     </div>

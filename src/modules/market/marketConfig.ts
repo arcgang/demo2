@@ -1,51 +1,36 @@
+import { MarketConfig, getMarket } from '../../../backend/src/modules/market/marketConfig';
+
 export interface MarketContext {
   marketCode: string;
   marketName: string;
   locale: string;
   currency: string;
+  currencySymbol: string;
   taxLabel: string;
   vatRate: number;
   enabledPaymentMethods: string[];
   liteModeDefault: boolean;
 }
 
-const MARKETS: Record<string, MarketContext> = {
-  ZA: {
-    marketCode: 'ZA',
-    marketName: 'South Africa',
-    locale: 'en-ZA',
-    currency: 'ZAR',
-    taxLabel: 'VAT',
-    vatRate: 0.15,
-    enabledPaymentMethods: ['CARD_TOKEN', 'MOBILE_MONEY'],
-    liteModeDefault: false,
-  },
-  TZ: {
-    marketCode: 'TZ',
-    marketName: 'Tanzania',
-    locale: 'sw-TZ',
-    currency: 'TZS',
-    taxLabel: 'VAT',
-    vatRate: 0.18,
-    enabledPaymentMethods: ['CARD_TOKEN', 'MOBILE_MONEY'],
-    liteModeDefault: false,
-  },
-  MZ: {
-    marketCode: 'MZ',
-    marketName: 'Mozambique',
-    locale: 'pt-MZ',
-    currency: 'MZN',
-    taxLabel: 'IVA',
-    vatRate: 0.17,
-    enabledPaymentMethods: ['CARD_TOKEN', 'MOBILE_MONEY'],
-    liteModeDefault: false,
-  },
-};
+function toMarketContext(m: MarketConfig): MarketContext {
+  return {
+    marketCode: m.marketCode,
+    marketName: m.marketName,
+    locale: m.language,
+    currency: m.currency,
+    currencySymbol: m.currencySymbol,
+    taxLabel: m.taxLabel,
+    vatRate: m.vatRate,
+    enabledPaymentMethods: m.paymentMethods,
+    liteModeDefault: m.liteModeDefault,
+  };
+}
 
 export function getMarketContext(marketCode: string): MarketContext | undefined {
-  return MARKETS[marketCode.toUpperCase()];
+  const m = getMarket(marketCode);
+  return m ? toMarketContext(m) : undefined;
 }
 
 export function getDefaultMarketContext(): MarketContext {
-  return MARKETS['ZA'];
+  return toMarketContext(getMarket('ZA')!);
 }
