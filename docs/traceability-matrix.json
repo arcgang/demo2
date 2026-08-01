@@ -1,0 +1,206 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-08-01T00:00:00.000Z",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Browse and select a product offer from the catalog",
+      "journeyIds": ["purchase", "onboarding", "upgrade"],
+      "acceptanceCriteriaRefs": [
+        "AC-CATALOG-01: Catalog endpoint returns available offers for the customer's market context",
+        "AC-CATALOG-02: Each offer includes pricing summary (once-off and/or recurring), title, and CTA label",
+        "AC-CATALOG-03: Promotional offers are flagged with a badge and isPromotional flag",
+        "AC-CATALOG-04: Prepaid upsell and migration offers are distinguishable by type field"
+      ],
+      "tmfCapabilities": ["TMF620", "TMF663"],
+      "dependencyNames": ["Catalog/Offer Source", "Personalization Rule Boundary"]
+    },
+    {
+      "id": "US-002",
+      "title": "Capture customer identity and delivery details at checkout",
+      "journeyIds": ["purchase", "onboarding"],
+      "acceptanceCriteriaRefs": [
+        "AC-FIELDS-01: Journey fields endpoint returns step-1 customer detail fields (firstName, lastName, email, phone, deliveryAddress)",
+        "AC-FIELDS-02: All required fields are marked required=true and carry a businessPurpose description",
+        "AC-FIELDS-03: Marketing consent checkbox is presented at step 1 as optional",
+        "AC-FIELDS-04: Fields are scoped to collectionStep 1"
+      ],
+      "tmfCapabilities": ["TMF632", "TMF666"],
+      "dependencyNames": ["Identity Service", "Consent/Audit Sink"]
+    },
+    {
+      "id": "US-003",
+      "title": "Tokenize payment method for PCI-DSS compliant order settlement",
+      "journeyIds": ["purchase", "onboarding"],
+      "acceptanceCriteriaRefs": [
+        "AC-PAYMENT-01: Payment token field is presented at step 2 (collectionStep=2), after customer details",
+        "AC-PAYMENT-02: Raw card data is never stored; only a payment token is submitted",
+        "AC-PAYMENT-03: Billing postal code is collected as optional context at step 2",
+        "AC-PAYMENT-04: Order creation accepts a paymentAttemptId and paymentStatus field",
+        "AC-PAYMENT-05: Mobile Money is available as an alternative settlement method"
+      ],
+      "tmfCapabilities": ["TMF676", "TMF663"],
+      "dependencyNames": ["PSP Tokenization", "Mobile Money Provider"]
+    },
+    {
+      "id": "US-004",
+      "title": "Submit and confirm a product order",
+      "journeyIds": ["purchase", "onboarding", "upgrade"],
+      "acceptanceCriteriaRefs": [
+        "AC-ORDER-01: POST /api/orders creates an order and returns an ORD-XXXXXX reference",
+        "AC-ORDER-02: Order confirmation includes lineItems, onceOffTotal, monthlyTotal, paymentStatus, and nextSteps",
+        "AC-ORDER-03: Order creation emits an order_created audit event into the consent/audit sink",
+        "AC-ORDER-04: Missing required fields (cartId, paymentAttemptId, paymentStatus, lineItems) return HTTP 422 with field-level errors",
+        "AC-ORDER-05: Each order reference is unique (collision-resistant random generation)"
+      ],
+      "tmfCapabilities": ["TMF622", "TMF676"],
+      "dependencyNames": ["Order Submission", "Consent/Audit Sink"]
+    },
+    {
+      "id": "US-005",
+      "title": "Complete RICA/KYC identity verification for SIM registration",
+      "journeyIds": ["onboarding"],
+      "acceptanceCriteriaRefs": [
+        "AC-KYC-01: Onboarding journey exposes step-3 identity fields (idDocumentType, idDocumentNumber, addressLine1, city, postalCode) gated behind payment confirmation",
+        "AC-KYC-02: POST /api/onboarding/verification creates a verification case with status PENDING or PASSED",
+        "AC-KYC-03: GET /api/onboarding/verification/:orderId returns current verification case status",
+        "AC-KYC-04: eSIM issuance is blocked (HTTP 403 VERIFICATION_PENDING) until KYC/RICA status is PASSED",
+        "AC-KYC-05: Identity fields carry RICA regulatory businessPurpose descriptions"
+      ],
+      "tmfCapabilities": ["TMF632", "TMF637"],
+      "dependencyNames": ["KYC/RICA Verification", "Identity Service"]
+    },
+    {
+      "id": "US-006",
+      "title": "Port an existing mobile number to the new SIM",
+      "journeyIds": ["onboarding"],
+      "acceptanceCriteriaRefs": [
+        "AC-PORT-01: POST /api/onboarding/porting accepts marketCode, donorNetwork, accountHolderName, accountNumber, idNumber",
+        "AC-PORT-02: Porting request returns a caseId, status, and kycStub reference",
+        "AC-PORT-03: HTTP 403 is returned with PORTING_NOT_SUPPORTED when the market does not support porting",
+        "AC-PORT-04: portingMsisdn field is available on onboarding journey step 3 as optional"
+      ],
+      "tmfCapabilities": ["TMF632", "TMF666"],
+      "dependencyNames": ["Identity Service", "KYC/RICA Verification"]
+    },
+    {
+      "id": "US-007",
+      "title": "Issue an eSIM profile to the customer's device",
+      "journeyIds": ["activation", "onboarding"],
+      "acceptanceCriteriaRefs": [
+        "AC-ESIM-01: Activation journey collects eid (eSIM EID), deviceModel, and activationConfirmation fields",
+        "AC-ESIM-02: POST /api/orders/:id/esim/issue returns activationCode and smdpAddress on success",
+        "AC-ESIM-03: Issuance is blocked with PAYMENT_PENDING (HTTP 403) if payment status is not confirmed",
+        "AC-ESIM-04: Issuance is blocked with VERIFICATION_PENDING (HTTP 403) if KYC/RICA is not passed",
+        "AC-ESIM-05: Re-issuing an already-issued eSIM returns HTTP 200 with ALREADY_ISSUED outcome idempotently"
+      ],
+      "tmfCapabilities": ["TMF637", "TMF622"],
+      "dependencyNames": ["Activation Status", "KYC/RICA Verification"]
+    },
+    {
+      "id": "US-008",
+      "title": "Track order and eSIM activation status in real time",
+      "journeyIds": ["activation", "purchase", "onboarding"],
+      "acceptanceCriteriaRefs": [
+        "AC-STATUS-01: GET /api/orders/:id/status?scenario=<scenario> returns timeline events for the order",
+        "AC-STATUS-02: Status response includes an activationState field reflecting current provisioning progress",
+        "AC-STATUS-03: Multiple scenario stubs (e.g. pending, active, failed) are supported for demo purposes",
+        "AC-STATUS-04: Activation fields include preferredNetwork as an optional configuration band"
+      ],
+      "tmfCapabilities": ["TMF637", "TMF622"],
+      "dependencyNames": ["Activation Status", "Order Submission"]
+    },
+    {
+      "id": "US-009",
+      "title": "Check device upgrade eligibility for a customer line",
+      "journeyIds": ["upgrade"],
+      "acceptanceCriteriaRefs": [
+        "AC-ELIG-01: POST /api/upgrade/eligibility accepts customerId, lineId, and marketCode",
+        "AC-ELIG-02: Response indicates whether the customer is eligible for an upgrade",
+        "AC-ELIG-03: HTTP 422 is returned when any required eligibility field is missing or empty",
+        "AC-ELIG-04: Eligibility result is persisted in the upgrade session state under the eligibility key"
+      ],
+      "tmfCapabilities": ["TMF666", "TMF632"],
+      "dependencyNames": ["Identity Service", "Catalog/Offer Source"]
+    },
+    {
+      "id": "US-010",
+      "title": "Retrieve device financing instalment plan options",
+      "journeyIds": ["upgrade"],
+      "acceptanceCriteriaRefs": [
+        "AC-FIN-01: GET /api/upgrade/financing returns an array of FinancingQuote objects",
+        "AC-FIN-02: Each quote includes monthlyAmount, termMonths, and asyncPending flag",
+        "AC-FIN-03: Financing options cover 12, 18, and 24-month terms",
+        "AC-FIN-04: asyncPending=true quotes indicate credit-bureau lookup is in progress"
+      ],
+      "tmfCapabilities": ["TMF676", "TMF666"],
+      "dependencyNames": ["Financing Service", "Identity Service"]
+    },
+    {
+      "id": "US-011",
+      "title": "Get a trade-in valuation for an existing device",
+      "journeyIds": ["upgrade"],
+      "acceptanceCriteriaRefs": [
+        "AC-TRADEIN-01: POST /api/upgrade/trade-in/valuation accepts brand, model, storage, and condition",
+        "AC-TRADEIN-02: Response includes a trade-in quote with estimated value and currency",
+        "AC-TRADEIN-03: Invalid condition values return HTTP 422 with VALIDATION_ERROR",
+        "AC-TRADEIN-04: Trade-in quote is persisted in upgrade session state under the tradeIn key"
+      ],
+      "tmfCapabilities": ["TMF622", "TMF637"],
+      "dependencyNames": ["Trade-In Valuation", "Catalog/Offer Source"]
+    },
+    {
+      "id": "US-012",
+      "title": "Maintain stateful upgrade session across multi-step flow",
+      "journeyIds": ["upgrade"],
+      "acceptanceCriteriaRefs": [
+        "AC-SESSION-01: GET /api/upgrade/session returns current session state (eligibility, financing, tradeIn)",
+        "AC-SESSION-02: PUT /api/upgrade/session merges a partial patch into existing session state",
+        "AC-SESSION-03: Session is scoped per client via a session cookie or identifier",
+        "AC-SESSION-04: Patching with an array value for eligibility, financing, or tradeIn returns HTTP 422"
+      ],
+      "tmfCapabilities": ["TMF666", "TMF622"],
+      "dependencyNames": ["Identity Service", "Order Submission"]
+    },
+    {
+      "id": "US-013",
+      "title": "Capture and store customer consent records",
+      "journeyIds": ["purchase", "onboarding", "upgrade", "activation"],
+      "acceptanceCriteriaRefs": [
+        "AC-CONSENT-01: Consent is recorded per purpose (terms, marketing) per order per session",
+        "AC-CONSENT-02: Each consent record captures orderId, sessionId, purpose, accepted flag, and capturedAt timestamp",
+        "AC-CONSENT-03: IP address is optionally captured for audit purposes",
+        "AC-CONSENT-04: Order creation accepts a consents array to batch-record consents at checkout"
+      ],
+      "tmfCapabilities": ["TMF632", "TMF669"],
+      "dependencyNames": ["Consent/Audit Sink", "Identity Service"]
+    },
+    {
+      "id": "US-014",
+      "title": "Retrieve a full audit trail for an order journey",
+      "journeyIds": ["purchase", "onboarding", "upgrade", "activation"],
+      "acceptanceCriteriaRefs": [
+        "AC-AUDIT-01: GET /api/orders/:ref/audit-trail returns ordered audit events for the order",
+        "AC-AUDIT-02: Endpoint requires x-session-token or x-operator-token; returns HTTP 401 if absent",
+        "AC-AUDIT-03: Each event includes id, eventType, occurredAt, payload, journeyRef, and actorRef",
+        "AC-AUDIT-04: Audit events cover lifecycle types: consent_capture, payment_outcome, verification_outcome, order_created, activation_status_change",
+        "AC-AUDIT-05: HTTP 404 is returned when the order reference does not exist"
+      ],
+      "tmfCapabilities": ["TMF669", "TMF632"],
+      "dependencyNames": ["Consent/Audit Sink", "Identity Service"]
+    },
+    {
+      "id": "US-015",
+      "title": "Surface personalized upsell and migration offers to prepaid customers",
+      "journeyIds": ["upgrade", "purchase"],
+      "acceptanceCriteriaRefs": [
+        "AC-PERS-01: Upsell offers endpoint returns context-scoped offers (e.g. context=prepaid)",
+        "AC-PERS-02: Each offer includes offerId, type (upsell|migration), title, description, pricingSummary, and ctaLabel",
+        "AC-PERS-03: Promotional badge is present on Best Value and No Lock-in offers",
+        "AC-PERS-04: Empty array is returned when context has no matching offers"
+      ],
+      "tmfCapabilities": ["TMF620", "TMF666"],
+      "dependencyNames": ["Personalization Rule Boundary", "Catalog/Offer Source"]
+    }
+  ]
+}
