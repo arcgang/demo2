@@ -102,12 +102,6 @@ const LITE_MODE_JS = `
     reloadWithLite(true);
     return;
   }
-  // On page load: navigate data-lite-href links when lite mode is active
-  if (isLiteActive()) {
-    document.querySelectorAll('a[data-lite-href]').forEach(function(a) {
-      a.href = a.getAttribute('data-lite-href');
-    });
-  }
 })();
 `;
 
@@ -155,13 +149,13 @@ function renderSharedFooter(): string {
 </footer>`;
 }
 
-function renderPage(title: string, body: string, liteMode = false): string {
+function renderPage(title: string, body: string, liteMode = false, headExtra = ''): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>${title}</title>
-</head>
+${headExtra}</head>
 <body${liteMode ? ' data-lite-mode="true"' : ''}>
 ${renderSharedHeader()}
 ${body}
@@ -241,9 +235,8 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
   const liteQAmp = liteMode ? '&lite=true' : '';
   const productCardClass = liteMode ? 'product-card product-card-lite' : 'product-card';
 
-  // Build lite-mode prefetch hints: <a> tags carrying ?lite=true for AC-4 href detection
-  const litePrefetchLinks = liteMode
-    ? products.map(p => `<a href="/product/${p.slug}?lite=true" class="lite-product-link" aria-hidden="true" tabindex="-1" style="display:none"></a>`).join('\n')
+  const litePrefetchHeadLinks = liteMode
+    ? products.map(p => `  <link rel="prefetch" href="/product/${p.slug}?lite=true">`).join('\n')
     : '';
 
   const productCards = products.map(p => {
@@ -305,7 +298,6 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
         <a href="#">3</a>
         <a href="#">Next</a>
       </nav>
-      ${litePrefetchLinks}
     </main>
   </div>
 
@@ -346,7 +338,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
     })();
   </script>`;
 
-  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body, liteMode));
+  res.status(200).type('text/html').send(renderPage(categoryLabel + ' - Vodacom Shop', body, liteMode, litePrefetchHeadLinks));
 });
 
 function renderOfferCard(offer: PrepaidUpsellOffer): string {
@@ -753,10 +745,6 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   ${recommendationsSection}
 
   <script>${LITE_MODE_JS}</script>
-  <script>
-    var LITE_PARAM = ${liteMode};
-    var apiBase = '/api/catalog/products/${product.slug}' + (LITE_PARAM ? '?lite=true' : '');
-  </script>
 </body>
 </html>`;
 
@@ -842,7 +830,7 @@ catalogRouter.get('/cart', (req: Request, res: Response) => {
       <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
     </dl>
     <button class="btn-checkout">Proceed to Checkout</button>
-    <a href="/catalog">Continue Shopping</a>
+    <a href="/catalog${liteMode ? '?lite=true' : ''}">Continue Shopping</a>
     <p>Secure checkout with encrypted payment</p>
   </aside>
 
