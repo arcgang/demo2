@@ -305,6 +305,7 @@ function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
 catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const { slug } = req.params;
   const context = (req.query['context'] as string) ?? '';
+  const financingPreload = req.query['financing'] === 'true';
   const offers = context ? getUpsellOffersByContext(context) : [];
   const upsellPanel = renderUpsellPanel(offers);
 
@@ -347,10 +348,10 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const financingQuotes: FinancingQuote[] = getFinancingQuotesByProductId(slug) ?? [];
   const defaultQuote: FinancingQuote | undefined = financingQuotes[0];
 
-  const initialDeposit = 0;
-  const initialActivationFee = rec.activationFee;
-  const initialInstallment = 0;
-  const initialOnceOffSubtotal = devicePrice + initialDeposit;
+  const initialDeposit = defaultQuote ? defaultQuote.onceOffDeposit : 0;
+  const initialActivationFee = defaultQuote ? defaultQuote.activationFee : rec.activationFee;
+  const initialInstallment = defaultQuote ? defaultQuote.monthlyAmount : 0;
+  const initialOnceOffSubtotal = devicePrice + initialDeposit + initialActivationFee;
   const initialOnceOffVat = parseFloat((initialOnceOffSubtotal * 0.15).toFixed(2));
   const initialTotalOnceOff = parseFloat((initialOnceOffSubtotal + initialOnceOffVat).toFixed(2));
   const initialTotalMonthly = defaultPlanMonthly + defaultAddonMonthly + initialInstallment;
@@ -363,13 +364,13 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
     `<dt class="addon-row" data-addon-id="${a.checkboxName ?? a.id}">${a.name}</dt><dd class="addon-row" data-addon-id="${a.checkboxName ?? a.id}">${fmtPrice(a.monthly)}</dd>`
   ).join('\n      ');
 
-  const financingCards = financingQuotes.map(q => `
+  const financingCards = financingQuotes.map((q, i) => `
         <label class="financing-card financing-option">
           <input type="radio" name="financing-term" value="${q.termMonths}"
             data-term-months="${q.termMonths}"
             data-monthly-amount="${q.monthlyAmount}"
             data-deposit="${q.onceOffDeposit}"
-            data-activation-fee="${q.activationFee}">
+            data-activation-fee="${q.activationFee}"${i === 0 ? ' checked' : ''}>
           <span class="term-label">${q.termMonths} months</span>
           <span class="monthly-label">${fmtPrice(q.monthlyAmount)}/month</span>
           <span class="rate-label">${q.interestRate}% p.a.</span>
@@ -539,7 +540,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
         document.getElementById('deposit-row').textContent = fmt(financing.deposit);
         document.getElementById('activation-fee-row').textContent = fmt(financing.activationFee);
 
-        var onceOffSubtotal = DEVICE_PRICE + financing.deposit;
+        var onceOffSubtotal = DEVICE_PRICE + financing.deposit + financing.activationFee;
         var vatAmount = parseFloat((onceOffSubtotal * VAT_RATE).toFixed(2));
         var totalOnceOff = parseFloat((onceOffSubtotal + vatAmount).toFixed(2));
         var totalMonthly = planMonthly + addonMonthly + financing.monthlyAmount;
@@ -586,6 +587,10 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
             monthlySpan.className = 'monthly-label';
             monthlySpan.textContent = fmt(q.monthlyAmount) + '/month';
             label.appendChild(monthlySpan);
+            var rateSpan = document.createElement('span');
+            rateSpan.className = 'rate-label';
+            rateSpan.textContent = q.interestRate + '% p.a.';
+            label.appendChild(rateSpan);
             fieldset.appendChild(label);
           });
           update();
@@ -604,6 +609,15 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       document.querySelectorAll('input[name="financing-term"]').forEach(function (r) {
         r.addEventListener('change', update);
       });
+
+      var FINANCING_PRELOAD = ${financingPreload ? 'true' : 'false'};
+      if (FINANCING_PRELOAD) {
+        var financingSection = document.getElementById('financing-options');
+        if (financingSection) {
+          financingSection.scrollIntoView({ behavior: 'smooth' });
+          financingSection.classList.add('financing-highlighted');
+        }
+      }
 
       document.getElementById('continue-to-cart').addEventListener('click', function () {
         var sel = document.querySelector('input[name="plan"]:checked');
