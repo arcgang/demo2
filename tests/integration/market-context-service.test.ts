@@ -46,11 +46,13 @@ describe('MarketContextService.list()', () => {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    const markets = await MarketContextService.list();
-    const codes = markets.map((m) => m.code);
-    expect(codes).not.toContain('ZZ');
-
-    await db.query(`DELETE FROM markets WHERE code = 'ZZ'`);
+    try {
+      const markets = await MarketContextService.list();
+      const codes = markets.map((m) => m.code);
+      expect(codes).not.toContain('ZZ');
+    } finally {
+      await db.query(`DELETE FROM markets WHERE code = 'ZZ'`);
+    }
   });
 
   it('each market has code, name, currencyCode, currencySymbol, taxLabel, taxRate, languageCode, enabledPaymentMethods', async () => {
@@ -77,11 +79,13 @@ describe('MarketContextService.list()', () => {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    const markets = await MarketContextService.list();
-    const codes = markets.map((m) => m.code);
-    expect(codes).toContain('MZ');
-
-    await db.query(`DELETE FROM markets WHERE code = 'MZ'`);
+    try {
+      const markets = await MarketContextService.list();
+      const codes = markets.map((m) => m.code);
+      expect(codes).toContain('MZ');
+    } finally {
+      await db.query(`DELETE FROM markets WHERE code = 'MZ'`);
+    }
   });
 });
 
@@ -153,18 +157,20 @@ describe('MarketContextService.resolve(code)', () => {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    let result: unknown = null;
-    let threw = false;
     try {
-      result = await MarketContextService.resolve('QQ');
-    } catch {
-      threw = true;
+      let result: unknown = null;
+      let threw = false;
+      try {
+        result = await MarketContextService.resolve('QQ');
+      } catch {
+        threw = true;
+      }
+      if (!threw) {
+        expect(result).toBeNull();
+      }
+    } finally {
+      await db.query(`DELETE FROM markets WHERE code = 'QQ'`);
     }
-    if (!threw) {
-      expect(result).toBeNull();
-    }
-
-    await db.query(`DELETE FROM markets WHERE code = 'QQ'`);
   });
 });
 

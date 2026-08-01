@@ -54,12 +54,14 @@ describe('GET /api/markets', () => {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    const res = await request.get('/api/markets');
-    expect(res.status).toBe(200);
-    const codes = (res.body as Record<string, unknown>[]).map((m) => m['code']);
-    expect(codes).not.toContain('XX');
-
-    await db.query(`DELETE FROM markets WHERE code = 'XX'`);
+    try {
+      const res = await request.get('/api/markets');
+      expect(res.status).toBe(200);
+      const codes = (res.body as Record<string, unknown>[]).map((m) => m['code']);
+      expect(codes).not.toContain('XX');
+    } finally {
+      await db.query(`DELETE FROM markets WHERE code = 'XX'`);
+    }
   });
 
   it('each item has required fields: code, name, currencyCode, currencySymbol, taxLabel, taxRate, languageCode, enabledPaymentMethods', async () => {
@@ -87,13 +89,14 @@ describe('GET /api/markets', () => {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    const res = await request.get('/api/markets');
-    expect(res.status).toBe(200);
-    const codes = (res.body as Record<string, unknown>[]).map((m) => m['code']);
-    expect(codes).toContain('TZ');
-
-    // cleanup
-    await db.query(`DELETE FROM markets WHERE code = 'TZ'`);
+    try {
+      const res = await request.get('/api/markets');
+      expect(res.status).toBe(200);
+      const codes = (res.body as Record<string, unknown>[]).map((m) => m['code']);
+      expect(codes).toContain('TZ');
+    } finally {
+      await db.query(`DELETE FROM markets WHERE code = 'TZ'`);
+    }
   });
 });
 
@@ -165,10 +168,12 @@ describe('GET /api/markets/:code', () => {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    const res = await request.get('/api/markets/YY');
-    expect(res.status).toBe(404);
-
-    await db.query(`DELETE FROM markets WHERE code = 'YY'`);
+    try {
+      const res = await request.get('/api/markets/YY');
+      expect(res.status).toBe(404);
+    } finally {
+      await db.query(`DELETE FROM markets WHERE code = 'YY'`);
+    }
   });
 
   it('response object does not include an "active" field (internal field excluded from API)', async () => {
