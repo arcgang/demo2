@@ -78,6 +78,8 @@ export class CatalogService {
           return false;
         }
 
+        if (filters.inStock !== undefined && !filters.inStock) return false;
+
         return true;
       })
       .map((row) => ({
