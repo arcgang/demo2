@@ -112,4 +112,10 @@ describe('cart draft – (b) expired draft is discarded and not restored', () =>
     storage.store[CART_DRAFT_KEY] = '{bad json';
     expect(restoreCartDraft(storage, NOW)).toBeNull();
   });
+
+  it('returns null for a structurally-valid payload with a missing timestamp field', () => {
+    const storage = makeStorage();
+    storage.store[CART_DRAFT_KEY] = JSON.stringify({ promoCode: 'X', items: [] });
+    expect(restoreCartDraft(storage, NOW)).toBeNull();
+  });
 });
