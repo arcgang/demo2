@@ -90,7 +90,13 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
   }
 
   if (errors.length > 0) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    res.status(422).json({
+      ...buildStructuredError('support_required', {
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Required fields are missing or invalid.',
+      }),
+      errors,
+    });
     return;
   }
 
@@ -102,7 +108,12 @@ router.post('/trade-in/valuation', (req: Request, res: Response) => {
   );
 
   if ('errorCode' in quote) {
-    res.status(422).json(quote);
+    res.status(422).json(
+      buildStructuredError('support_required', {
+        errorCode: (quote as { errorCode: string }).errorCode,
+        message: (quote as { message: string }).message,
+      }),
+    );
     return;
   }
 
@@ -142,14 +153,25 @@ router.put('/session', (req: Request, res: Response) => {
   }
 
   if (errors.length > 0) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    res.status(422).json({
+      ...buildStructuredError('support_required', {
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Required fields are missing or invalid.',
+      }),
+      errors,
+    });
     return;
   }
 
   const hasKnownKey = ALLOWED_KEYS.some((k) => Object.prototype.hasOwnProperty.call(body, k));
 
   if (!hasKnownKey) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', message: 'Body must contain at least one of: eligibility, financing, tradeIn.' });
+    res.status(422).json(
+      buildStructuredError('support_required', {
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Body must contain at least one of: eligibility, financing, tradeIn.',
+      }),
+    );
     return;
   }
 

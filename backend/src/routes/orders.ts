@@ -85,14 +85,24 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
   const sessionToken = req.headers['x-session-token'];
   const operatorToken = req.headers['x-operator-token'];
   if (!sessionToken && !operatorToken) {
-    res.status(401).json({ errorCode: 'UNAUTHENTICATED', message: 'Authentication required.' });
+    res.status(401).json(
+      buildStructuredError('session_timeout', {
+        errorCode: 'UNAUTHENTICATED',
+        message: 'Authentication required.',
+      }),
+    );
     return;
   }
 
   const { ref } = req.params;
   const order = getOrderByReference(ref);
   if (!order) {
-    res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: `No order found for reference "${ref}".` });
+    res.status(404).json(
+      buildStructuredError('support_required', {
+        errorCode: 'ORDER_NOT_FOUND',
+        message: `No order found for reference "${ref}".`,
+      }),
+    );
     return;
   }
 
@@ -117,13 +127,23 @@ router.get('/:id/status', (req: Request, res: Response) => {
   const scenario = req.query.scenario as string | undefined;
 
   if (!scenario) {
-    res.status(404).json({ errorCode: 'SCENARIO_REQUIRED', message: 'Query parameter ?scenario is required for stub responses.' });
+    res.status(404).json(
+      buildStructuredError('support_required', {
+        errorCode: 'SCENARIO_REQUIRED',
+        message: 'Query parameter ?scenario is required for stub responses.',
+      }),
+    );
     return;
   }
 
   const response = buildStatusResponse(id, scenario);
   if (!response) {
-    res.status(404).json({ errorCode: 'SCENARIO_NOT_FOUND', message: `Unknown scenario: ${scenario}` });
+    res.status(404).json(
+      buildStructuredError('support_required', {
+        errorCode: 'SCENARIO_NOT_FOUND',
+        message: `Unknown scenario: ${scenario}`,
+      }),
+    );
     return;
   }
 

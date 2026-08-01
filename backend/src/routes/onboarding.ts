@@ -18,16 +18,24 @@ router.post('/porting', (req: Request, res: Response) => {
 
   const errors = validatePortingInput(body);
   if (errors.length > 0) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    res.status(422).json({
+      ...buildStructuredError('support_required', {
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Required fields are missing or invalid.',
+      }),
+      errors,
+    });
     return;
   }
 
   const marketCode = body.marketCode as string;
   if (!isPortingSupported(marketCode)) {
-    res.status(403).json({
-      errorCode: 'PORTING_NOT_SUPPORTED',
-      message: `Porting is not supported in market "${marketCode}".`,
-    });
+    res.status(403).json(
+      buildStructuredError('support_required', {
+        errorCode: 'PORTING_NOT_SUPPORTED',
+        message: `Porting is not supported in market "${marketCode}".`,
+      }),
+    );
     return;
   }
 
@@ -62,7 +70,13 @@ router.post('/verification', async (req: Request, res: Response) => {
 
   const errors = validateVerificationInput(body);
   if (errors.length > 0) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    res.status(422).json({
+      ...buildStructuredError('support_required', {
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Required fields are missing or invalid.',
+      }),
+      errors,
+    });
     return;
   }
 
@@ -104,10 +118,12 @@ router.get('/verification/:orderId', async (req: Request, res: Response) => {
   const record = await getVerificationCaseByOrderId(orderId);
 
   if (!record) {
-    res.status(404).json({
-      errorCode: 'VERIFICATION_CASE_NOT_FOUND',
-      message: `No verification case found for orderId "${orderId}".`,
-    });
+    res.status(404).json(
+      buildStructuredError('support_required', {
+        errorCode: 'VERIFICATION_CASE_NOT_FOUND',
+        message: `No verification case found for orderId "${orderId}".`,
+      }),
+    );
     return;
   }
 

@@ -474,9 +474,8 @@ describe('AC-6 eligibility_unavailable scenario — upgrade eligibility service 
 
   it('returns a non-2xx HTTP status when eligibility is unavailable', async () => {
     const { status } = await postEligibilityCheck(app, unavailablePayload);
-    expect(status).not.toBeGreaterThanOrEqual(200);
     // accepts 4xx or 5xx
-    expect(status < 200 || status >= 400).toBe(true);
+    expect(status).toBeGreaterThanOrEqual(400);
   });
 
   it('response includes reasonCode "eligibility_unavailable"', async () => {
