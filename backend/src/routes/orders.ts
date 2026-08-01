@@ -79,15 +79,20 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
 
   const { ref } = req.params;
   const order = getOrderByReference(ref);
-  if (!order) {
+
+  // Resolve the canonical reference: prefer the stored orderReference, fall back to the
+  // requested ref so that demo/operator references (e.g. ORD-3001) that were never
+  // persisted to ordersStore can still return their audit events.
+  const orderRef = order ? order.orderReference : ref;
+
+  const events = await getJourneyAuditTrail(orderRef);
+  if (!order && events.length === 0) {
     res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: `No order found for reference "${ref}".` });
     return;
   }
 
-  // Audit events are keyed by orderReference (the public ref)
-  const events = await getJourneyAuditTrail(order.orderReference);
   res.status(200).json({
-    orderId: order.orderReference,
+    orderId: orderRef,
     events: events.map((e) => ({
       id: e.id,
       eventType: e.eventType,

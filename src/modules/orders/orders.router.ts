@@ -95,7 +95,7 @@ function formatTimestamp(iso: string): string {
     minute: '2-digit',
     hour12: true,
     timeZone: 'UTC',
-  });
+  }).replace(/\bam\b/i, 'AM').replace(/\bpm\b/i, 'PM');
 }
 
 function payloadSummary(eventType: string, payload: Record<string, unknown>): string {
@@ -609,7 +609,7 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
         return d.toLocaleString('en-ZA', {
           day: 'numeric', month: 'long', year: 'numeric',
           hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC',
-        });
+        }).replace(/\bam\b/i, 'AM').replace(/\bpm\b/i, 'PM');
       }
 
       function payloadSummary(type, payload) {
@@ -660,7 +660,19 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
         if (!r.ok) return null;
         return r.json();
       }).then(function (data) {
-        if (!data || !Array.isArray(data.events) || data.events.length === 0) return;
+        var section = document.querySelector('.order-status-timeline');
+        if (!section) return;
+        var h2 = section.querySelector('h2');
+
+        if (!data || !Array.isArray(data.events) || data.events.length === 0) {
+          section.innerHTML = '';
+          if (h2) section.appendChild(h2);
+          var msg = document.createElement('p');
+          msg.className = 'milestone__empty';
+          msg.textContent = 'No audit events found for this order.';
+          section.appendChild(msg);
+          return;
+        }
 
         var seenLabels = {};
         var milestones = [];
@@ -679,9 +691,6 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
           }
         }
 
-        var section = document.querySelector('.order-status-timeline');
-        if (!section) return;
-        var h2 = section.querySelector('h2');
         section.innerHTML = '';
         if (h2) section.appendChild(h2);
         var fragment = document.createDocumentFragment();
@@ -689,7 +698,17 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
         wrapper.innerHTML = milestones.map(renderMilestone).join('');
         while (wrapper.firstChild) fragment.appendChild(wrapper.firstChild);
         section.appendChild(fragment);
-      }).catch(function () {});
+      }).catch(function () {
+        var section = document.querySelector('.order-status-timeline');
+        if (!section) return;
+        var h2 = section.querySelector('h2');
+        section.innerHTML = '';
+        if (h2) section.appendChild(h2);
+        var msg = document.createElement('p');
+        msg.className = 'milestone__empty';
+        msg.textContent = 'No audit events found for this order.';
+        section.appendChild(msg);
+      });
     })();
   </script>
 </body>
