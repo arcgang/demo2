@@ -316,13 +316,14 @@ checkoutConfirmationRouter.get('/checkout', (_req: Request, res: Response) => {
         ]
       };
 
-      var requestSent = true;
+      var requestSent = false;
       fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
         .then(function (r) {
+          requestSent = true;
           if (!r.ok) {
             return r.json().then(function (err) {
               if (err.errorCode === 'PAYMENT_PENDING') {
