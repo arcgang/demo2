@@ -41,6 +41,9 @@ marketPreferenceRouter.post('/select', (req: Request, res: Response) => {
     sameSite: 'lax',
   });
 
-  const redirect = typeof req.body['redirect'] === 'string' ? req.body['redirect'] : '/';
+  const raw = req.body['redirect'];
+  const redirect = typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')
+    ? raw
+    : '/';
   res.redirect(302, redirect);
 });

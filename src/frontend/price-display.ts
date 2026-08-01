@@ -64,7 +64,7 @@ export function renderOrderSummary(data: CartSummaryData, market: Market): strin
       <tr><td>${tax.label}</td><td>${formatPrice(tax.amount, market)}</td></tr>
       ${tradeInRow}
       <tr class="total-row"><th scope="row">Total Once-Off</th><td>${formatPrice(total, market)}</td></tr>
-      <tr><td>+ ${formatPrice(recurringSubtotal, market)}/month</td></tr>
+      <tr><td colspan="2">+ ${formatPrice(recurringSubtotal, market)}/month</td></tr>
     </tbody>
   </table>
 </section>`;
