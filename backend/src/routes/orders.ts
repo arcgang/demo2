@@ -3,11 +3,11 @@ import { buildStatusResponse } from '../modules/activation/statusScenarios';
 import { issueEsim } from '../modules/activation/activationOrchestrationService';
 import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
 import { getOrderByReference } from '../modules/order/orderStore';
-import { getJourneyAuditTrail } from '../modules/consentAudit/consentAndAuditService';
+import { getJourneyAuditTrail, recordConsent } from '../modules/consentAudit/consentAndAuditService';
 
 const router = Router();
 
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
 
   const errors = validateCreateOrderInput(body);
@@ -20,7 +20,9 @@ router.post('/', (req: Request, res: Response) => {
     return;
   }
 
-  const confirmation = createOrder({
+  const consents = body.consents as Array<{ purpose: string; granted: boolean }> | undefined;
+
+  const confirmation = await createOrder({
     cartId: body.cartId as string,
     paymentAttemptId: body.paymentAttemptId as string,
     paymentStatus: body.paymentStatus as string,
@@ -30,15 +32,37 @@ router.post('/', (req: Request, res: Response) => {
     lineItems: body.lineItems as Array<{ name: string; qty: number; unitPrice: number }>,
     onceOffTotal: body.onceOffTotal as number,
     monthlyTotal: body.monthlyTotal as number,
-    consents: body.consents as Array<{ purpose: string; granted: boolean }> | undefined,
+    consents,
+  });
+
+  const sessionId = (req.headers['x-session-id'] as string | undefined) ?? 'checkout';
+  const ipAddress = req.ip;
+
+  const termsConsent = consents?.find((c) => c.purpose === 'terms');
+  const marketingConsent = consents?.find((c) => c.purpose === 'marketing');
+
+  await recordConsent({
+    orderId: confirmation.orderReference,
+    sessionId,
+    purpose: 'terms',
+    accepted: termsConsent?.granted ?? false,
+    ipAddress,
+  });
+
+  await recordConsent({
+    orderId: confirmation.orderReference,
+    sessionId,
+    purpose: 'marketing',
+    accepted: marketingConsent?.granted ?? false,
+    ipAddress,
   });
 
   res.status(201).json(confirmation);
 });
 
-router.post('/:id/esim/issue', (req: Request, res: Response) => {
+router.post('/:id/esim/issue', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = issueEsim(id);
+  const result = await issueEsim(id);
 
   switch (result.outcome) {
     case 'NOT_FOUND':
