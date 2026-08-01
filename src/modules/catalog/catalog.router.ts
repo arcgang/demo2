@@ -440,7 +440,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
             data-term-months="${q.termMonths}"
             data-monthly-amount="${q.monthlyAmount}"
             data-deposit="${q.onceOffDeposit}"
-            data-activation-fee="${q.activationFee}"${i === 0 ? ' checked' : ''}>
+            data-activation-fee="${q.activationFee}"${financingPreload && i === 0 ? ' checked' : ''}>
           <span class="term-label">${q.termMonths} months</span>
           <span class="monthly-label">${fmtPrice(q.monthlyAmount)}/month</span>
           <span class="rate-label">${q.interestRate}% p.a.</span>
@@ -529,6 +529,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">${fmtPrice(initialOnceOffSubtotal)}</dd>
       <dt>VAT (15%)</dt><dd id="vat-amount">${fmtPrice(initialOnceOffVat)}</dd>
       <dt>Total Once-Off</dt><dd id="total-once-off">${fmtPrice(initialTotalOnceOff)}</dd>
+      <dt>Recurring Subtotal</dt><dd id="recurring-subtotal">${fmtPrice(initialTotalMonthly)}</dd>
       <dt>Total Monthly</dt><dd id="total-monthly">${fmtPrice(initialTotalMonthly)}</dd>
     </dl>
 
@@ -618,6 +619,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
         document.getElementById('once-off-subtotal').textContent = fmt(onceOffSubtotal);
         document.getElementById('vat-amount').textContent = fmt(vatAmount);
         document.getElementById('total-once-off').textContent = fmt(totalOnceOff);
+        document.getElementById('recurring-subtotal').textContent = fmt(totalMonthly);
         document.getElementById('total-monthly').textContent = fmt(totalMonthly);
 
         if (sel) {
@@ -631,40 +633,42 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
         var sel = document.querySelector('input[name="plan"]:checked');
         var planId = sel ? sel.value : '';
         fetchFinancingOptions(PRODUCT_ID, planId).then(function (quotes) {
-          if (!quotes || !quotes.length) return;
-          var fieldset = document.querySelector('.financing-fieldset');
-          if (!fieldset) return;
-          fieldset.innerHTML = '<legend>Choose a financing term</legend>';
-          quotes.forEach(function (q, i) {
-            var label = document.createElement('label');
-            label.className = 'financing-card financing-option';
-            var input = document.createElement('input');
-            input.type = 'radio';
-            input.name = 'financing-term';
-            input.value = String(q.termMonths);
-            input.setAttribute('data-term-months', String(q.termMonths));
-            input.setAttribute('data-monthly-amount', String(q.monthlyAmount));
-            input.setAttribute('data-deposit', String(q.onceOffDeposit));
-            input.setAttribute('data-activation-fee', String(q.activationFee));
-            if (i === 0) input.checked = true;
-            input.addEventListener('change', update);
-            label.appendChild(input);
-            var termSpan = document.createElement('span');
-            termSpan.className = 'term-label';
-            termSpan.textContent = q.termMonths + ' months';
-            label.appendChild(termSpan);
-            var monthlySpan = document.createElement('span');
-            monthlySpan.className = 'monthly-label';
-            monthlySpan.textContent = fmt(q.monthlyAmount) + '/month';
-            label.appendChild(monthlySpan);
-            var rateSpan = document.createElement('span');
-            rateSpan.className = 'rate-label';
-            rateSpan.textContent = q.interestRate + '% p.a.';
-            label.appendChild(rateSpan);
-            fieldset.appendChild(label);
-          });
+          if (quotes && quotes.length) {
+            var fieldset = document.querySelector('.financing-fieldset');
+            if (fieldset) {
+              fieldset.innerHTML = '<legend>Choose a financing term</legend>';
+              quotes.forEach(function (q, i) {
+                var label = document.createElement('label');
+                label.className = 'financing-card financing-option';
+                var input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'financing-term';
+                input.value = String(q.termMonths);
+                input.setAttribute('data-term-months', String(q.termMonths));
+                input.setAttribute('data-monthly-amount', String(q.monthlyAmount));
+                input.setAttribute('data-deposit', String(q.onceOffDeposit));
+                input.setAttribute('data-activation-fee', String(q.activationFee));
+                if (i === 0) input.checked = true;
+                input.addEventListener('change', update);
+                label.appendChild(input);
+                var termSpan = document.createElement('span');
+                termSpan.className = 'term-label';
+                termSpan.textContent = q.termMonths + ' months';
+                label.appendChild(termSpan);
+                var monthlySpan = document.createElement('span');
+                monthlySpan.className = 'monthly-label';
+                monthlySpan.textContent = fmt(q.monthlyAmount) + '/month';
+                label.appendChild(monthlySpan);
+                var rateSpan = document.createElement('span');
+                rateSpan.className = 'rate-label';
+                rateSpan.textContent = q.interestRate + '% p.a.';
+                label.appendChild(rateSpan);
+                fieldset.appendChild(label);
+              });
+            }
+          }
           update();
-        });
+        }).catch(function () { update(); });
       }
 
       document.querySelectorAll('input[name="plan"]').forEach(function (r) {
