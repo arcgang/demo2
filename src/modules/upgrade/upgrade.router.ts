@@ -161,13 +161,6 @@ upgradeRouter.post('/api/upgrade/trade-in/valuation', (req: Request, res: Respon
 // ── GET /upgrade/eligibility (Screen 4) ──────────────────────────────────────
 
 upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
-  // First financing quote always has asyncPending=true
-  const financingAsyncPending = true;
-
-  const pendingNotice = financingAsyncPending
-    ? `<p class="pending-notice">Your financing quote is pending review. We will notify you once it is confirmed.</p>`
-    : '';
-
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -211,7 +204,7 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
     <div class="cta-card financing-cta">
       <h3>Explore Financing Options</h3>
       <p>Spread the cost of your new device with flexible payment plans</p>
-      ${pendingNotice}
+      <span id="financing-pending-notice"></span>
       <a href="/upgrade/financing">Get a Quote</a>
     </div>
 
@@ -253,6 +246,20 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
   <script>
     // On mount, call GET /api/upgrade/session to rehydrate previously entered values
     fetch('/api/upgrade/session').catch(function() {});
+
+    // Fetch financing quote to conditionally show pending-review notice
+    fetch('/api/upgrade/financing')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.asyncPending) {
+          var notice = document.getElementById('financing-pending-notice');
+          if (notice) {
+            notice.textContent = 'Your financing quote is pending review. We will notify you once it is confirmed.';
+            notice.className = 'pending-notice';
+          }
+        }
+      })
+      .catch(function() {});
   </script>
 </body>
 </html>`;
@@ -338,7 +345,7 @@ upgradeRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
           <span>Like new, no visible scratches or damage, fully functional</span>
         </label>
         <label>
-          <input type="radio" name="condition" value="good" checked onchange="updateValuation()">
+          <input type="radio" name="condition" value="good" onchange="updateValuation()">
           <strong>Good</strong>
           <span>Minor scratches or wear, screen intact, fully functional</span>
         </label>
@@ -409,6 +416,10 @@ upgradeRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
   <script>
     var VALUATION_URL = '/api/upgrade/trade-in/valuation';
 
+    // Closure variables holding raw API values from the last valuation response
+    var lastEstimatedCredit = null;
+    var lastValidUntil = null;
+
     // On mount, rehydrate previously entered values from session
     fetch('/api/upgrade/session')
       .then(function(r) { return r.json(); })
@@ -430,6 +441,12 @@ upgradeRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
         if (ti.condition) {
           var radio = document.querySelector('[name="condition"][value="' + ti.condition + '"]');
           if (radio) radio.checked = true;
+        }
+        if (ti.estimatedCredit !== undefined && ti.estimatedCredit !== null) {
+          lastEstimatedCredit = ti.estimatedCredit;
+        }
+        if (ti.validUntil) {
+          lastValidUntil = ti.validUntil;
         }
       })
       .catch(function() {});
@@ -460,6 +477,9 @@ upgradeRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.estimatedCredit === undefined) return;
+          // Capture raw API values in closure variables
+          lastEstimatedCredit = data.estimatedCredit;
+          lastValidUntil = data.validUntil;
           var storageLabel = storageSel.value + 'GB';
           document.getElementById('summary-device').textContent =
             brand + ' ' + model + ' ' + storageLabel;
@@ -474,31 +494,34 @@ upgradeRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
         .catch(function() {});
     }
 
-    document.getElementById('btn-apply-credit').addEventListener('click', function() {
+    function currentFormValues() {
       var brandSel = document.querySelector('[name="device-brand"]');
       var modelSel = document.querySelector('[name="device-model"]');
       var storageSel = document.querySelector('[name="device-storage"]');
       var condEl = document.querySelector('[name="condition"]:checked');
+      return {
+        brand: brandSel ? brandSel.value : '',
+        model: modelSel ? modelSel.value : '',
+        storage: storageSel ? storageSel.value : '',
+        condition: condEl ? condEl.value : ''
+      };
+    }
 
-      var brand = brandSel ? brandSel.value : '';
-      var model = modelSel ? modelSel.value : '';
-      var storageVal = storageSel ? storageSel.value : '';
-      var condition = condEl ? condEl.value : '';
-      var creditText = document.getElementById('summary-credit').textContent;
-      var validUntilText = document.getElementById('summary-valid-until').textContent;
+    document.getElementById('btn-apply-credit').addEventListener('click', function() {
+      var vals = currentFormValues();
 
       fetch('/api/upgrade/session', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tradeIn: {
-            brand: brand,
-            model: model,
-            storage: storageVal,
-            condition: condition,
-            device: brand + ' ' + model + ' ' + storageVal + 'GB',
-            estimatedCredit: creditText,
-            validUntil: validUntilText
+            brand: vals.brand,
+            model: vals.model,
+            storage: vals.storage,
+            condition: vals.condition,
+            device: vals.brand + ' ' + vals.model + ' ' + vals.storage + 'GB',
+            estimatedCredit: lastEstimatedCredit,
+            validUntil: lastValidUntil
           }
         })
       })
@@ -511,7 +534,26 @@ upgradeRouter.get('/upgrade/trade-in', (_req: Request, res: Response) => {
     });
 
     document.getElementById('btn-back').addEventListener('click', function() {
-      window.location.href = '/upgrade/eligibility';
+      var vals = currentFormValues();
+
+      fetch('/api/upgrade/session', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tradeIn: {
+            brand: vals.brand,
+            model: vals.model,
+            storage: vals.storage,
+            condition: vals.condition
+          }
+        })
+      })
+        .then(function() {
+          window.location.href = '/upgrade/eligibility';
+        })
+        .catch(function() {
+          window.location.href = '/upgrade/eligibility';
+        });
     });
   </script>
 </body>
