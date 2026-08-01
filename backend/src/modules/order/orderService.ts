@@ -3,6 +3,7 @@ import {
   generateOrderReference,
   persistOrder,
   persistOrderAuditEvent,
+  getOrderByPaymentAttemptId,
 } from './orderStore';
 import { seedOrder } from '../activation/activationStore';
 import { insertAuditEvent } from '../consentAudit/consentAuditStore';
@@ -68,6 +69,24 @@ export function validateCreateOrderInput(body: Record<string, unknown>): Validat
 }
 
 export function createOrder(input: CreateOrderInput): OrderConfirmation {
+  // Idempotency: if this paymentAttemptId already has an order (e.g. a retry after a pending timeout),
+  // return the existing confirmation rather than creating a duplicate.
+  const existing = getOrderByPaymentAttemptId(input.paymentAttemptId);
+  if (existing) {
+    return {
+      orderReference: existing.orderReference,
+      orderDate: existing.createdAt,
+      lineItems: existing.lineItems,
+      onceOffTotal: existing.onceOffTotal,
+      monthlyTotal: existing.monthlyTotal,
+      paymentStatus: existing.paymentStatus,
+      nextSteps: [
+        { step: 'eSIM issuance', status: 'pending', estimatedMinutes: 5 },
+        { step: 'activation', status: 'pending', estimatedMinutes: 10 },
+      ],
+    };
+  }
+
   const orderId = randomUUID();
   const orderReference = generateOrderReference();
   const createdAt = new Date().toISOString();

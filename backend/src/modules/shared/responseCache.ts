@@ -12,7 +12,7 @@ const store = new Map<string, CacheEntry>();
 
 function parseMaxAgeMs(cacheControl: string): number {
   const match = /max-age=(\d+)/.exec(cacheControl);
-  if (!match) return Infinity;
+  if (!match) return 0;
   return parseInt(match[1], 10) * 1000;
 }
 

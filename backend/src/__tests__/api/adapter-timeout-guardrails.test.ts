@@ -238,6 +238,7 @@ describe('Adapter timeout budget — must not exceed 1500 ms', () => {
     const elapsedMs = Number(process.hrtime.bigint() - start) / 1_000_000;
     expect(elapsedMs).toBeLessThan(TIMEOUT_BUDGET_MS + 200);
     expect(res.status).toBe(200);
+    expect((res.body as Record<string, unknown>)['status']).toBe('pending');
   }, TIMEOUT_BUDGET_MS + 1500);
 });
 

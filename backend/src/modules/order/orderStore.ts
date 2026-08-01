@@ -64,6 +64,10 @@ export function getOrderByReference(ref: string): StoredOrder | undefined {
   );
 }
 
+export function getOrderByPaymentAttemptId(paymentAttemptId: string): StoredOrder | undefined {
+  return ordersStore.find((o) => o.paymentAttemptId === paymentAttemptId);
+}
+
 export function getOrderAuditEvents(): OrderAuditEvent[] {
   return [...auditEventsStore];
 }
