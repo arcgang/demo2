@@ -1,10 +1,32 @@
 import { Router, Request, Response } from 'express';
+import { buildEligibilityResult } from '../modules/eligibility/eligibility.fixtures';
+import { resolveToken } from '../modules/auth/resolve-token';
 import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
 import { getFinancingQuotesByProductId } from '../modules/upgrade/financingAdapter';
 import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
 import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// GET /api/upgrade/eligibility  (three-state auth-gated)
+// ---------------------------------------------------------------------------
+
+router.get('/eligibility', (req: Request, res: Response) => {
+  const token = resolveToken(req);
+  if (!token) {
+    res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Authorization header with ****** is required.' });
+    return;
+  }
+
+  const result = buildEligibilityResult(token);
+  if (!result) {
+    res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Unrecognised token.' });
+    return;
+  }
+
+  res.status(200).json(result);
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/upgrade/eligibility
