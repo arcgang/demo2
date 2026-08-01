@@ -518,6 +518,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       var DEVICE_PRICE = ${devicePrice};
       var DEVICE_ID = '${rec.deviceId}';
       var DEVICE_NAME = '${rec.deviceName}';
+      var LITE_PARAM = ${liteMode};
       var VAT_RATE = 0.15;
 
       function fmt(n) {
@@ -612,7 +613,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
           cart.push(cartItem);
           localStorage.setItem('cart', JSON.stringify(cart));
         } catch (e) {}
-        window.location.href = '/cart' + (${liteMode ? 'true' : 'false'} ? '?lite=true' : '');
+        window.location.href = '/cart' + (LITE_PARAM ? '?lite=true' : '');
       });
     })();
   </script>
@@ -624,6 +625,13 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
 });
 
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
+  const id = req.params.id;
+  const product = STOREFRONT_SMARTPHONES.find(p => p.slug === id);
+  if (!product) {
+    res.status(404).type('text/html').send(`<h1>Product not found</h1>`);
+    return;
+  }
+
   const context = (req.query['context'] as string) ?? '';
   const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
   const offers = context ? getUpsellOffersByContext(context) : [];
@@ -633,6 +641,10 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const liteBanner = liteMode
     ? `<div class="lite-banner">Lite Mode Active - Optimized for faster browsing</div>`
     : '';
+
+  const badgeText = product.badges.join(' &mdash; ');
+  const availText = product.availability;
+  const formattedPrice = fmtStorefrontPrice(product.price);
 
   const recommendationsSection = liteMode ? '' : `
   <section class="recommendations">
@@ -661,7 +673,6 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     </div>
   </section>`;
 
-  const liteQ = liteMode ? '?lite=true' : '';
   const liteQAmp = liteMode ? '&lite=true' : '';
 
   const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
@@ -670,7 +681,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
+  <title>${product.name} - Vodacom Shop</title>
 </head>
 <body${bodyAttr}>
   <header class="header">
@@ -688,31 +699,20 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
     <a href="/catalog?category=smartphones${liteQAmp}">Smartphones</a> &rsaquo;
-    iPhone 15 Pro 256GB
+    ${product.name}
   </nav>
 
   ${liteBanner}
 
   <section class="product-hero">
-    <h1>iPhone 15 Pro 256GB</h1>
-    <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
-
-    <div class="color-selector">
-      <span>Color</span>
-      <button>Natural Titanium</button>
-      <button>Blue Titanium</button>
-      <button>White Titanium</button>
-      <button>Black Titanium</button>
-    </div>
+    <h1>${product.name}</h1>
+    <p>${badgeText} &mdash; ${availText}</p>
+    <p class="product-price">${formattedPrice}.00</p>
+    <p>or from ${fmtStorefrontPrice(product.monthlyFrom)}/month with a plan</p>
 
     <div class="storage-selector">
       <span>Storage</span>
-      <button>128GB</button>
-      <button>256GB</button>
-      <button>512GB</button>
-      <button>1TB</button>
+      <button>${product.storage}</button>
     </div>
 
     <div class="quantity-selector">
@@ -721,7 +721,6 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     </div>
 
     <button class="btn-add-to-cart">Add to Cart</button>
-    <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
   </section>
 
   <section class="plan-attach-panel">
@@ -755,9 +754,8 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
   <script>${LITE_MODE_JS}</script>
   <script>
-    // Propagate lite=true to API calls from this page
-    var LITE_PARAM = '${liteMode ? 'true' : ''}';
-    var apiBase = '/api/catalog/products/prod_za_iphone15pro_256' + (LITE_PARAM ? '?lite=true' : '');
+    var LITE_PARAM = ${liteMode};
+    var apiBase = '/api/catalog/products/${product.slug}' + (LITE_PARAM ? '?lite=true' : '');
   </script>
 </body>
 </html>`;
