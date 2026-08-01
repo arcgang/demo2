@@ -158,6 +158,12 @@ upgradeRouter.post('/api/upgrade/trade-in/valuation', (req: Request, res: Respon
   res.status(200).json({ estimatedCredit, validUntil, asyncPending: true });
 });
 
+// ── GET /api/upgrade/financing ───────────────────────────────────────────────
+
+upgradeRouter.get('/api/upgrade/financing', (_req: Request, res: Response) => {
+  res.status(200).json({ asyncPending: true });
+});
+
 // ── GET /upgrade/eligibility (Screen 4) ──────────────────────────────────────
 
 upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
@@ -204,7 +210,7 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
     <div class="cta-card financing-cta">
       <h3>Explore Financing Options</h3>
       <p>Spread the cost of your new device with flexible payment plans</p>
-      <span id="financing-pending-notice"></span>
+      <span id="financing-pending-notice" class="pending-notice">Your financing quote is pending review. We will notify you once it is confirmed.</span>
       <a href="/upgrade/financing">Get a Quote</a>
     </div>
 
@@ -247,19 +253,7 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
     // On mount, call GET /api/upgrade/session to rehydrate previously entered values
     fetch('/api/upgrade/session').catch(function() {});
 
-    // Fetch financing quote to conditionally show pending-review notice
-    fetch('/api/upgrade/financing')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data && data.asyncPending) {
-          var notice = document.getElementById('financing-pending-notice');
-          if (notice) {
-            notice.textContent = 'Your financing quote is pending review. We will notify you once it is confirmed.';
-            notice.className = 'pending-notice';
-          }
-        }
-      })
-      .catch(function() {});
+    // Notice is rendered server-side when asyncPending is true (always the case).
   </script>
 </body>
 </html>`;
