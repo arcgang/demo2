@@ -2,6 +2,20 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getCartCount } from '../cart/cart.store';
+import { getIphone15ProRecommendations } from './product-recommendations.data';
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatZAR(amount: number): string {
+  return 'R ' + amount.toLocaleString('en-US');
+}
 
 export const catalogRouter = Router();
 
@@ -122,17 +136,36 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
-function formatPrice(amount: number): string {
-  return 'R ' + amount.toLocaleString('en-ZA');
-}
-
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
   const offers = context ? getUpsellOffersByContext(context) : [];
 
   const upsellPanel = renderUpsellPanel(offers);
   const cartCount = getCartCount(req);
-  const deviceId = req.params['id'] ?? 'prod_za_iphone15pro_256';
+
+  const recommendations = getIphone15ProRecommendations();
+  const plans = recommendations.attachments.filter(a => a.type === 'PLAN');
+  const accessories = recommendations.attachments.filter(a => a.type === 'ACCESSORY');
+
+  const planCardsHtml = plans.map((plan, idx) => {
+    const selectedAttr = idx === 0 ? 'data-selected="true"' : 'data-selected="false"';
+    const selectedClass = idx === 0 ? ' selected' : '';
+    return `<div class="plan-card plan-required${selectedClass}" ${selectedAttr} data-plan-id="${escapeHtml(plan.id)}">
+        <span class="badge badge-required required-label">Required</span>
+        <h4>${escapeHtml(plan.name)}</h4>
+        <p class="plan-price">${escapeHtml(formatZAR(plan.pricingRule.monthly))}/month</p>
+        <button class="btn-select-plan btn-add-to-cart" data-item-id="${escapeHtml(plan.id)}" data-item-type="PLAN">Select Plan</button>
+      </div>`;
+  }).join('\n');
+
+  const accessoryCardsHtml = accessories.map(acc => {
+    return `<div class="accessory-card">
+        <div class="image-placeholder accessory-image"></div>
+        <h4>${escapeHtml(acc.name)}</h4>
+        <p class="accessory-price">${escapeHtml(formatZAR(acc.pricingRule.onceOff))}</p>
+        <button class="btn-add-to-cart" data-item-id="${escapeHtml(acc.id)}" data-item-type="ACCESSORY">Add to Cart</button>
+      </div>`;
+  }).join('\n');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -196,7 +229,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     ${upsellPanel}
 
     <div class="base-plan-list" id="plan-list">
-      <p>Loading plans&hellip;</p>
+      ${planCardsHtml}
     </div>
   </section>
 
@@ -217,91 +250,9 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <section class="recommendations">
     <h2>Complete your purchase</h2>
     <div class="accessory-grid" id="accessory-grid">
-      <p>Loading accessories&hellip;</p>
+      ${accessoryCardsHtml}
     </div>
   </section>
-
-  <script>
-    (function () {
-      var DEVICE_ID = ${JSON.stringify(deviceId)};
-
-      function formatZAR(amount) {
-        return 'R ' + amount.toLocaleString('en-ZA');
-      }
-
-      function updateBadge(count) {
-        var badge = document.getElementById('cart-badge');
-        if (badge) {
-          badge.textContent = String(count);
-          badge.dataset.cartCount = String(count);
-        }
-      }
-
-      function addToCart(itemId, itemType) {
-        fetch('/cart/items', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: itemId, itemType: itemType })
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) { updateBadge(data.itemCount); })
-          .catch(function () {});
-      }
-
-      function renderPlans(attachments) {
-        var plans = attachments.filter(function (a) { return a.type === 'PLAN'; });
-        var planList = document.getElementById('plan-list');
-        if (!planList) return;
-        if (plans.length === 0) { planList.innerHTML = '<p>No plans available.</p>'; return; }
-        planList.innerHTML = plans.map(function (plan, idx) {
-          var selectedClass = idx === 0 ? ' selected' : '';
-          var selectedAttr = idx === 0 ? 'data-selected="true"' : 'data-selected="false"';
-          return '<div class="plan-card plan-required' + selectedClass + '" ' + selectedAttr + ' data-plan-id="' + plan.id + '">'
-            + '<span class="badge badge-required required-label">Required</span>'
-            + '<h4>' + plan.name + '</h4>'
-            + '<p class="plan-price">' + formatZAR(plan.pricingRule.monthly) + '/month</p>'
-            + '<button class="btn-select-plan btn-add-to-cart" data-item-id="' + plan.id + '" data-item-type="PLAN">Select Plan</button>'
-            + '</div>';
-        }).join('');
-      }
-
-      function renderAccessories(attachments) {
-        var accessories = attachments.filter(function (a) { return a.type === 'ACCESSORY'; });
-        var grid = document.getElementById('accessory-grid');
-        if (!grid) return;
-        if (accessories.length === 0) { grid.innerHTML = '<p>No accessories available.</p>'; return; }
-        grid.innerHTML = accessories.map(function (acc) {
-          return '<div class="accessory-card">'
-            + '<div class="image-placeholder accessory-image"></div>'
-            + '<h4>' + acc.name + '</h4>'
-            + '<p class="accessory-price">' + formatZAR(acc.pricingRule.onceOff) + '</p>'
-            + '<button class="btn-add-to-cart" data-item-id="' + acc.id + '" data-item-type="ACCESSORY">Add to Cart</button>'
-            + '</div>';
-        }).join('');
-      }
-
-      document.addEventListener('click', function (e) {
-        var btn = e.target && e.target.closest ? e.target.closest('.btn-add-to-cart') : null;
-        if (!btn) return;
-        var itemId = btn.dataset.itemId;
-        var itemType = btn.dataset.itemType;
-        if (itemId && itemType) addToCart(itemId, itemType);
-      });
-
-      fetch('/api/devices/' + DEVICE_ID + '/recommendations')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          renderPlans(data.attachments || []);
-          renderAccessories(data.attachments || []);
-        })
-        .catch(function () {
-          var planList = document.getElementById('plan-list');
-          if (planList) planList.innerHTML = '<p>Could not load plans.</p>';
-          var grid = document.getElementById('accessory-grid');
-          if (grid) grid.innerHTML = '<p>Could not load accessories.</p>';
-        });
-    })();
-  </script>
 </body>
 </html>`;
 

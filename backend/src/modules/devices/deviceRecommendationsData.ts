@@ -24,14 +24,14 @@ const IPHONE15PRO_RECOMMENDATIONS: DeviceRecommendationsSeed = {
     },
     {
       id: 'plan_za_unlimited_20gb',
-      name: 'Unlimited 20GB',
+      name: 'Vodacom Unlimited 20GB',
       type: 'PLAN',
       required: true,
       pricingRule: { onceOff: 0, monthly: 799 },
     },
     {
       id: 'plan_za_red_premium',
-      name: 'Red Premium',
+      name: 'Vodacom Red Premium',
       type: 'PLAN',
       required: true,
       pricingRule: { onceOff: 0, monthly: 1299 },
@@ -46,14 +46,14 @@ const IPHONE15PRO_RECOMMENDATIONS: DeviceRecommendationsSeed = {
     },
     {
       id: 'acc_za_silicone_case',
-      name: 'Silicone Case',
+      name: 'iPhone 15 Pro Case',
       type: 'ACCESSORY',
       required: false,
       pricingRule: { onceOff: 799, monthly: 0 },
     },
     {
       id: 'acc_za_20w_adapter',
-      name: '20W Adapter',
+      name: '20W USB-C Power Adapter',
       type: 'ACCESSORY',
       required: false,
       pricingRule: { onceOff: 399, monthly: 0 },
