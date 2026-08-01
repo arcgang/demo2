@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
-import { getJourneyFields, FieldDefinition } from './journeyFields';
+import { getJourneyFields, FieldDefinition } from '../../../backend/src/modules/journeyFields/journeyFieldsRegistry';
 
 export const catalogRouter = Router();
 
@@ -434,11 +434,12 @@ catalogRouter.get('/checkout', (req: Request, res: Response) => {
   }
 
   // When a step is provided, show only fields for that step (RICA fields gated to step 3).
-  // When no step is provided, show all non-checkbox fields across all steps.
+  // When no step is provided, default to step 1 (Customer Details) so payment-step
+  // fields never bleed into the Customer Details section alongside the static Payment Method UI.
+  const effectiveStep = currentStep ?? 1;
   const customerFields = allFields.filter(f => {
     if (f.inputType === 'checkbox' || f.name === 'marketingConsent') return false;
-    if (currentStep !== undefined) return f.collectionStep === currentStep;
-    return true;
+    return f.collectionStep === effectiveStep;
   });
 
   const customerFieldsHtml = customerFields.map(renderField).join('');
@@ -449,6 +450,7 @@ catalogRouter.get('/checkout', (req: Request, res: Response) => {
     label: 'I consent to receiving marketing communications from Vodacom about products, services, and special offers',
     inputType: 'checkbox',
     required: false,
+    businessPurpose: '',
     collectionStep: 1,
   };
 

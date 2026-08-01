@@ -260,9 +260,9 @@ describe('Checkout page — AC-8: optional fields are labelled Optional', () => 
     expect(res.text).toMatch(/Optional/i);
   });
 
-  it('billingPostalCode (optional purchase field) is labelled Optional', async () => {
-    const res = await getCheckoutPage('purchase');
-    // billingPostalCode is optional (required: false) in the purchase journey
+  it('billingPostalCode (optional purchase step-2 field) is labelled Optional at step 2', async () => {
+    // billingPostalCode lives at collectionStep 2; it only appears when ?step=2 is requested
+    const res = await getCheckoutPage('purchase', 2);
     expect(res.text).toMatch(/(billingPostalCode|Billing Postal Code)[^<]{0,300}Optional|Optional[^<]{0,300}(billingPostalCode|Billing Postal Code)/is);
   });
 });
@@ -394,24 +394,15 @@ describe('Checkout page — AC-15: Customer Details H2 heading', () => {
 // ---------------------------------------------------------------------------
 
 describe('Checkout page — AC-16: fields rendered in API-specified order', () => {
-  it('firstName appears before paymentToken in the purchase journey HTML', async () => {
-    const res = await getCheckoutPage('purchase');
-    const fnPos = res.text.indexOf('name="firstName"');
-    const ptPos = res.text.indexOf('name="paymentToken"');
-    // paymentToken is step 2; firstName is step 1 — step 1 must come first
-    // Accept either camelCase or API name forms
-    const fnPosAlt = res.text.indexOf("name='firstName'");
-    const ptPosAlt = res.text.indexOf("name='paymentToken'");
-    const firstNameIdx = Math.min(
-      fnPos >= 0 ? fnPos : Infinity,
-      fnPosAlt >= 0 ? fnPosAlt : Infinity,
-    );
-    const paymentIdx = Math.min(
-      ptPos >= 0 ? ptPos : Infinity,
-      ptPosAlt >= 0 ? ptPosAlt : Infinity,
-    );
-    // Both must be present and firstName must appear before paymentToken
-    expect(firstNameIdx).toBeLessThan(paymentIdx);
+  it('firstName appears at step 1; paymentToken appears at step 2 but not step 1', async () => {
+    const step1 = await getCheckoutPage('purchase');
+    const step2 = await getCheckoutPage('purchase', 2);
+    // Step 1 must include firstName
+    expect(step1.text).toMatch(/name=["']firstName["']/i);
+    // paymentToken (step 2) must NOT appear in the default (step 1) view
+    expect(step1.text).not.toMatch(/name=["']paymentToken["']/i);
+    // paymentToken must appear when ?step=2 is requested
+    expect(step2.text).toMatch(/name=["']paymentToken["']/i);
   });
 });
 
