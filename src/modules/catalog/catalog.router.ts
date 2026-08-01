@@ -607,8 +607,7 @@ catalogRouter.get('/checkout', (_req: Request, res: Response) => {
   (function() {
     var DRAFT_KEY = 'draft:checkout';
     var EXPIRY_MS = 30 * 60 * 1000;
-    // Sensitive card fields are excluded from the draft — never persist card-number, expiry, or cvv
-    var SAFE_FIELDS = ['first-name', 'last-name', 'email', 'phone', 'address', 'city', 'postal-code', 'cardholder-name'];
+    var SAFE_FIELDS = ['first-name', 'last-name', 'email', 'phone', 'address', 'city', 'postal-code'];
 
     function saveDraft() {
       var payload = { timestamp: Date.now() };

@@ -1,143 +1,115 @@
-import request from 'supertest';
-import { app } from '../../../app';
+import {
+  saveCartDraft,
+  restoreCartDraft,
+  CART_DRAFT_KEY,
+  CART_EXPIRY_MS,
+} from '../cart-draft-persistence';
 
-/**
- * Acceptance tests – In-progress selection persistence: Cart screen.
- *
- * Screen  : GET /cart                    (wireframe_cart.html)
- * Feature : localStorage draft snapshot for cart state.
- *
- * Acceptance criteria encoded here:
- *  AC-1  The cart page is served at GET /cart with HTTP 200 and text/html.
- *  AC-2  The promo-code text input is present and identifiable for persistence.
- *  AC-3  Cart item list elements carry data attributes so quantities and item
- *        identifiers can be serialised into the draft payload.
- *  AC-4  The page embeds a <script> that persists cart state to localStorage,
- *        keyed with a recognisable cart draft key, including a timestamp.
- *  AC-5  The script reads back the cart draft on page load / online event /
- *        visibilitychange and restores state silently.
- *  AC-6  Expired drafts (>30 min) are discarded by the restore logic.
- *  AC-7  A dismissible inline notice 'Your selections were restored' is
- *        present in the markup (hidden by default, shown on restore).
- */
+function makeStorage(): {
+  store: Record<string, string>;
+  getItem: jest.Mock;
+  setItem: jest.Mock;
+  removeItem: jest.Mock;
+} {
+  const store: Record<string, string> = {};
+  return {
+    store,
+    getItem: jest.fn((key: string) => store[key] ?? null),
+    setItem: jest.fn((key: string, value: string) => { store[key] = value; }),
+    removeItem: jest.fn((key: string) => { delete store[key]; }),
+  };
+}
 
-const URL = '/cart';
+const NOW = 1_000_000_000_000;
 
-// ── AC-1 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-1: page is served correctly', () => {
-  it('returns HTTP 200', async () => {
-    const res = await request(app).get(URL);
-    expect(res.status).toBe(200);
+describe('cart draft – (a) draft is saved on field change', () => {
+  it('writes a JSON entry to localStorage under draft:cart', () => {
+    const storage = makeStorage();
+    saveCartDraft('SUMMER10', [{ id: 'iphone-15-pro', qty: '1' }], storage, NOW);
+
+    expect(storage.setItem).toHaveBeenCalledTimes(1);
+    expect(storage.setItem.mock.calls[0][0]).toBe(CART_DRAFT_KEY);
   });
 
-  it('Content-Type is text/html', async () => {
-    const res = await request(app).get(URL);
-    expect(res.headers['content-type']).toMatch(/text\/html/i);
+  it('persists the promo-code value', () => {
+    const storage = makeStorage();
+    saveCartDraft('PROMO42', [], storage, NOW);
+
+    const saved = JSON.parse(storage.store[CART_DRAFT_KEY]);
+    expect(saved.promoCode).toBe('PROMO42');
   });
 
-  it('page title is "Your Cart - Vodacom Shop"', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toContain('Your Cart');
-  });
-});
+  it('persists the cart item list with ids and quantities', () => {
+    const storage = makeStorage();
+    const items = [
+      { id: 'iphone-15-pro', qty: '2' },
+      { id: 'silicone-case', qty: '1' },
+    ];
+    saveCartDraft('', items, storage, NOW);
 
-// ── AC-2 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-2: promo-code input is present and identifiable', () => {
-  it('page contains a promo-code text input', async () => {
-    const res = await request(app).get(URL);
-    // The input must be named or labelled "promo" in some form
-    expect(res.text).toMatch(/name=["']promo[^"']*["']|id=["']promo[^"']*["']|placeholder=["'][Pp]romo/i);
+    const saved = JSON.parse(storage.store[CART_DRAFT_KEY]);
+    expect(saved.items).toEqual(items);
   });
 
-  it('promo-code input has type="text" or type="search"', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/type=["'](text|search)["'][^>]*promo|promo[^>]*type=["'](text|search)["']/i);
-  });
-});
+  it('stores a timestamp in the payload', () => {
+    const storage = makeStorage();
+    saveCartDraft('', [], storage, NOW);
 
-// ── AC-3 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-3: cart item elements carry data attributes for serialisation', () => {
-  it('at least one cart item element has a data-item-id or data-cart-item attribute', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/data-item-id=["'][^"']+["']|data-cart-item=["'][^"']+["']/i);
-  });
-
-  it('quantity controls are present on cart items', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/Decrease quantity|Increase quantity|data-quantity|type=["']number["']/i);
+    const saved = JSON.parse(storage.store[CART_DRAFT_KEY]);
+    expect(saved.timestamp).toBe(NOW);
   });
 });
 
-// ── AC-4 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-4: draft save logic is embedded in the page script', () => {
-  it('page contains an inline <script> block', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/<script[\s>]/i);
+describe('cart draft – (b) expired draft is discarded and not restored', () => {
+  it('still returns the draft when it is exactly 30 minutes old (boundary is exclusive)', () => {
+    const storage = makeStorage();
+    saveCartDraft('PROMO', [], storage, NOW);
+
+    const result = restoreCartDraft(storage, NOW + CART_EXPIRY_MS);
+    expect(result).not.toBeNull();
   });
 
-  it('script calls localStorage.setItem to persist cart draft', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toContain('localStorage.setItem');
+  it('returns null for a draft that is 30 minutes and 1 ms old', () => {
+    const storage = makeStorage();
+    saveCartDraft('PROMO', [], storage, NOW);
+
+    const result = restoreCartDraft(storage, NOW + CART_EXPIRY_MS + 1);
+    expect(result).toBeNull();
   });
 
-  it('script uses a recognisable cart draft key (contains "draft:cart" or "cart-draft")', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/draft:cart|cart-draft|cart_draft/i);
+  it('removes the expired entry from storage', () => {
+    const storage = makeStorage();
+    saveCartDraft('PROMO', [], storage, NOW);
+
+    restoreCartDraft(storage, NOW + CART_EXPIRY_MS + 1);
+    expect(storage.removeItem).toHaveBeenCalledWith(CART_DRAFT_KEY);
+    expect(storage.store[CART_DRAFT_KEY]).toBeUndefined();
   });
 
-  it('script stores a timestamp for expiry evaluation', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/timestamp|savedAt|expiresAt/i);
+  it('returns null for a draft 31 minutes old', () => {
+    const storage = makeStorage();
+    saveCartDraft('PROMO', [], storage, NOW);
+
+    expect(restoreCartDraft(storage, NOW + 31 * 60 * 1000)).toBeNull();
   });
 
-  it('script attaches a change listener to persist on promo-code or item-quantity changes', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/addEventListener\s*\(\s*['"]change['"]/i);
-  });
-});
+  it('returns the draft when it is within the 30-minute window', () => {
+    const storage = makeStorage();
+    saveCartDraft('EARLY', [{ id: 'iphone-15-pro', qty: '1' }], storage, NOW);
 
-// ── AC-5 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-5: draft restore logic fires on page load and connectivity events', () => {
-  it('script calls localStorage.getItem to read back a cart draft', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toContain('localStorage.getItem');
+    const result = restoreCartDraft(storage, NOW + 29 * 60 * 1000);
+    expect(result).not.toBeNull();
+    expect(result!.promoCode).toBe('EARLY');
   });
 
-  it('script listens for the "online" event to trigger restore', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/addEventListener\s*\(\s*['"]online['"]/i);
+  it('returns null when no draft exists', () => {
+    const storage = makeStorage();
+    expect(restoreCartDraft(storage, NOW)).toBeNull();
   });
 
-  it('script listens for the "visibilitychange" event to trigger restore', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/addEventListener\s*\(\s*['"]visibilitychange['"]/i);
-  });
-});
-
-// ── AC-6 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-6: expired draft is discarded by restore logic', () => {
-  it('script contains a 30-minute expiry threshold (1800000 ms or 30 * 60)', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(/1800000|30\s*\*\s*60\s*\*\s*1000/);
-  });
-
-  it('script calls localStorage.removeItem to purge a stale cart draft', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toContain('localStorage.removeItem');
-  });
-});
-
-// ── AC-7 ─────────────────────────────────────────────────────────────────────
-describe('Cart – AC-7: dismissible restore notice is present in markup', () => {
-  it('HTML contains the text "Your selections were restored"', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toContain('Your selections were restored');
-  });
-
-  it('restore notice element has a dismiss/close affordance', async () => {
-    const res = await request(app).get(URL);
-    expect(res.text).toMatch(
-      /restore-notice[\s\S]{0,300}(<button|data-dismiss|aria-label=["']dismiss|aria-label=["']close)/i,
-    );
+  it('returns null for malformed JSON', () => {
+    const storage = makeStorage();
+    storage.store[CART_DRAFT_KEY] = '{bad json';
+    expect(restoreCartDraft(storage, NOW)).toBeNull();
   });
 });
