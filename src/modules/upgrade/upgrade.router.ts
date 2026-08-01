@@ -211,7 +211,8 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
       <h3>Explore Financing Options</h3>
       <p>Spread the cost of your new device with flexible payment plans</p>
       <span id="financing-pending-notice" class="pending-notice">Your financing quote is pending review. We will notify you once it is confirmed.</span>
-      <a href="/upgrade/financing">Get a Quote</a>
+      <a href="/product/iphone-15-pro/configure?financing=true&amp;productId=iphone-15-pro">Get a Quote</a>
+      <a href="/upgrade/financing" class="secondary-link">View Financing Details</a>
     </div>
 
     <div class="cta-card trade-in-cta">
