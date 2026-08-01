@@ -90,7 +90,7 @@ const NEXT_STEPS: Record<ReasonCode, NextStep[]> = {
   session_timeout:         [{ action: 'sign_in',             url: '/auth/login' }],
   support_required:        [{ action: 'contact_support',     url: '/support' }],
   not_found:               [{ action: 'check_reference',     url: '/support' }],
-  validation_error:        [{ action: 'correct_and_resubmit', url: '' }],
+  validation_error:        [{ action: 'correct_and_resubmit', url: '/support' }],
 };
 
 export function buildStructuredError(

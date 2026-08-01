@@ -53,7 +53,7 @@ router.post('/payments', (req: Request, res: Response) => {
   }
 
   if (marketCode && DELAYED_ACTIVATION_MARKETS.has(marketCode)) {
-    res.status(202).json(
+    res.status(503).json(
       buildStructuredError('activation_delayed', {
         errorCode: 'ACTIVATION_DEFERRED',
         message: 'Payment received. Activation is in progress and may take additional time in this market.',
