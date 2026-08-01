@@ -38,6 +38,7 @@ interface DeviceProduct {
   storageOptions: string[];
   esim: boolean;
   fiveG: boolean;
+  financingEligible: boolean;
   plans: PlanData[];
   accessories: AccessoryItem[];
   specs: Record<string, string>;
@@ -88,6 +89,7 @@ const PRODUCT_CATALOG: Record<string, ProductDetail> = {
     storageOptions: ['128GB', '256GB', '512GB', '1TB'],
     esim: true,
     fiveG: true,
+    financingEligible: true,
     plans: ZA_PLANS,
     accessories: DEVICE_ACCESSORIES,
     specs: {
@@ -97,6 +99,131 @@ const PRODUCT_CATALOG: Record<string, ProductDetail> = {
       'Storage': '256GB',
       'Battery': 'Up to 23 hours video playback',
       'Connectivity': '5G, Wi-Fi 6E, Bluetooth 5.3',
+      'SIM': 'Dual SIM (nano-SIM and eSIM)',
+      'Operating System': 'iOS 17',
+    },
+  },
+  'samsung-s24-ultra': {
+    type: 'DEVICE',
+    name: 'Samsung Galaxy S24 Ultra 256GB',
+    price: 22999,
+    monthlyFrom: 299,
+    availability: 'In Stock',
+    badges: ['5G'],
+    colors: ['Titanium Black', 'Titanium Gray', 'Titanium Violet', 'Titanium Yellow'],
+    storageOptions: ['256GB', '512GB', '1TB'],
+    esim: true,
+    fiveG: true,
+    financingEligible: true,
+    plans: ZA_PLANS,
+    accessories: DEVICE_ACCESSORIES,
+    specs: {
+      'Display': '6.8-inch Dynamic AMOLED 2X display',
+      'Processor': 'Snapdragon 8 Gen 3',
+      'Camera': '200MP Main + 12MP Ultra Wide + 50MP Telephoto',
+      'Storage': '256GB',
+      'Battery': 'Up to 27 hours video playback',
+      'Connectivity': '5G, Wi-Fi 7, Bluetooth 5.3',
+      'SIM': 'Dual SIM (nano-SIM and eSIM)',
+      'Operating System': 'Android 14',
+    },
+  },
+  'iphone-15': {
+    type: 'DEVICE',
+    name: 'iPhone 15 128GB',
+    price: 18999,
+    monthlyFrom: 299,
+    availability: 'In Stock',
+    badges: ['5G', 'Trade-In Eligible'],
+    colors: ['Black', 'Blue', 'Green', 'Yellow', 'Pink'],
+    storageOptions: ['128GB', '256GB', '512GB'],
+    esim: true,
+    fiveG: true,
+    financingEligible: true,
+    plans: ZA_PLANS,
+    accessories: DEVICE_ACCESSORIES,
+    specs: {
+      'Display': '6.1-inch Super Retina XDR display',
+      'Processor': 'A16 Bionic chip',
+      'Camera': '48MP Main + 12MP Ultra Wide',
+      'Storage': '128GB',
+      'Battery': 'Up to 20 hours video playback',
+      'Connectivity': '5G, Wi-Fi 6, Bluetooth 5.3',
+      'SIM': 'Dual SIM (nano-SIM and eSIM)',
+      'Operating System': 'iOS 17',
+    },
+  },
+  'samsung-s24': {
+    type: 'DEVICE',
+    name: 'Samsung Galaxy S24 256GB',
+    price: 16999,
+    monthlyFrom: 299,
+    availability: 'In Stock',
+    badges: ['5G'],
+    colors: ['Onyx Black', 'Marble Gray', 'Cobalt Violet', 'Amber Yellow'],
+    storageOptions: ['128GB', '256GB'],
+    esim: true,
+    fiveG: true,
+    financingEligible: true,
+    plans: ZA_PLANS,
+    accessories: DEVICE_ACCESSORIES,
+    specs: {
+      'Display': '6.2-inch Dynamic AMOLED 2X display',
+      'Processor': 'Snapdragon 8 Gen 3',
+      'Camera': '50MP Main + 12MP Ultra Wide + 10MP Telephoto',
+      'Storage': '256GB',
+      'Battery': 'Up to 23 hours video playback',
+      'Connectivity': '5G, Wi-Fi 7, Bluetooth 5.3',
+      'SIM': 'Dual SIM (nano-SIM and eSIM)',
+      'Operating System': 'Android 14',
+    },
+  },
+  'samsung-a54': {
+    type: 'DEVICE',
+    name: 'Samsung Galaxy A54 128GB',
+    price: 8999,
+    monthlyFrom: 299,
+    availability: 'In Stock',
+    badges: ['5G'],
+    colors: ['Awesome Black', 'Awesome White', 'Awesome Violet', 'Awesome Lime'],
+    storageOptions: ['128GB', '256GB'],
+    esim: false,
+    fiveG: true,
+    financingEligible: true,
+    plans: ZA_PLANS,
+    accessories: DEVICE_ACCESSORIES,
+    specs: {
+      'Display': '6.4-inch Super AMOLED display',
+      'Processor': 'Exynos 1380',
+      'Camera': '50MP Main + 12MP Ultra Wide + 5MP Macro',
+      'Storage': '128GB',
+      'Battery': 'Up to 24 hours video playback',
+      'Connectivity': '5G, Wi-Fi 6, Bluetooth 5.3',
+      'SIM': 'Dual SIM (nano-SIM)',
+      'Operating System': 'Android 14',
+    },
+  },
+  'iphone-14': {
+    type: 'DEVICE',
+    name: 'iPhone 14 128GB',
+    price: 15999,
+    monthlyFrom: 299,
+    availability: 'In Stock',
+    badges: ['5G', 'Trade-In Eligible'],
+    colors: ['Midnight', 'Starlight', 'Blue', 'Purple', 'Product Red'],
+    storageOptions: ['128GB', '256GB', '512GB'],
+    esim: true,
+    fiveG: true,
+    financingEligible: true,
+    plans: ZA_PLANS,
+    accessories: DEVICE_ACCESSORIES,
+    specs: {
+      'Display': '6.1-inch Super Retina XDR display',
+      'Processor': 'A15 Bionic chip',
+      'Camera': '12MP Main + 12MP Ultra Wide',
+      'Storage': '128GB',
+      'Battery': 'Up to 20 hours video playback',
+      'Connectivity': '5G, Wi-Fi 6, Bluetooth 5.3',
       'SIM': 'Dual SIM (nano-SIM and eSIM)',
       'Operating System': 'iOS 17',
     },
@@ -234,31 +361,31 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
 
   <div class="catalog-layout">
     <aside class="filter-sidebar">
-      <h3>Brand</h3>
       <fieldset>
+        <legend>Brand</legend>
         <label for="brand-apple"><input type="checkbox" name="brand-apple" id="brand-apple" checked> Apple</label>
         <label for="brand-samsung"><input type="checkbox" name="brand-samsung" id="brand-samsung" checked> Samsung</label>
         <label for="brand-huawei"><input type="checkbox" name="brand-huawei" id="brand-huawei"> Huawei</label>
         <label for="brand-xiaomi"><input type="checkbox" name="brand-xiaomi" id="brand-xiaomi"> Xiaomi</label>
       </fieldset>
 
-      <h3>Price Range</h3>
       <fieldset>
+        <legend>Price Range</legend>
         <label for="price-1"><input type="checkbox" name="price-1" id="price-1"> Under R 5,000</label>
         <label for="price-2"><input type="checkbox" name="price-2" id="price-2" checked> R 5,000 - R 15,000</label>
         <label for="price-3"><input type="checkbox" name="price-3" id="price-3" checked> R 15,000 - R 25,000</label>
         <label for="price-4"><input type="checkbox" name="price-4" id="price-4"> Over R 25,000</label>
       </fieldset>
 
-      <h3>Storage</h3>
       <fieldset>
+        <legend>Storage</legend>
         <label for="storage-128"><input type="checkbox" name="storage-128" id="storage-128"> 128GB</label>
         <label for="storage-256"><input type="checkbox" name="storage-256" id="storage-256" checked> 256GB</label>
         <label for="storage-512"><input type="checkbox" name="storage-512" id="storage-512"> 512GB</label>
       </fieldset>
 
-      <h3>Availability</h3>
       <fieldset>
+        <legend>Availability</legend>
         <label for="avail-stock"><input type="checkbox" name="avail-stock" id="avail-stock" checked> In Stock</label>
         <label for="avail-preorder"><input type="checkbox" name="avail-preorder" id="avail-preorder"> Pre-Order</label>
       </fieldset>
@@ -382,7 +509,11 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 // ── Product detail renderers ───────────────────────────────────────────────────
 
 function renderDeviceDetail(slug: string, product: DeviceProduct, upsellPanel: string): string {
-  const badgeHtml = product.badges
+  const allBadges = [...product.badges];
+  if (product.esim && !allBadges.includes('eSIM-compatible')) {
+    allBadges.push('eSIM-compatible');
+  }
+  const badgeHtml = allBadges
     .map(b => `<span class="badge">${b}</span>`)
     .join(' ');
 
@@ -441,7 +572,7 @@ function renderDeviceDetail(slug: string, product: DeviceProduct, upsellPanel: s
     </div>
     <span class="availability">${product.availability}</span>
     <p class="product-price">${formatPrice(product.price)}</p>
-    <p class="financing-hint">or from R ${product.monthlyFrom}/month with a plan</p>
+    ${product.financingEligible ? `<p class="financing-hint">or from R ${product.monthlyFrom}/month with a plan</p>` : ''}
 
     <div class="color-selector" role="group" aria-label="Color">
       <span>Color</span>
@@ -459,7 +590,7 @@ function renderDeviceDetail(slug: string, product: DeviceProduct, upsellPanel: s
     </div>
 
     <button type="button" class="btn-add-to-cart">Add to Cart</button>
-    <p class="compatibility-note">This device supports eSIM and is compatible with Vodacom 5G network</p>
+    ${product.esim || product.fiveG ? `<p class="compatibility-note">This device supports eSIM and is compatible with Vodacom 5G network</p>` : ''}
   </section>
 
   <section class="plan-attach-panel">
@@ -617,94 +748,19 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     return;
   }
 
-  // Generic device fallback for slugs not in the catalog
-  const html = `<!DOCTYPE html>
+  res.status(404).type('text/html').send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
+  <title>Product Not Found - Vodacom Shop</title>
 </head>
 <body>
-  <header class="header">
-    <a href="/">Vodacom</a>
-    <nav>
-      <a href="/catalog">Devices</a>
-      <a href="/plans">Plans</a>
-      <a href="/accessories">Accessories</a>
-      <a href="/support">Support</a>
-    </nav>
-  </header>
-
-  <nav class="breadcrumb">
-    <a href="/">Home</a> &rsaquo;
-    <a href="/catalog">Devices</a> &rsaquo;
-    <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
-    iPhone 15 Pro 256GB
-  </nav>
-
-  <section class="product-hero">
-    <h1>iPhone 15 Pro 256GB</h1>
-    <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
-
-    <div class="color-selector">
-      <span>Color</span>
-      <button>Natural Titanium</button>
-      <button>Blue Titanium</button>
-      <button>White Titanium</button>
-      <button>Black Titanium</button>
-    </div>
-
-    <div class="storage-selector">
-      <span>Storage</span>
-      <button>128GB</button>
-      <button>256GB</button>
-      <button>512GB</button>
-      <button>1TB</button>
-    </div>
-
-    <div class="quantity-selector">
-      <label>Quantity</label>
-      <input type="number" value="1" min="1">
-    </div>
-
-    <button class="btn-add-to-cart">Add to Cart</button>
-    <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
-  </section>
-
-  <section class="plan-attach-panel">
-    <h2>Add a plan or bundle</h2>
-
-    ${upsellPanel}
-
-    <div class="base-plan-list">
-      <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
-        <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-        <h4>Vodacom Unlimited 20GB</h4>
-        <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_red_premium">
-        <h4>Vodacom Red Premium</h4>
-        <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="product-details">
-    <h2>Complete your purchase</h2>
-  </section>
+  ${renderSiteHeader()}
+  <main>
+    <h1>Product Not Found</h1>
+    <p>The product you are looking for does not exist.</p>
+    <a href="/catalog">Browse all devices</a>
+  </main>
 </body>
-</html>`;
-
-  res.status(200).type('text/html').send(html);
+</html>`);
 });
