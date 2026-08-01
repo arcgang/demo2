@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { PortingInput } from './portingInput';
-import { encryptPiiObject, decryptPiiObject } from '../encryption/fieldEncryption';
+import { encryptPiiObject, decryptPiiObject, SENSITIVE_PII_FIELDS } from '../encryption/fieldEncryption';
 
 export interface KycStub {
   verificationReference: string;
@@ -16,8 +16,11 @@ export interface VerificationCase {
   kycStub: KycStub;
 }
 
-// PII fields present in a PortingInput record.
-const PORTING_PII_FIELDS = ['accountHolderName', 'accountNumber', 'idNumber'];
+// PII fields present in a PortingInput record. accountHolderName (full name)
+// and accountNumber (financial identifier) are PortingInput-specific and not
+// in SENSITIVE_PII_FIELDS, so we extend it rather than replace it. This ensures
+// any future additions to the canonical list propagate here automatically.
+const PORTING_PII_FIELDS = [...SENSITIVE_PII_FIELDS, 'accountHolderName', 'accountNumber'];
 
 // In-memory store for the demo — no database wiring required for this task.
 const store = new Map<string, VerificationCase>();

@@ -76,6 +76,7 @@ export const SENSITIVE_PII_FIELDS: readonly string[] = [
   'phone',
   'addressLine1',
   'city',
+  'postalCode',
   'deliveryAddress',
   'idNumber',
 ] as const;

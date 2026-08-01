@@ -18,8 +18,13 @@ function httpsRedirectMiddleware(req: Request, res: Response, next: NextFunction
     // header, which can be spoofed to redirect victims to an attacker-controlled domain.
     const host = process.env.APP_HOSTNAME;
     if (!host) {
-      next();
-      return;
+      // APP_HOSTNAME must be set in production so we have a safe redirect target
+      // that cannot be spoofed via the Host header. Fail loudly — same posture
+      // as the TLS cert/key guard in createServer.
+      throw new Error(
+        'APP_HOSTNAME environment variable is not set. ' +
+        'Cannot perform HTTP→HTTPS redirect without a trusted hostname.',
+      );
     }
     res.redirect(301, `https://${host}${req.url}`);
     return;
