@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getDeviceRecommendations } from '../modules/devices/deviceRecommendationsData';
 import { calculateRecommendationsPricing, SelectedAttachment } from '../modules/devices/recommendationsPricingCalculator';
+import { buildStructuredError } from '../modules/errorClassification/errorSchema';
 
 const router = Router();
 
@@ -9,10 +10,12 @@ router.get('/:id/recommendations', (req: Request, res: Response) => {
 
   const seed = getDeviceRecommendations(id);
   if (!seed) {
-    res.status(404).json({
-      errorCode: 'DEVICE_NOT_FOUND',
-      message: `No recommendations found for device "${id}".`,
-    });
+    res.status(404).json(
+      buildStructuredError('not_found', {
+        errorCode: 'DEVICE_NOT_FOUND',
+        message: `No recommendations found for device "${id}".`,
+      }),
+    );
     return;
   }
 

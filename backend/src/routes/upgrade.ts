@@ -24,7 +24,7 @@ router.post('/eligibility', (req: Request, res: Response) => {
 
   if (errors.length > 0) {
     res.status(422).json({
-      ...buildStructuredError('eligibility_unavailable', {
+      ...buildStructuredError('validation_error', {
         errorCode: 'VALIDATION_ERROR',
       }),
       errors,

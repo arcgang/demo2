@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getJourneyFields } from '../modules/journeyFields/journeyFieldsRegistry';
+import { buildStructuredError } from '../modules/errorClassification/errorSchema';
 
 const router = Router();
 
@@ -8,10 +9,12 @@ router.get('/:type/fields', (req: Request, res: Response) => {
   const fields = getJourneyFields(type);
 
   if (!fields) {
-    res.status(404).json({
-      errorCode: 'JOURNEY_TYPE_NOT_FOUND',
-      message: `Unknown journey type: "${type}". Supported types are: purchase, onboarding, activation.`,
-    });
+    res.status(404).json(
+      buildStructuredError('not_found', {
+        errorCode: 'JOURNEY_TYPE_NOT_FOUND',
+        message: `Unknown journey type: "${type}". Supported types are: purchase, onboarding, activation.`,
+      }),
+    );
     return;
   }
 

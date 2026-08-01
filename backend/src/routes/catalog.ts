@@ -6,6 +6,7 @@ import {
   getPlansForMarket,
   ProductSeed,
 } from '../modules/catalog/catalogData';
+import { buildStructuredError } from '../modules/errorClassification/errorSchema';
 
 const router = Router();
 
@@ -87,19 +88,23 @@ router.get('/products', (req: Request, res: Response) => {
   const category = req.query.category as string | undefined;
 
   if (!marketCode || !marketCode.trim()) {
-    res.status(400).json({
-      errorCode: 'MARKET_REQUIRED',
-      message: 'Query parameter ?market is required.',
-    });
+    res.status(400).json(
+      buildStructuredError('validation_error', {
+        errorCode: 'MARKET_REQUIRED',
+        message: 'Query parameter ?market is required.',
+      }),
+    );
     return;
   }
 
   const market = getMarket(marketCode);
   if (!market) {
-    res.status(400).json({
-      errorCode: 'UNKNOWN_MARKET',
-      message: `Market "${marketCode}" is not supported.`,
-    });
+    res.status(400).json(
+      buildStructuredError('validation_error', {
+        errorCode: 'UNKNOWN_MARKET',
+        message: `Market "${marketCode}" is not supported.`,
+      }),
+    );
     return;
   }
 
@@ -136,18 +141,22 @@ router.get('/products/:id', (req: Request, res: Response) => {
 
   const product = getProductById(id);
   if (!product) {
-    res.status(404).json({
-      errorCode: 'PRODUCT_NOT_FOUND',
-      message: `Product "${id}" was not found.`,
-    });
+    res.status(404).json(
+      buildStructuredError('not_found', {
+        errorCode: 'PRODUCT_NOT_FOUND',
+        message: `Product "${id}" was not found.`,
+      }),
+    );
     return;
   }
 
   if (marketCode && marketCode.toUpperCase() !== product.marketCode.toUpperCase()) {
-    res.status(404).json({
-      errorCode: 'PRODUCT_NOT_IN_MARKET',
-      message: `Product "${id}" is not available in market "${marketCode}".`,
-    });
+    res.status(404).json(
+      buildStructuredError('not_found', {
+        errorCode: 'PRODUCT_NOT_IN_MARKET',
+        message: `Product "${id}" is not available in market "${marketCode}".`,
+      }),
+    );
     return;
   }
 
