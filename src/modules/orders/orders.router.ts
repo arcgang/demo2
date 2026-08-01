@@ -291,6 +291,18 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
     <a href="#">FAQs</a>
     <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
   </footer>
+  <script>
+  (function () {
+    var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g')) {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('lite') !== '1') {
+        url.searchParams.set('lite', '1');
+        window.location.replace(url.toString());
+      }
+    }
+  })();
+  </script>
 </body>
 </html>`;
 
@@ -477,6 +489,18 @@ ordersRouter.get('/:id/esim-activation', (req: Request, res: Response) => {
     <a href="#">FAQs</a>
     <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
   </footer>
+  <script>
+  (function () {
+    var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && (conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g')) {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('lite') !== '1') {
+        url.searchParams.set('lite', '1');
+        window.location.replace(url.toString());
+      }
+    }
+  })();
+  </script>
 </body>
 </html>`;
 
