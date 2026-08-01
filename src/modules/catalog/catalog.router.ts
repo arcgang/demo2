@@ -175,7 +175,9 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
 
   const productCards = products.map(p => {
     const badges = p.badges.map(b => `<span class="badge">${b}</span>`).join('');
-    const cta = `<a href="/product/${p.slug}" class="btn-view-details">View Details</a>`;
+    const cta = p.isPurchasable
+      ? `<a href="/product/${p.slug}" class="btn-view-details">View Details</a><button class="btn-add-to-cart" data-slug="${p.slug}">Add to Cart</button>`
+      : `<a href="/product/${p.slug}" class="btn-view-details">View Details</a>`;
     return `
       <div class="product-card" data-brand="${p.brand}" data-price="${p.price}" data-storage="${p.storage}" data-availability="${p.availability}" data-purchasable="${p.isPurchasable}">
         <div class="product-badges">${badges}</div>
@@ -247,10 +249,10 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
           return n === 'avail-stock' ? 'In Stock' : 'Pre-Order';
         });
         var priceRanges = [];
-        if (document.getElementById('price-1') && (document.getElementById('price-1') as HTMLInputElement).checked) priceRanges.push([0, 5000]);
-        if (document.getElementById('price-2') && (document.getElementById('price-2') as HTMLInputElement).checked) priceRanges.push([5000, 15000]);
-        if (document.getElementById('price-3') && (document.getElementById('price-3') as HTMLInputElement).checked) priceRanges.push([15000, 25000]);
-        if (document.getElementById('price-4') && (document.getElementById('price-4') as HTMLInputElement).checked) priceRanges.push([25000, Infinity]);
+        var el1 = document.getElementById('price-1'); if (el1 && el1.checked) priceRanges.push([0, 5000]);
+        var el2 = document.getElementById('price-2'); if (el2 && el2.checked) priceRanges.push([5000, 15000]);
+        var el3 = document.getElementById('price-3'); if (el3 && el3.checked) priceRanges.push([15000, 25000]);
+        var el4 = document.getElementById('price-4'); if (el4 && el4.checked) priceRanges.push([25000, Infinity]);
         cards.forEach(function(card) {
           var brand = (card.getAttribute('data-brand') || '').toLowerCase();
           var storage = card.getAttribute('data-storage') || '';
@@ -259,8 +261,8 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
           var brandMatch = checkedBrands.length === 0 || checkedBrands.includes(brand);
           var storageMatch = checkedStorages.length === 0 || checkedStorages.includes(storage);
           var availMatch = checkedAvail.length === 0 || checkedAvail.includes(avail);
-          var priceMatch = priceRanges.length === 0 || priceRanges.some(function(r) { return price >= r[0] && price < r[1]; });
-          (card as HTMLElement).style.display = (brandMatch && storageMatch && availMatch && priceMatch) ? '' : 'none';
+          var priceMatch = priceRanges.length === 0 || priceRanges.some(function(r) { return price >= r[0] && price <= r[1]; });
+          card.style.display = (brandMatch && storageMatch && availMatch && priceMatch) ? '' : 'none';
         });
       }
       document.querySelectorAll('.filter-sidebar input[type="checkbox"]').forEach(function(cb) {
