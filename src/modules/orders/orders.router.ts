@@ -372,6 +372,9 @@ export function checkoutHandler(_req: Request, res: Response): void {
           marketing: marketingCheckbox.checked
         };
 
+        var selectedPaymentMethod = document.querySelector('input[name="payment-method"]:checked');
+        var paymentMethod = selectedPaymentMethod ? selectedPaymentMethod.value : 'card';
+
         placeOrderBtn.setAttribute('disabled', '');
         placeOrderBtn.textContent = 'Placing Order...';
 
@@ -388,6 +391,7 @@ export function checkoutHandler(_req: Request, res: Response): void {
             ],
             onceOffTotal: 20496.55,
             monthlyTotal: 799,
+            paymentMethod: paymentMethod,
             consent: consent
           })
         })
@@ -437,12 +441,12 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
     ? 'Order Complete'
     : 'In Progress';
 
-  // For ORD-XXXX style refs (wireframe/production pattern), render data-driven audit milestones.
+  // For the ORD-3001 demo ref, SSR the demo audit milestones.
+  // For all other ORD-* refs, render an empty timeline (JS will populate from real audit-trail).
   // For ord_NNN test refs, use scenario-based milestones (backward compat with existing tests).
-  const useAuditTimeline = /^ORD-/i.test(id);
   let timelineHtml: string;
 
-  if (useAuditTimeline) {
+  if (id === 'ORD-3001') {
     const seenLabels = new Set<string>();
     const auditMilestones: AuditEventItem[] = [];
     const sortedEvents = [...DEMO_AUDIT_EVENTS].sort((a, b) => {
@@ -459,6 +463,8 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
       }
     }
     timelineHtml = auditMilestones.map(renderAuditMilestone).join('');
+  } else if (/^ORD-/i.test(id)) {
+    timelineHtml = '';
   } else {
     timelineHtml = milestonesHtml;
   }
