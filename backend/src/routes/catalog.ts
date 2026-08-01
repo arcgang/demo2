@@ -26,6 +26,43 @@ function isPurchasable(product: ProductSeed, paymentMethods: string[]): boolean 
   return true;
 }
 
+function isLiteMode(req: Request): boolean {
+  return req.query.lite === 'true' || req.headers['save-data'] === 'on';
+}
+
+function computeMonthlyFrom(product: ProductSeed, planIndex: Map<string, ProductSeed>): number {
+  if (product.productType === 'PLAN') return product.priceRecurring;
+  if (product.compatiblePlanIds.length === 0) return 0;
+  const prices = product.compatiblePlanIds
+    .map(id => planIndex.get(id))
+    .filter((p): p is ProductSeed => p !== undefined)
+    .map(p => p.priceRecurring)
+    .filter(r => r > 0);
+  return prices.length > 0 ? Math.min(...prices) : 0;
+}
+
+function buildLiteItem(product: ProductSeed, currency: string, planIndex: Map<string, ProductSeed>): object {
+  const meta = product.metadata as Record<string, unknown>;
+  return {
+    productId: product.productId,
+    name: product.name,
+    price: {
+      ...(product.priceOnceOff > 0 ? { onceOff: product.priceOnceOff } : {}),
+      ...(product.priceRecurring > 0 ? { recurring: product.priceRecurring } : {}),
+      currency,
+    },
+    monthlyFrom: computeMonthlyFrom(product, planIndex),
+    availability: product.availabilityStatus,
+    category: product.productType,
+    storageOptions: meta.storage ? [String(meta.storage)] : [],
+    colorOptions: meta.colour ? [String(meta.colour)] : [],
+    planAttachOptions: product.compatiblePlanIds,
+    esim: meta.simType === 'ESIM',
+    fiveG: product.badges.includes('5G'),
+    tradeIn: product.badges.includes('Trade-In Eligible'),
+  };
+}
+
 function buildCatalogItem(product: ProductSeed, currency: string, vatRate: number, taxLabel: string, paymentMethods: string[]) {
   const tax = computeTax(product.priceOnceOff, product.priceRecurring, vatRate, taxLabel);
   return {
@@ -68,6 +105,19 @@ router.get('/products', (req: Request, res: Response) => {
 
   const products = getProductsForMarket(marketCode, category);
 
+  if (isLiteMode(req)) {
+    const allPlans = getPlansForMarket(marketCode);
+    const planIndex = new Map<string, ProductSeed>(allPlans.map(p => [p.productId, p]));
+    res.status(200).json({
+      market: {
+        marketCode: market.marketCode,
+        currency: market.currency,
+      },
+      catalog: products.map(p => buildLiteItem(p, market.currency, planIndex)),
+    });
+    return;
+  }
+
   res.status(200).json({
     market: {
       marketCode: market.marketCode,
@@ -108,6 +158,13 @@ router.get('/products/:id', (req: Request, res: Response) => {
   const paymentMethods = market ? market.paymentMethods : ['CARD_TOKEN'];
 
   const plans = getPlansForMarket(product.marketCode);
+
+  if (isLiteMode(req)) {
+    const planIndex = new Map<string, ProductSeed>(plans.map(p => [p.productId, p]));
+    res.status(200).json(buildLiteItem(product, currency, planIndex));
+    return;
+  }
+
   const compatibleOffers = plans
     .filter(plan => product.compatiblePlanIds.includes(plan.productId))
     .map(plan => ({
