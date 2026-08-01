@@ -11,9 +11,7 @@ marketPreferenceRouter.get('/current', (req: Request, res: Response) => {
     ? req.cookies[MARKET_COOKIE]
     : null;
 
-  const market = cookieCode
-    ? getMarketByCode(cookieCode)
-    : listMarkets().find((m) => m.active);
+  const market = (cookieCode ? getMarketByCode(cookieCode) : undefined) ?? listMarkets().find((m) => m.active);
 
   if (!market) {
     res.status(404).json({ error: 'No active market found' });

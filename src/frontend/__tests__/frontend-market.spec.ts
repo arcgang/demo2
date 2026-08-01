@@ -352,6 +352,14 @@ describe('GET /market/current — active market resolution', () => {
     expect(typeof m.taxRate).toBe('number');
     expect(Array.isArray(m.enabledPaymentMethods)).toBe(true);
   });
+
+  it('falls back to default active market when cookie contains a stale/invalid market code', async () => {
+    const res = await request(app)
+      .get('/market/current')
+      .set('Cookie', 'selectedMarketCode=INVALID');
+    expect(res.status).toBe(200);
+    expect(res.body.active).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
