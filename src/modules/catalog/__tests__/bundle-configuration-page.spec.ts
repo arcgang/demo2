@@ -238,20 +238,20 @@ describe('Bundle Configuration page — AC-9 pricing summary totals', () => {
 // ── AC-10: wireframe reference figures ───────────────────────────────────────
 
 describe('Bundle Configuration page — AC-10 wireframe reference pricing figures', () => {
-  it('total once-off of R 28,748.85 is present (Unlimited 20GB + International Calling)', async () => {
+  it('total once-off of R 30,875.20 is present (device 24,999 + deposit 1,499 + activation 350, incl. 15% VAT)', async () => {
     const res = await request(app).get(CONFIGURE_URL);
-    // Matches "28,748.85" or "28748.85"
-    expect(res.text).toMatch(/28[,.]?748[,.]?85/);
+    // Matches "30,875.20" or "30875.20"
+    expect(res.text).toMatch(/30[,.]?875[,.]?20/);
   });
 
-  it('total monthly of R 948.00 is present (R799 plan + R149 add-on)', async () => {
+  it('total monthly of R 3,247.00 is present (R799 plan + R149 add-on + R2,299 installment)', async () => {
     const res = await request(app).get(CONFIGURE_URL);
-    expect(res.text).toMatch(/948/);
+    expect(res.text).toMatch(/3[,.]?247/);
   });
 
-  it('VAT amount R 3,749.85 is present (15% of R 24,999.00)', async () => {
+  it('VAT amount R 4,027.20 is present (15% of once-off subtotal 26,848)', async () => {
     const res = await request(app).get(CONFIGURE_URL);
-    expect(res.text).toMatch(/3[,.]?749[,.]?85/);
+    expect(res.text).toMatch(/4[,.]?027[,.]?20/);
   });
 });
 

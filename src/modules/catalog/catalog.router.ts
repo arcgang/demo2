@@ -372,11 +372,8 @@ function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
 catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const { slug } = req.params;
   const context = (req.query['context'] as string) ?? '';
-<<<<<<< HEAD
   const financingPreload = req.query['financing'] === 'true';
-=======
   const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
->>>>>>> origin/main
   const offers = context ? getUpsellOffersByContext(context) : [];
   const upsellPanel = renderUpsellPanel(offers);
 
@@ -726,21 +723,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
-<<<<<<< HEAD
 // ─── Product detail page data ─────────────────────────────────────────────────
-=======
-catalogRouter.get('/product/:id', (req: Request, res: Response) => {
-  const id = req.params.id;
-  const product = STOREFRONT_SMARTPHONES.find(p => p.slug === id);
-  if (!product) {
-    res.status(404).type('text/html').send(`<h1>Product not found</h1>`);
-    return;
-  }
-
-  const context = (req.query['context'] as string) ?? '';
-  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
-  const offers = context ? getUpsellOffersByContext(context) : [];
->>>>>>> origin/main
 
 interface ProductDetail {
   slug: string;
@@ -756,7 +739,6 @@ interface ProductDetail {
   esimCompatible: boolean;
 }
 
-<<<<<<< HEAD
 const PRODUCT_DETAIL_MAP: Record<string, ProductDetail> = {
   'iphone-15-pro': {
     slug: 'iphone-15-pro',
@@ -960,58 +942,13 @@ const ACCESSORIES_DISPLAY = [
 // ─── Upgrade eligibility result page (Screen 4) ──────────────────────────────
 
 catalogRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
-=======
-  const liteBanner = liteMode
-    ? `<div class="lite-banner">Lite Mode Active - Optimized for faster browsing</div>`
-    : '';
-
-  const badgeText = product.badges.join(' &mdash; ');
-  const availText = product.availability;
-  const formattedPrice = fmtStorefrontPrice(product.price);
-
-  const recommendationsSection = liteMode ? '' : `
-  <section class="recommendations">
-    <h2>Complete your purchase</h2>
-    <div class="recommendations-carousel">
-      <div class="rec-item">
-        <h4>AirPods Pro (2nd Gen)</h4>
-        <p class="rec-price">R 4,999</p>
-        <button class="btn-add-to-cart" data-slug="airpods-pro">Add to Cart</button>
-      </div>
-      <div class="rec-item">
-        <h4>iPhone 15 Pro Case</h4>
-        <p class="rec-price">R 799</p>
-        <button class="btn-add-to-cart" data-slug="iphone-15-pro-case">Add to Cart</button>
-      </div>
-      <div class="rec-item">
-        <h4>20W USB-C Power Adapter</h4>
-        <p class="rec-price">R 399</p>
-        <button class="btn-add-to-cart" data-slug="20w-usb-c-adapter">Add to Cart</button>
-      </div>
-      <div class="rec-item">
-        <h4>Screen Protector</h4>
-        <p class="rec-price">R 299</p>
-        <button class="btn-add-to-cart" data-slug="screen-protector">Add to Cart</button>
-      </div>
-    </div>
-  </section>`;
-
-  const liteQAmp = liteMode ? '&lite=true' : '';
-
-  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
-
->>>>>>> origin/main
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-<<<<<<< HEAD
   <title>Your Upgrade Eligibility - Vodacom Shop</title>
-=======
-  <title>${product.name} - Vodacom Shop</title>
->>>>>>> origin/main
 </head>
-<body${bodyAttr}>
+<body>
   <header class="header">
     <a href="/">Vodacom</a>
     <nav>
@@ -1020,17 +957,12 @@ catalogRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
-<<<<<<< HEAD
     <button>Account</button>
     <button>0</button>
-=======
-    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
->>>>>>> origin/main
   </header>
 
   <nav class="breadcrumb">
     <a href="/">Home</a> &rsaquo;
-<<<<<<< HEAD
     <a href="/account">Account</a> &rsaquo;
     Upgrade Eligibility
   </nav>
@@ -1057,48 +989,8 @@ catalogRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
         <h3>Explore Financing Options</h3>
         <p>Spread the cost of your new device with flexible payment plans</p>
         <a href="/product/iphone-15-pro/configure?financing=true&amp;productId=iphone-15-pro">Get a Quote</a>
-=======
-    <a href="/catalog">Devices</a> &rsaquo;
-    <a href="/catalog?category=smartphones${liteQAmp}">Smartphones</a> &rsaquo;
-    ${product.name}
-  </nav>
-
-  ${liteBanner}
-
-  <section class="product-hero">
-    <h1>${product.name}</h1>
-    <p>${badgeText} &mdash; ${availText}</p>
-    <p class="product-price">${formattedPrice}.00</p>
-    <p>or from ${fmtStorefrontPrice(product.monthlyFrom)}/month with a plan</p>
-
-    <div class="storage-selector">
-      <span>Storage</span>
-      <button>${product.storage}</button>
-    </div>
-
-    <div class="quantity-selector">
-      <label>Quantity</label>
-      <input type="number" value="1" min="1">
-    </div>
-
-    <button class="btn-add-to-cart">Add to Cart</button>
-  </section>
-
-  <section class="plan-attach-panel">
-    <h2>Add a plan or bundle</h2>
-
-    ${upsellPanel}
-
-    <div class="base-plan-list">
-      <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
-        <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
->>>>>>> origin/main
       </div>
 
-<<<<<<< HEAD
       <div class="trade-in-card">
         <h3>Trade In Your Current Device</h3>
         <p>Get up to R 5,000 credit towards your upgrade</p>
@@ -1130,190 +1022,6 @@ catalogRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
       <a href="/support">Contact Support</a>
     </section>
   </main>
-=======
-  ${recommendationsSection}
-
-  <script>${LITE_MODE_JS}</script>
-</body>
-</html>`;
-
-  res.status(200).type('text/html').send(html);
-});
-
-// ─── Cart page (Screen 2: wireframe_cart.html) ────────────────────────────────
-
-catalogRouter.get('/cart', (req: Request, res: Response) => {
-  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
-  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Your Cart - Vodacom Shop</title>
-</head>
-<body${bodyAttr}>
-  <header class="header">
-    <a href="/">Vodacom Shop</a>
-    <nav class="nav-main">
-      <a href="/catalog">Devices</a>
-      <a href="/plans">Plans</a>
-      <a href="/accessories">Accessories</a>
-      <a href="/support">Support</a>
-    </nav>
-    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
-    <button>Account</button>
-    <button>Cart</button>
-  </header>
-
-  <nav class="breadcrumb">
-    <a href="/">Home</a> &rsaquo; Cart
-  </nav>
-
-  <main class="main-content">
-    <h1>Your Cart</h1>
-    <p>3 items</p>
-
-    <div class="cart-items" id="cart-items">
-      <div class="cart-item">
-        <h3>iPhone 15 Pro</h3>
-        <p>Natural Titanium, 256GB</p>
-        <p>Unlimited 20GB Plan attached</p>
-        <span>1</span>
-        <a href="#">Remove</a>
-        <p class="item-price">R 18,999</p>
-        <p class="item-monthly">+ R 799/month</p>
-      </div>
-      <div class="cart-item">
-        <h3>iPhone 15 Pro Silicone Case</h3>
-        <p>Storm Blue</p>
-        <span>1</span>
-        <a href="#">Remove</a>
-        <p class="item-price">R 599</p>
-      </div>
-      <div class="cart-item">
-        <h3>20W USB-C Power Adapter</h3>
-        <p>Fast charging compatible</p>
-        <span>1</span>
-        <a href="#">Remove</a>
-        <p class="item-price">R 399</p>
-      </div>
-    </div>
-
-    <div class="promo-row">
-      <input type="text" name="promo" placeholder="Promo code">
-      <button>Apply</button>
-    </div>
-  </main>
-
-  <aside class="summary-card">
-    <h2>Order Summary</h2>
-    <dl>
-      <dt>Device</dt><dd>R 18,999.00</dd>
-      <dt>Accessories</dt><dd>R 998.00</dd>
-      <dt>Activation Fee</dt><dd>R 0.00</dd>
-      <dt>Subtotal</dt><dd>R 19,997.00</dd>
-      <dt>Monthly Plan</dt><dd>R 799.00</dd>
-      <dt>VAT (15%)</dt><dd>R 2,999.55</dd>
-      <dt>Trade-In Credit</dt><dd>- R 2,500.00</dd>
-      <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
-    </dl>
-    <button class="btn-checkout">Proceed to Checkout</button>
-    <a href="/catalog${liteMode ? '?lite=true' : ''}">Continue Shopping</a>
-    <p>Secure checkout with encrypted payment</p>
-  </aside>
-
-  <script>${LITE_MODE_JS}</script>
-</body>
-</html>`;
-
-  res.status(200).type('text/html').send(html);
-});
-
-// ─── Checkout page (Screen 3: wireframe_checkout_payment.html) ────────────────
-
-catalogRouter.get('/checkout', (req: Request, res: Response) => {
-  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
-  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Checkout - Vodacom Shop</title>
-</head>
-<body${bodyAttr}>
-  <header class="header">
-    <a href="/">Vodacom Shop</a>
-    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
-  </header>
-
-  <nav class="breadcrumb">
-    <a href="/">Home</a> &rsaquo;
-    <a href="/cart">Cart</a> &rsaquo;
-    Checkout
-  </nav>
-
-  <main class="main-content">
-    <h1>Checkout</h1>
-
-    <section class="customer-details">
-      <h2>1 Customer Details</h2>
-      <label for="first-name">First Name</label>
-      <input type="text" id="first-name" name="first-name" required>
-      <label for="last-name">Last Name</label>
-      <input type="text" id="last-name" name="last-name" required>
-      <label for="email">Email Address</label>
-      <input type="email" id="email" name="email" required>
-      <label for="phone">Phone Number</label>
-      <input type="tel" id="phone" name="phone" required>
-      <label for="address">Street Address</label>
-      <input type="text" id="address" name="address" required>
-      <label for="city">City</label>
-      <input type="text" id="city" name="city" required>
-      <label for="postal-code">Postal Code</label>
-      <input type="text" id="postal-code" name="postal-code" required>
-    </section>
-
-    <section class="payment-method">
-      <h2>2 Payment Method</h2>
-      <label><input type="radio" name="payment-method" value="card" checked> Credit or Debit Card</label>
-      <label><input type="radio" name="payment-method" value="mobile-money"> Mobile Money</label>
-      <label for="card-number">Card Number</label>
-      <input type="text" id="card-number" name="card-number" required maxlength="19">
-      <label for="expiry">Expiry Date</label>
-      <input type="text" id="expiry" name="expiry" required maxlength="5">
-      <label for="cvv">CVV</label>
-      <input type="text" id="cvv" name="cvv" required maxlength="4">
-      <label for="cardholder-name">Cardholder Name</label>
-      <input type="text" id="cardholder-name" name="cardholder-name" required>
-    </section>
-
-    <section class="terms-consent">
-      <h2>3 Terms &amp; Consent</h2>
-      <label for="terms"><input type="checkbox" id="terms" name="terms" required> I agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a> (Required)</label>
-      <label for="marketing"><input type="checkbox" id="marketing" name="marketing"> I consent to receiving marketing communications (Optional)</label>
-    </section>
-
-    <button class="btn-place-order">Place Order</button>
-  </main>
-
-  <aside class="summary-card">
-    <h3>Order Summary</h3>
-    <dl>
-      <dt>iPhone 15 Pro 256GB</dt><dd>R 18,999</dd>
-      <dt>Silicone Case</dt><dd>R 599</dd>
-      <dt>20W Power Adapter</dt><dd>R 399</dd>
-      <dt>Once-Off Subtotal</dt><dd>R 19,997.00</dd>
-      <dt>Monthly Plan</dt><dd>R 799.00</dd>
-      <dt>VAT (15%)</dt><dd>R 2,999.55</dd>
-      <dt>Trade-In Credit</dt><dd>- R 2,500.00</dd>
-      <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
-    </dl>
-  </aside>
-
-  <script>${LITE_MODE_JS}</script>
->>>>>>> origin/main
 </body>
 </html>`;
 
