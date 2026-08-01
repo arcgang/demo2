@@ -5,7 +5,7 @@ import {
   persistOrderAuditEvent,
 } from './orderStore';
 import { seedOrder } from '../activation/activationStore';
-import { insertAuditEvent } from '../consentAudit/consentAuditStore';
+import { emitAuditEvent } from '../consentAudit/consentAndAuditService';
 
 export interface LineItemInput {
   name: string;
@@ -67,7 +67,7 @@ export function validateCreateOrderInput(body: Record<string, unknown>): Validat
   return errors;
 }
 
-export function createOrder(input: CreateOrderInput): OrderConfirmation {
+export async function createOrder(input: CreateOrderInput): Promise<OrderConfirmation> {
   const orderId = randomUUID();
   const orderReference = generateOrderReference();
   const createdAt = new Date().toISOString();
@@ -109,18 +109,21 @@ export function createOrder(input: CreateOrderInput): OrderConfirmation {
     },
   });
 
-  // Emit into ConsentAuditModule so the audit-trail endpoint can serve it
-  insertAuditEvent({
-    eventType: 'order_created',
-    orderId: orderReference,
-    actorRef: input.customerId,
-    payload: {
-      orderId,
-      orderReference,
-      cartId: input.cartId,
-      paymentStatus: input.paymentStatus,
-    },
-  });
+  try {
+    await emitAuditEvent({
+      type: 'order_created',
+      orderId: orderReference,
+      actorRef: input.customerId,
+      payload: {
+        order_ref: orderReference,
+        cart_id: input.cartId,
+        line_item_count: input.lineItems.length,
+      },
+    });
+  } catch (err) {
+    console.error({ msg: 'emitAuditEvent failed in createOrder', err, orderReference });
+    throw err;
+  }
 
   return {
     orderReference,

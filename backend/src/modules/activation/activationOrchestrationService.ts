@@ -5,6 +5,8 @@ import {
   persistActivationStatus,
   persistAuditEvent,
 } from './activationStore';
+import { getOrderByReference } from '../order/orderStore';
+import { emitAuditEvent } from '../consentAudit/consentAndAuditService';
 
 const SMDP_ADDRESS = 'smdp.vodacom.co.za';
 
@@ -19,7 +21,7 @@ function randomHex(length: number): string {
   return randomBytes(Math.ceil(length / 2)).toString('hex').toUpperCase().slice(0, length);
 }
 
-function writeAuditEvent(orderId: string, eventType: string, payload: Record<string, unknown>): void {
+function writeLocalAuditEvent(orderId: string, eventType: string, payload: Record<string, unknown>): void {
   persistAuditEvent({
     auditEventId: randomHex(32),
     orderId,
@@ -41,27 +43,32 @@ function invokeActivationAdapter(_orderId: string): { esimReference: string; act
   };
 }
 
-export function issueEsim(orderId: string): IssueResult {
+function resolveAuditKey(orderId: string): string {
+  const stored = getOrderByReference(orderId);
+  return stored ? stored.orderReference : orderId;
+}
+
+export async function issueEsim(orderId: string): Promise<IssueResult> {
   const order = getOrder(orderId);
 
   if (!order) {
-    writeAuditEvent(orderId, 'ESIM_ISSUE_ORDER_NOT_FOUND', { orderId });
+    writeLocalAuditEvent(orderId, 'ESIM_ISSUE_ORDER_NOT_FOUND', { orderId });
     return { outcome: 'NOT_FOUND' };
   }
 
   if (order.paymentStatus !== 'CONFIRMED') {
-    writeAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_PAYMENT', { paymentStatus: order.paymentStatus });
+    writeLocalAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_PAYMENT', { paymentStatus: order.paymentStatus });
     return { outcome: 'PAYMENT_PENDING' };
   }
 
   if (order.verificationStatus !== 'COMPLETED') {
-    writeAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_VERIFICATION', { verificationStatus: order.verificationStatus });
+    writeLocalAuditEvent(orderId, 'ESIM_ISSUE_BLOCKED_VERIFICATION', { verificationStatus: order.verificationStatus });
     return { outcome: 'VERIFICATION_PENDING' };
   }
 
   const existing = getActivationStatusForOrder(orderId);
   if (existing) {
-    writeAuditEvent(orderId, 'ESIM_ALREADY_ISSUED', { activationCode: existing.activationCode });
+    writeLocalAuditEvent(orderId, 'ESIM_ALREADY_ISSUED', { activationCode: existing.activationCode });
     return {
       outcome: 'ALREADY_ISSUED',
       activationCode: existing.activationCode,
@@ -72,17 +79,103 @@ export function issueEsim(orderId: string): IssueResult {
   }
 
   const { esimReference, activationCode, smdpAddress } = invokeActivationAdapter(orderId);
+  const fromStatus = 'pending';
+  const toStatus = 'ESIM_ISSUED';
 
   persistActivationStatus({
     orderId,
-    activationState: 'ESIM_ISSUED',
+    activationState: toStatus,
     esimReference,
     activationCode,
     smdpAddress,
     updatedAt: new Date().toISOString(),
   });
 
-  writeAuditEvent(orderId, 'ESIM_ISSUED', { esimReference, activationState: 'ESIM_ISSUED' });
+  writeLocalAuditEvent(orderId, 'ESIM_ISSUED', { esimReference, activationState: toStatus });
 
-  return { outcome: 'ISSUED', activationCode, smdpAddress, activationState: 'ESIM_ISSUED', orderId };
+  const auditKey = resolveAuditKey(orderId);
+  try {
+    await emitAuditEvent({
+      type: 'activation_status_change',
+      orderId: auditKey,
+      payload: {
+        esim_ref: esimReference,
+        from_status: fromStatus,
+        to_status: toStatus,
+      },
+    });
+  } catch (err) {
+    console.error({ msg: 'emitAuditEvent failed in issueEsim', err, orderId });
+    throw err;
+  }
+
+  return { outcome: 'ISSUED', activationCode, smdpAddress, activationState: toStatus, orderId };
+}
+
+export async function completeActivation(orderId: string): Promise<void> {
+  const existing = getActivationStatusForOrder(orderId);
+  const fromStatus = existing?.activationState ?? 'ESIM_ISSUED';
+  const toStatus = 'ACTIVATION_COMPLETE';
+  const esimReference = existing?.esimReference ?? orderId;
+
+  persistActivationStatus({
+    orderId,
+    activationState: toStatus,
+    esimReference,
+    activationCode: existing?.activationCode ?? '',
+    smdpAddress: existing?.smdpAddress ?? '',
+    updatedAt: new Date().toISOString(),
+  });
+
+  writeLocalAuditEvent(orderId, 'ACTIVATION_COMPLETE', { esimReference, activationState: toStatus });
+
+  const auditKey = resolveAuditKey(orderId);
+  try {
+    await emitAuditEvent({
+      type: 'activation_status_change',
+      orderId: auditKey,
+      payload: {
+        esim_ref: esimReference,
+        from_status: fromStatus,
+        to_status: toStatus,
+      },
+    });
+  } catch (err) {
+    console.error({ msg: 'emitAuditEvent failed in completeActivation', err, orderId });
+    throw err;
+  }
+}
+
+export async function failActivation(orderId: string): Promise<void> {
+  const existing = getActivationStatusForOrder(orderId);
+  const fromStatus = existing?.activationState ?? 'ESIM_ISSUED';
+  const toStatus = 'ACTIVATION_FAILED';
+  const esimReference = existing?.esimReference ?? orderId;
+
+  persistActivationStatus({
+    orderId,
+    activationState: toStatus,
+    esimReference,
+    activationCode: existing?.activationCode ?? '',
+    smdpAddress: existing?.smdpAddress ?? '',
+    updatedAt: new Date().toISOString(),
+  });
+
+  writeLocalAuditEvent(orderId, 'ACTIVATION_FAILED', { esimReference, activationState: toStatus });
+
+  const auditKey = resolveAuditKey(orderId);
+  try {
+    await emitAuditEvent({
+      type: 'activation_status_change',
+      orderId: auditKey,
+      payload: {
+        esim_ref: esimReference,
+        from_status: fromStatus,
+        to_status: toStatus,
+      },
+    });
+  } catch (err) {
+    console.error({ msg: 'emitAuditEvent failed in failActivation', err, orderId });
+    throw err;
+  }
 }

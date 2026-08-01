@@ -45,7 +45,12 @@ export function getActivationStatusForOrder(orderId: string): ActivationStatusRe
 }
 
 export function persistActivationStatus(record: ActivationStatusRecord): void {
-  activationStatuses.push(record);
+  const index = activationStatuses.findIndex((s) => s.orderId === record.orderId);
+  if (index !== -1) {
+    activationStatuses[index] = record;
+  } else {
+    activationStatuses.push(record);
+  }
 }
 
 export function getActivationStatuses(): ActivationStatusRecord[] {

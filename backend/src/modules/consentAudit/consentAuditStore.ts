@@ -60,3 +60,7 @@ export function getAuditEventsForOrder(orderId: string): StoredAuditEvent[] {
     .filter((e) => e.orderId === orderId)
     .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
 }
+
+export function getConsentRecordsForOrder(orderId: string): StoredConsentRecord[] {
+  return consentRecords.filter((r) => r.orderId === orderId);
+}
