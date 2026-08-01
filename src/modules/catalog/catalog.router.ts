@@ -251,7 +251,7 @@ const PRODUCT_CATALOG: Record<string, ProductDetail> = {
 };
 
 const SMARTPHONES: ListingProduct[] = [
-  { slug: 'iphone-15-pro', name: 'iPhone 15 Pro 256GB', price: 24999, monthlyFrom: 899, badges: ['5G', 'Trade-In'], availability: 'In Stock' },
+  { slug: 'iphone-15-pro', name: 'iPhone 15 Pro 256GB', price: 24999, monthlyFrom: 299, badges: ['5G', 'Trade-In'], availability: 'In Stock' },
   { slug: 'samsung-s24-ultra', name: 'Samsung Galaxy S24 Ultra 256GB', price: 22999, monthlyFrom: 799, badges: ['5G'], availability: 'In Stock' },
   { slug: 'iphone-15', name: 'iPhone 15 128GB', price: 18999, monthlyFrom: 699, badges: ['5G', 'Trade-In'], availability: 'In Stock' },
   { slug: 'samsung-s24', name: 'Samsung Galaxy S24 256GB', price: 16999, monthlyFrom: 599, badges: ['5G'], availability: 'In Stock' },
@@ -362,7 +362,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
   <div class="catalog-layout">
     <aside class="filter-sidebar">
       <fieldset>
-        <legend>Brand</legend>
+        <h3>Brand</h3>
         <label for="brand-apple"><input type="checkbox" name="brand-apple" id="brand-apple" checked> Apple</label>
         <label for="brand-samsung"><input type="checkbox" name="brand-samsung" id="brand-samsung" checked> Samsung</label>
         <label for="brand-huawei"><input type="checkbox" name="brand-huawei" id="brand-huawei"> Huawei</label>
@@ -370,7 +370,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       </fieldset>
 
       <fieldset>
-        <legend>Price Range</legend>
+        <h3>Price Range</h3>
         <label for="price-1"><input type="checkbox" name="price-1" id="price-1"> Under R 5,000</label>
         <label for="price-2"><input type="checkbox" name="price-2" id="price-2" checked> R 5,000 - R 15,000</label>
         <label for="price-3"><input type="checkbox" name="price-3" id="price-3" checked> R 15,000 - R 25,000</label>
@@ -378,14 +378,14 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       </fieldset>
 
       <fieldset>
-        <legend>Storage</legend>
+        <h3>Storage</h3>
         <label for="storage-128"><input type="checkbox" name="storage-128" id="storage-128"> 128GB</label>
         <label for="storage-256"><input type="checkbox" name="storage-256" id="storage-256" checked> 256GB</label>
         <label for="storage-512"><input type="checkbox" name="storage-512" id="storage-512"> 512GB</label>
       </fieldset>
 
       <fieldset>
-        <legend>Availability</legend>
+        <h3>Availability</h3>
         <label for="avail-stock"><input type="checkbox" name="avail-stock" id="avail-stock" checked> In Stock</label>
         <label for="avail-preorder"><input type="checkbox" name="avail-preorder" id="avail-preorder"> Pre-Order</label>
       </fieldset>
@@ -590,7 +590,7 @@ function renderDeviceDetail(slug: string, product: DeviceProduct, upsellPanel: s
     </div>
 
     <button type="button" class="btn-add-to-cart">Add to Cart</button>
-    ${product.esim || product.fiveG ? `<p class="compatibility-note">This device supports eSIM and is compatible with Vodacom 5G network</p>` : ''}
+    ${(product.esim || product.fiveG) ? `<p class="compatibility-note">${[product.esim ? 'This device supports eSIM' : '', product.fiveG ? 'compatible with Vodacom 5G network' : ''].filter(Boolean).join(' and ')}</p>` : ''}
   </section>
 
   <section class="plan-attach-panel">
@@ -718,9 +718,9 @@ function renderAccessoryDetail(slug: string, product: AccessoryProduct): string 
     <button type="button" class="btn-add-to-cart">Add to Cart</button>
   </section>
 
-  <div class="compatibility-cues">
+  ${product.compatibility ? `<div class="compatibility-cues">
     <p>Compatible with: ${product.compatibility}</p>
-  </div>
+  </div>` : ''}
 </body>
 </html>`;
 }
