@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
+import { getRecommendationsBySlug } from './deviceRecommendations';
 
 export const catalogRouter = Router();
 
@@ -30,11 +31,64 @@ function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
   </div>`;
 }
 
-catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
+catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
+  const { slug } = req.params;
   const context = (req.query['context'] as string) ?? '';
   const offers = context ? getUpsellOffersByContext(context) : [];
-
   const upsellPanel = renderUpsellPanel(offers);
+
+  // Fetch recommendations from the device recommendations data layer
+  // (equivalent to GET /api/devices/:id/recommendations in the backend)
+  const rec = getRecommendationsBySlug(slug);
+  if (!rec) {
+    res.status(404).type('text/html').send(`<h1>Device not found</h1>`);
+    return;
+  }
+
+  const plans = rec.attachments.filter(a => a.type === 'PLAN');
+  const addons = rec.attachments.filter(a => a.type === 'ADDON');
+
+  // Pre-select the plan marked as defaultChecked, or the first plan
+  const defaultPlan = plans.find(p => p.defaultChecked) ?? plans[0];
+
+  function fmtPrice(n: number): string {
+    return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  const planRadios = plans.map(p => `
+        <label class="plan-option">
+          <input type="radio" name="plan" value="${p.id}" data-monthly="${p.monthly}" required${p === defaultPlan ? ' checked' : ''}>
+          <span class="plan-name">${p.name}</span>
+          <span class="plan-desc">${p.description}</span>
+          <span class="plan-price">R ${p.monthly}/month</span>
+        </label>`).join('');
+
+  const addonCheckboxes = addons.map(a => `
+      <label class="addon-option">
+        <input type="checkbox" name="${a.checkboxName ?? a.id}" data-monthly="${a.monthly}" data-addon-name="${a.name}"${a.defaultChecked ? ' checked' : ''}>
+        ${a.name} &mdash; ${a.description} &mdash; + R ${a.monthly}/month
+      </label>`).join('');
+
+  // Initial recurring charges section: show selected plan + default-checked add-ons
+  const defaultPlanMonthly = defaultPlan ? defaultPlan.monthly : 0;
+  const defaultAddons = addons.filter(a => a.defaultChecked);
+  const defaultAddonMonthly = defaultAddons.reduce((s, a) => s + a.monthly, 0);
+  const initialTotalMonthly = defaultPlanMonthly + defaultAddonMonthly;
+
+  const devicePrice = rec.devicePrice;
+  const vat = parseFloat((devicePrice * 0.15).toFixed(2));
+  const totalOnceOff = parseFloat((devicePrice + vat).toFixed(2));
+
+  const initialPlanRow = defaultPlan
+    ? `<dt id="selected-plan-name">${defaultPlan.name}</dt><dd id="selected-plan-price">${fmtPrice(defaultPlanMonthly)}</dd>`
+    : `<dt id="selected-plan-name"></dt><dd id="selected-plan-price"></dd>`;
+
+  const initialAddonRows = defaultAddons.map(a =>
+    `<dt class="addon-row" data-addon-id="${a.checkboxName ?? a.id}">${a.name}</dt><dd class="addon-row" data-addon-id="${a.checkboxName ?? a.id}">${fmtPrice(a.monthly)}</dd>`
+  ).join('\n      ');
+
+  const productSlugForBreadcrumb = slug;
+  const productUrl = `/product/${productSlugForBreadcrumb}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -58,14 +112,14 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   <nav class="breadcrumb">
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
-    <a href="/product/iphone-15-pro">iPhone 15 Pro 256GB</a> &rsaquo;
+    <a href="${productUrl}">${rec.deviceName}</a> &rsaquo;
     Configure Bundle
   </nav>
 
   <main>
     <h1>Configure Your Bundle</h1>
-    <h3>iPhone 15 Pro 256GB</h3>
-    <p>Natural Titanium &mdash; R 24,999.00</p>
+    <h3>${rec.deviceName}</h3>
+    <p>${rec.colour} &mdash; ${fmtPrice(devicePrice)}</p>
     <p>This plan is compatible with your device</p>
 
     <section class="plan-selection">
@@ -76,42 +130,14 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
       <fieldset>
         <legend>Choose your plan</legend>
-        <label class="plan-option">
-          <input type="radio" name="plan" value="plan_za_red_5gb" data-monthly="299" required>
-          <span class="plan-name">Vodacom Red 5GB</span>
-          <span class="plan-desc">5GB Data + Unlimited Calls &amp; SMS</span>
-          <span class="plan-price">R 299/month</span>
-        </label>
-        <label class="plan-option">
-          <input type="radio" name="plan" value="plan_za_unlimited_20gb" data-monthly="799">
-          <span class="plan-name">Vodacom Unlimited 20GB</span>
-          <span class="plan-desc">20GB Data + Unlimited Calls &amp; SMS</span>
-          <span class="plan-price">R 799/month</span>
-        </label>
-        <label class="plan-option">
-          <input type="radio" name="plan" value="plan_za_red_premium" data-monthly="1299">
-          <span class="plan-name">Vodacom Red Premium</span>
-          <span class="plan-desc">50GB Data + Unlimited Calls &amp; SMS</span>
-          <span class="plan-price">R 1,299/month</span>
-        </label>
+        ${planRadios}
       </fieldset>
     </section>
 
     <section class="bundle-addons">
       <h2>Optional Add-Ons</h2>
       <p class="optional-label">Optional</p>
-      <label class="addon-option">
-        <input type="checkbox" name="addon-data" data-monthly="199">
-        Extra 10GB Data &mdash; Additional data for streaming and browsing &mdash; + R 199/month
-      </label>
-      <label class="addon-option">
-        <input type="checkbox" name="addon-international" checked data-monthly="149">
-        International Calling &mdash; 100 minutes to selected countries &mdash; + R 149/month
-      </label>
-      <label class="addon-option">
-        <input type="checkbox" name="addon-roaming" data-monthly="299">
-        Roaming Bundle &mdash; 5GB data for use in Africa &mdash; + R 299/month
-      </label>
+      ${addonCheckboxes}
     </section>
   </main>
 
@@ -120,29 +146,31 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
     <h4>Once-Off Charges</h4>
     <dl>
-      <dt>iPhone 15 Pro 256GB</dt><dd>R 24,999.00</dd>
-      <dt>Activation Fee</dt><dd>R 0.00</dd>
+      <dt>${rec.deviceName}</dt><dd>${fmtPrice(devicePrice)}</dd>
+      <dt>Activation Fee</dt><dd>${fmtPrice(rec.activationFee)}</dd>
     </dl>
 
     <h4>Recurring Charges</h4>
     <dl id="recurring-charges">
-      <dt id="selected-plan-name">Vodacom Unlimited 20GB</dt><dd id="selected-plan-price">R 799.00</dd>
-      <dt id="intl-calling-label">International Calling</dt><dd id="intl-calling-price">R 149.00</dd>
+      ${initialPlanRow}
+      ${initialAddonRows}
     </dl>
 
     <dl class="pricing-totals">
-      <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">R 24,999.00</dd>
-      <dt>VAT (15%)</dt><dd id="vat-amount">R 3,749.85</dd>
-      <dt>Total Once-Off</dt><dd id="total-once-off">R 28,748.85</dd>
-      <dt>Total Monthly</dt><dd id="total-monthly">R 948.00</dd>
+      <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">${fmtPrice(devicePrice)}</dd>
+      <dt>VAT (15%)</dt><dd id="vat-amount">${fmtPrice(vat)}</dd>
+      <dt>Total Once-Off</dt><dd id="total-once-off">${fmtPrice(totalOnceOff)}</dd>
+      <dt>Total Monthly</dt><dd id="total-monthly">${fmtPrice(initialTotalMonthly)}</dd>
     </dl>
 
-    <button id="continue-to-cart" disabled data-requires-plan="true">Continue to Cart</button>
+    <button id="continue-to-cart"${defaultPlan ? '' : ' disabled'} data-requires-plan="true">Continue to Cart</button>
   </aside>
 
   <script>
     (function () {
-      var DEVICE_PRICE = 24999;
+      var DEVICE_PRICE = ${devicePrice};
+      var DEVICE_ID = '${rec.deviceId}';
+      var DEVICE_NAME = '${rec.deviceName}';
       var VAT_RATE = 0.15;
 
       function fmt(n) {
@@ -153,9 +181,46 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
         var sel = document.querySelector('input[name="plan"]:checked');
         var planMonthly = sel ? parseInt(sel.getAttribute('data-monthly') || '0', 10) : 0;
 
+        // Rebuild recurring-charges dl dynamically
+        var recurringDl = document.getElementById('recurring-charges');
+
+        // Update or clear the plan row
+        var planNameDt = document.getElementById('selected-plan-name');
+        var planPriceDd = document.getElementById('selected-plan-price');
+        if (sel) {
+          var planLabel = sel.closest('.plan-option');
+          var nameSpan = planLabel ? planLabel.querySelector('.plan-name') : null;
+          planNameDt.textContent = nameSpan ? nameSpan.textContent : '';
+          planPriceDd.textContent = fmt(planMonthly);
+        } else {
+          planNameDt.textContent = '';
+          planPriceDd.textContent = '';
+        }
+
+        // Remove all existing add-on rows
+        recurringDl.querySelectorAll('[data-addon-id]').forEach(function (el) {
+          el.parentNode.removeChild(el);
+        });
+
+        // Add a row for each checked add-on
         var addonMonthly = 0;
-        document.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
-          addonMonthly += parseInt(cb.getAttribute('data-monthly') || '0', 10);
+        document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+          var monthly = parseInt(cb.getAttribute('data-monthly') || '0', 10);
+          if (cb.checked) {
+            addonMonthly += monthly;
+            var addonId = cb.name;
+            var addonName = cb.getAttribute('data-addon-name') || cb.name;
+            var dt = document.createElement('dt');
+            dt.className = 'addon-row';
+            dt.setAttribute('data-addon-id', addonId);
+            dt.textContent = addonName;
+            var dd = document.createElement('dd');
+            dd.className = 'addon-row';
+            dd.setAttribute('data-addon-id', addonId);
+            dd.textContent = fmt(monthly);
+            recurringDl.appendChild(dt);
+            recurringDl.appendChild(dd);
+          }
         });
 
         var vat = parseFloat((DEVICE_PRICE * VAT_RATE).toFixed(2));
@@ -168,10 +233,6 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
         document.getElementById('total-monthly').textContent = fmt(totalMonthly);
 
         if (sel) {
-          var planOpt = sel.closest('.plan-option');
-          var nameEl = planOpt ? planOpt.querySelector('.plan-name') : null;
-          document.getElementById('selected-plan-name').textContent = nameEl ? nameEl.textContent : '';
-          document.getElementById('selected-plan-price').textContent = fmt(planMonthly);
           document.getElementById('continue-to-cart').removeAttribute('disabled');
         } else {
           document.getElementById('continue-to-cart').setAttribute('disabled', '');
@@ -193,8 +254,8 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
           addons.push(cb.name);
         });
         var cartItem = {
-          productId: 'prod_za_iphone15pro_256',
-          productName: 'iPhone 15 Pro 256GB',
+          productId: DEVICE_ID,
+          productName: DEVICE_NAME,
           planId: sel.value,
           addons: addons,
           devicePrice: DEVICE_PRICE
