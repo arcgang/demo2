@@ -6,8 +6,11 @@ import {
   getPlansForMarket,
   ProductSeed,
 } from '../modules/catalog/catalogData';
+import { makeCacheKey, getCached, setCached } from '../modules/shared/responseCache';
 
 const router = Router();
+
+const CATALOG_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
 function computeTax(priceOnceOff: number, priceRecurring: number, vatRate: number, taxLabel: string) {
   const taxableAmount = priceOnceOff > 0 ? priceOnceOff : priceRecurring;
@@ -66,9 +69,25 @@ router.get('/products', (req: Request, res: Response) => {
     return;
   }
 
-  const products = getProductsForMarket(marketCode, category);
+  const cacheKey = makeCacheKey('catalog:products', {
+    market: market.marketCode,
+    category: category ?? '',
+  });
 
-  res.status(200).json({
+  const cached = getCached(cacheKey);
+  if (cached) {
+    res.set('Cache-Control', cached.cacheControl);
+    res.set('ETag', cached.etag);
+    if (req.headers['if-none-match'] === cached.etag) {
+      res.status(304).end();
+      return;
+    }
+    res.status(200).json(cached.body);
+    return;
+  }
+
+  const products = getProductsForMarket(marketCode, category);
+  const body = {
     market: {
       marketCode: market.marketCode,
       currency: market.currency,
@@ -76,7 +95,16 @@ router.get('/products', (req: Request, res: Response) => {
     catalog: products.map(p =>
       buildCatalogItem(p, market.currency, market.vatRate, market.taxLabel, market.paymentMethods),
     ),
-  });
+  };
+
+  const entry = setCached(cacheKey, body, CATALOG_CACHE_CONTROL);
+  res.set('Cache-Control', entry.cacheControl);
+  res.set('ETag', entry.etag);
+  if (req.headers['if-none-match'] === entry.etag) {
+    res.status(304).end();
+    return;
+  }
+  res.status(200).json(body);
 });
 
 // GET /api/catalog/products/:id

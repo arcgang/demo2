@@ -92,5 +92,99 @@
     "eligibility": null,
     "financing": null,
     "tradeIn": null
+  },
+  "39d09e38-f3c8-4ff0-8f79-967b81e7c7d4": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
+  },
+  "7af1ef2d-21e1-4017-9959-6d2ac7b70af4": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "88e8efb0-ec62-4093-8637-d0be0e263596": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "eec7ef12-36de-42df-9a3b-6202dbb41d6a": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "5e52b720-8f21-4a63-8755-3cd988508a14": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "currentPlan": "plan_red"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "6e9b544f-864e-46d3-9b81-c3a64e4a54e4": {
+    "eligibility": null,
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": null
+  },
+  "f53a6d70-0309-48b9-9917-84196e84de5f": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 2500,
+      "brand": "Apple"
+    }
+  },
+  "e2948550-5c07-42f8-a4bf-4934fd78f16a": {
+    "eligibility": {
+      "upgradeWindowOpen": false
+    },
+    "financing": {
+      "termMonths": 12,
+      "monthlyAmount": 450
+    },
+    "tradeIn": null
+  },
+  "dea17931-a105-4dbe-aa20-4236992724c2": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": null,
+    "tradeIn": {
+      "estimatedCredit": 1000
+    }
+  },
+  "82a2ae20-5820-427c-ade9-62f9d376b172": {
+    "eligibility": {
+      "upgradeWindowOpen": true
+    },
+    "financing": {
+      "termMonths": 24,
+      "monthlyAmount": 899
+    },
+    "tradeIn": {
+      "estimatedCredit": 2500
+    }
+  },
+  "624589d6-e81c-486f-a127-740edf1264ae": {
+    "eligibility": {
+      "upgradeWindowOpen": true,
+      "tag": "session-a"
+    },
+    "financing": null,
+    "tradeIn": null
+  },
+  "26918fb3-e3a5-40b3-9421-f989d5a46928": {
+    "eligibility": null,
+    "financing": null,
+    "tradeIn": null
   }
 }
