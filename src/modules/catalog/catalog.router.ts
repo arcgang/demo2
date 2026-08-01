@@ -362,7 +362,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
   <div class="catalog-layout">
     <aside class="filter-sidebar">
       <fieldset>
-        <h3>Brand</h3>
+        <legend>Brand</legend>
         <label for="brand-apple"><input type="checkbox" name="brand-apple" id="brand-apple" checked> Apple</label>
         <label for="brand-samsung"><input type="checkbox" name="brand-samsung" id="brand-samsung" checked> Samsung</label>
         <label for="brand-huawei"><input type="checkbox" name="brand-huawei" id="brand-huawei"> Huawei</label>
@@ -370,7 +370,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       </fieldset>
 
       <fieldset>
-        <h3>Price Range</h3>
+        <legend>Price Range</legend>
         <label for="price-1"><input type="checkbox" name="price-1" id="price-1"> Under R 5,000</label>
         <label for="price-2"><input type="checkbox" name="price-2" id="price-2" checked> R 5,000 - R 15,000</label>
         <label for="price-3"><input type="checkbox" name="price-3" id="price-3" checked> R 15,000 - R 25,000</label>
@@ -378,14 +378,14 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       </fieldset>
 
       <fieldset>
-        <h3>Storage</h3>
+        <legend>Storage</legend>
         <label for="storage-128"><input type="checkbox" name="storage-128" id="storage-128"> 128GB</label>
         <label for="storage-256"><input type="checkbox" name="storage-256" id="storage-256" checked> 256GB</label>
         <label for="storage-512"><input type="checkbox" name="storage-512" id="storage-512"> 512GB</label>
       </fieldset>
 
       <fieldset>
-        <h3>Availability</h3>
+        <legend>Availability</legend>
         <label for="avail-stock"><input type="checkbox" name="avail-stock" id="avail-stock" checked> In Stock</label>
         <label for="avail-preorder"><input type="checkbox" name="avail-preorder" id="avail-preorder"> Pre-Order</label>
       </fieldset>
