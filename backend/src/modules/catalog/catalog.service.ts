@@ -68,6 +68,8 @@ export class CatalogService {
         return false;
       }
 
+      if (filters.inStock && !pm.purchasable) return false;
+
       return true;
     }).map((product) => {
       const pm = pmIndex.get(product.id)!;
@@ -93,7 +95,7 @@ export class CatalogService {
 
     const pmIndex = this.buildProductMarketIndex(market.code);
     const pm = pmIndex.get(productId);
-    if (!pm || !pm.available) return null;
+    if (!pm || !pm.available || !pm.purchasable) return null;
 
     return {
       id: product.id,
