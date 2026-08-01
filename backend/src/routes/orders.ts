@@ -4,6 +4,7 @@ import { issueEsim } from '../modules/activation/activationOrchestrationService'
 import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
 import { getOrderByReference } from '../modules/order/orderStore';
 import { getJourneyAuditTrail } from '../modules/consentAudit/consentAndAuditService';
+import { buildStructuredError } from '../modules/errorClassification/errorSchema';
 
 const router = Router();
 
@@ -13,8 +14,10 @@ router.post('/', (req: Request, res: Response) => {
   const errors = validateCreateOrderInput(body);
   if (errors.length > 0) {
     res.status(422).json({
-      errorCode: 'VALIDATION_ERROR',
-      message: 'Required fields are missing or invalid.',
+      ...buildStructuredError('support_required', {
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Required fields are missing or invalid.',
+      }),
       errors,
     });
     return;
@@ -42,13 +45,22 @@ router.post('/:id/esim/issue', (req: Request, res: Response) => {
 
   switch (result.outcome) {
     case 'NOT_FOUND':
-      res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      res.status(404).json(buildStructuredError('support_required', {
+        errorCode: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      }));
       return;
     case 'PAYMENT_PENDING':
-      res.status(403).json({ errorCode: 'PAYMENT_PENDING', message: 'Payment has not been confirmed. eSIM issuance requires a confirmed payment.' });
+      res.status(403).json(buildStructuredError('payment_pending', {
+        errorCode: 'PAYMENT_PENDING',
+        message: 'Payment has not been confirmed. eSIM issuance requires a confirmed payment.',
+      }));
       return;
     case 'VERIFICATION_PENDING':
-      res.status(403).json({ errorCode: 'VERIFICATION_PENDING', message: 'Identity verification has not been completed. eSIM issuance requires passed KYC/RICA verification.' });
+      res.status(403).json(buildStructuredError('kyc_pending', {
+        errorCode: 'VERIFICATION_PENDING',
+        message: 'Identity verification has not been completed. eSIM issuance requires passed KYC/RICA verification.',
+      }));
       return;
     case 'ALREADY_ISSUED':
       res.status(200).json({

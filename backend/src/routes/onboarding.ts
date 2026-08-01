@@ -9,6 +9,7 @@ import {
   type VerificationType,
   type IdentityFields,
 } from '../modules/onboarding/verificationService';
+import { buildStructuredError } from '../modules/errorClassification/errorSchema';
 
 const router = Router();
 
@@ -71,6 +72,19 @@ router.post('/verification', async (req: Request, res: Response) => {
     type: body.type as VerificationType,
     identityFields: body.identityFields as IdentityFields,
   });
+
+  if (record.status === 'failed') {
+    res.status(422).json({
+      ...buildStructuredError('kyc_failed', {
+        errorCode: 'KYC_FAILED',
+        message: 'Identity verification failed. Please review your details and resubmit.',
+      }),
+      id: record.id,
+      orderId: record.orderId,
+      auditRef: record.auditRef,
+    });
+    return;
+  }
 
   res.status(201).json({
     id: record.id,

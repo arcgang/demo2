@@ -3,6 +3,7 @@ import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
 import { getFinancingQuotes } from '../modules/upgrade/financingAdapter';
 import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
 import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
+import { buildStructuredError } from '../modules/errorClassification/errorSchema';
 
 const router = Router();
 
@@ -22,7 +23,23 @@ router.post('/eligibility', (req: Request, res: Response) => {
   }
 
   if (errors.length > 0) {
-    res.status(422).json({ errorCode: 'VALIDATION_ERROR', errors });
+    res.status(422).json({
+      ...buildStructuredError('eligibility_unavailable', {
+        errorCode: 'VALIDATION_ERROR',
+      }),
+      errors,
+    });
+    return;
+  }
+
+  // Sentinel customerId that simulates an eligibility-service-unavailable condition.
+  if (body.customerId === 'cust_ineligible_unavailable') {
+    res.status(503).json(
+      buildStructuredError('eligibility_unavailable', {
+        errorCode: 'ELIGIBILITY_SERVICE_UNAVAILABLE',
+        message: 'Eligibility service is currently unavailable. Please try again later or contact support.',
+      }),
+    );
     return;
   }
 
