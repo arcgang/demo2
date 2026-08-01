@@ -58,7 +58,6 @@ function renderSharedHeader(): string {
 
 const LITE_MODE_JS = `
 (function() {
-  var LITE_QUERY_PARAM = 'lite=true';
   function isAutoLite() {
     try {
       var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -78,8 +77,12 @@ const LITE_MODE_JS = `
   function isLiteActive() {
     var pref = getLitePreference();
     if (pref === 'on') return true;
-    if (pref === 'off') return false;
-    return isAutoLite();
+    if (pref === 'off') {
+      // If the URL explicitly carries ?lite=true, treat as active regardless of stored 'off'
+      if (new URL(window.location.href).searchParams.get('lite') === 'true') return true;
+      return false;
+    }
+    return isAutoLite() || new URL(window.location.href).searchParams.get('lite') === 'true';
   }
   function reloadWithLite(on) {
     var url = new URL(window.location.href);
@@ -334,6 +337,14 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
       }
       document.querySelectorAll('.filter-sidebar input[type="checkbox"]').forEach(function(cb) {
         cb.addEventListener('change', applyFilters);
+      });
+
+      var liteActive = ${JSON.stringify(liteMode)};
+      document.querySelectorAll('.btn-add-to-cart[data-slug]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var slug = btn.getAttribute('data-slug');
+          window.location.href = '/product/' + slug + '/configure' + (liteActive ? '?lite=true' : '');
+        });
       });
     })();
   </script>`;
@@ -712,7 +723,8 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <input type="number" value="1" min="1">
     </div>
 
-    <button class="btn-add-to-cart">Add to Cart</button>
+    ${product.isPurchasable ? `<button class="btn-add-to-cart" data-slug="${product.slug}">Add to Cart</button>
+    <a href="/product/${product.slug}/configure${liteMode ? '?lite=true' : ''}" class="btn-configure-bundle">Select Plan &amp; Configure</a>` : ''}
   </section>
 
   <section class="plan-attach-panel">
@@ -744,6 +756,24 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
 
   ${recommendationsSection}
 
+  <script>
+    (function() {
+      var liteActive = ${JSON.stringify(liteMode)};
+      var slug = '${product.slug}';
+      var configureUrl = '/product/' + slug + '/configure' + (liteActive ? '?lite=true' : '');
+      var addToCartBtn = document.querySelector('.product-hero .btn-add-to-cart[data-slug]');
+      if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', function() {
+          window.location.href = configureUrl;
+        });
+      }
+      document.querySelectorAll('.btn-select-plan').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          window.location.href = configureUrl;
+        });
+      });
+    })();
+  </script>
   <script>${LITE_MODE_JS}</script>
 </body>
 </html>`;
@@ -834,6 +864,14 @@ catalogRouter.get('/cart', (req: Request, res: Response) => {
     <p>Secure checkout with encrypted payment</p>
   </aside>
 
+  <script>
+    (function() {
+      var liteActive = ${JSON.stringify(liteMode)};
+      document.querySelector('.btn-checkout').addEventListener('click', function() {
+        window.location.href = '/checkout' + (liteActive ? '?lite=true' : '');
+      });
+    })();
+  </script>
   <script>${LITE_MODE_JS}</script>
 </body>
 </html>`;
