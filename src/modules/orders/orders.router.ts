@@ -452,8 +452,8 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
       return new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
     });
     for (const e of sortedEvents) {
-      const label = MILESTONE_LABELS[e.eventType] ?? e.eventType;
-      if (!seenLabels.has(label)) {
+      const label = MILESTONE_LABELS[e.eventType];
+      if (label && !seenLabels.has(label)) {
         seenLabels.add(label);
         auditMilestones.push(e);
       }
@@ -666,8 +666,8 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
         });
         for (var i = 0; i < sorted.length; i++) {
           var e = sorted[i];
-          var label = MILESTONE_LABELS[e.eventType] || e.eventType;
-          if (!seenLabels[label]) {
+          var label = MILESTONE_LABELS[e.eventType];
+          if (label && !seenLabels[label]) {
             seenLabels[label] = true;
             milestones.push(e);
           }

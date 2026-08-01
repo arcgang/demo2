@@ -5,6 +5,8 @@ import {
   persistActivationStatus,
   persistAuditEvent,
 } from './activationStore';
+import { insertAuditEvent } from '../consentAudit/consentAuditStore';
+import { getOrderByReference } from '../order/orderStore';
 
 const SMDP_ADDRESS = 'smdp.vodacom.co.za';
 
@@ -83,6 +85,21 @@ export function issueEsim(orderId: string): IssueResult {
   });
 
   writeAuditEvent(orderId, 'ESIM_ISSUED', { esimReference, activationState: 'ESIM_ISSUED' });
+
+  const storedOrder = getOrderByReference(orderId);
+  const orderRef = storedOrder ? storedOrder.orderReference : orderId;
+
+  insertAuditEvent({
+    eventType: 'activation_status_change',
+    orderId: orderRef,
+    payload: { esimReference, state: 'ISSUED' },
+  });
+
+  insertAuditEvent({
+    eventType: 'activation_complete',
+    orderId: orderRef,
+    payload: { network: 'Vodacom 5G', status: 'ACTIVE' },
+  });
 
   return { outcome: 'ISSUED', activationCode, smdpAddress, activationState: 'ESIM_ISSUED', orderId };
 }

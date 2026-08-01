@@ -70,6 +70,28 @@ router.post('/place-order', (req: Request, res: Response) => {
     payload: { purpose: 'marketing', accepted: marketingAccepted },
   });
 
+  if (confirmation.paymentStatus === 'CONFIRMED') {
+    insertAuditEvent({
+      eventType: 'payment_outcome',
+      orderId: confirmation.orderReference,
+      payload: {
+        amount: confirmation.onceOffTotal,
+        currency: 'ZAR',
+        method: body.paymentMethod as string ?? 'card',
+        status: 'SUCCESS',
+      },
+    });
+  }
+
+  const verificationStatus = body.verificationStatus as string | undefined;
+  if (verificationStatus === 'COMPLETED') {
+    insertAuditEvent({
+      eventType: 'verification_outcome',
+      orderId: confirmation.orderReference,
+      payload: { result: 'PASSED', checkType: 'RICA' },
+    });
+  }
+
   res.status(201).json({
     order_ref: confirmation.orderReference,
     orderReference: confirmation.orderReference,

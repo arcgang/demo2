@@ -5,7 +5,8 @@ export type AuditEventType =
   | 'payment_outcome'
   | 'verification_outcome'
   | 'order_created'
-  | 'activation_status_change';
+  | 'activation_status_change'
+  | 'activation_complete';
 
 export interface StoredConsentRecord {
   id: string;
