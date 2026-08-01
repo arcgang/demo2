@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import { catalogProducts } from '../catalog/catalog.fixture';
+import { listMarkets } from '../market/market.service';
 
 interface CartItem {
   productId: string;
@@ -9,16 +11,6 @@ interface ValidateCartRequest {
   marketCode: string;
   items: CartItem[];
 }
-
-const productMarkets: Record<string, string[]> = {
-  'iphone-15-pro': ['ZA', 'KE', 'NG'],
-  'samsung-s24-ultra': ['ZA', 'KE', 'NG'],
-  'iphone-15': ['ZA', 'KE', 'NG'],
-  'samsung-s24': ['ZA', 'KE', 'NG'],
-  'samsung-a54': ['ZA', 'KE', 'NG'],
-  'iphone-14': ['ZA', 'KE', 'NG'],
-  'za-only-product': ['ZA'],
-};
 
 export const cartRouter = Router();
 
@@ -31,9 +23,16 @@ cartRouter.post('/validate', (req: Request, res: Response) => {
     return;
   }
 
+  const knownMarkets = listMarkets();
+  const marketExists = knownMarkets.some((m) => m.code === marketCode);
+  if (!marketExists) {
+    res.status(400).json({ error: `Unknown market code: ${marketCode}` });
+    return;
+  }
+
   const validatedItems = items.map((item) => {
-    const available = productMarkets[item.productId];
-    const eligible = available ? available.includes(marketCode) : false;
+    const product = catalogProducts.find((p) => p.id === item.productId);
+    const eligible = product ? product.availableMarkets.includes(marketCode) : false;
     return {
       productId: item.productId,
       quantity: item.quantity,
