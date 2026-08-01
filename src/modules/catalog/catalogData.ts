@@ -96,6 +96,42 @@ export const ZA_STOREFRONT_PRODUCTS: StorefrontProduct[] = [
   },
 ];
 
+export interface PlanProduct {
+  productId: string;
+  name: string;
+  marketCode: string;
+  priceRecurring: number;
+  description: string;
+}
+
+export const ZA_PLANS: PlanProduct[] = [
+  {
+    productId: 'plan_za_red_essential_20gb',
+    name: 'Vodacom Red 5GB',
+    marketCode: 'ZA',
+    priceRecurring: 299,
+    description: '5GB Data + Unlimited Calls &amp; SMS',
+  },
+  {
+    productId: 'plan_za_unlimited_20gb',
+    name: 'Vodacom Unlimited 20GB',
+    marketCode: 'ZA',
+    priceRecurring: 799,
+    description: '20GB Data + Unlimited Calls &amp; SMS',
+  },
+  {
+    productId: 'plan_za_red_premium_50gb',
+    name: 'Vodacom Red Premium',
+    marketCode: 'ZA',
+    priceRecurring: 1299,
+    description: '50GB Data + Unlimited Calls &amp; SMS',
+  },
+];
+
+export function getPlansForMarket(marketCode: string): PlanProduct[] {
+  return ZA_PLANS.filter(p => p.marketCode === marketCode.toUpperCase());
+}
+
 const SUBCATEGORY_MAP: Record<string, string> = {
   smartphones: 'smartphones',
   tablets: 'tablets',

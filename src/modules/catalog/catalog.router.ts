@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
+import { getPlansForMarket } from './catalogData';
 
 export const catalogRouter = Router();
 
@@ -26,7 +27,7 @@ const STOREFRONT_SMARTPHONES: StorefrontProduct[] = [
   { slug: 'iphone-15', name: 'iPhone 15 128GB', price: 18999, monthlyFrom: 699, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
   { slug: 'samsung-s24', name: 'Samsung Galaxy S24 256GB', price: 16999, monthlyFrom: 599, badges: ['5G'], brand: 'Samsung', storage: '256GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
   { slug: 'samsung-a54', name: 'Samsung Galaxy A54 128GB', price: 8999, monthlyFrom: 349, badges: ['5G'], brand: 'Samsung', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
-  { slug: 'iphone-14', name: 'iPhone 14 128GB', price: 15999, monthlyFrom: 579, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: true, category: 'smartphones' },
+  { slug: 'iphone-14', name: 'iPhone 14 128GB', price: 15999, monthlyFrom: 579, badges: ['5G', 'Trade-In'], brand: 'Apple', storage: '128GB', availability: 'In Stock', isPurchasable: false, category: 'smartphones' },
 ];
 
 const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
@@ -747,12 +748,6 @@ const PRODUCT_DETAIL_MAP: Record<string, ProductDetail> = {
   },
 };
 
-const ZA_PLANS_DISPLAY = [
-  { id: 'plan_za_red_5gb', name: 'Vodacom Red 5GB', description: '5GB Data + Unlimited Calls &amp; SMS', monthly: 299 },
-  { id: 'plan_za_unlimited_20gb', name: 'Vodacom Unlimited 20GB', description: '20GB Data + Unlimited Calls &amp; SMS', monthly: 799 },
-  { id: 'plan_za_red_premium', name: 'Vodacom Red Premium', description: '50GB Data + Unlimited Calls &amp; SMS', monthly: 1299 },
-];
-
 const ACCESSORIES_DISPLAY = [
   { name: 'AirPods Pro (2nd Gen)', price: 4999 },
   { name: 'iPhone 15 Pro Case', price: 799 },
@@ -795,12 +790,14 @@ catalogRouter.get('/product/:slug', (req: Request, res: Response) => {
     ? `<p class="esim-note">This device supports eSIM and is compatible with Vodacom 5G network</p>`
     : `<p class="esim-note">This device is compatible with Vodacom 5G network</p>`;
 
-  const planCards = ZA_PLANS_DISPLAY.map(p => `
-      <div class="plan-card" data-plan-id="${p.id}">
+  const marketCode = (req.query['market'] as string) ?? 'ZA';
+  const marketPlans = getPlansForMarket(marketCode);
+  const planCards = marketPlans.map(p => `
+      <div class="plan-card" data-plan-id="${p.productId}">
         <h4>${p.name}</h4>
         <p>${p.description}</p>
-        <p class="plan-price">R ${p.monthly}/month</p>
-        <button class="btn-select-plan" data-plan-id="${p.id}">Select Plan</button>
+        <p class="plan-price">${fmtPrice(p.priceRecurring).replace(/\.00$/, '')}/month</p>
+        <button class="btn-select-plan" data-plan-id="${p.productId}">Select Plan</button>
       </div>`).join('\n');
 
   const specRows = product.specs.map(s =>
@@ -823,6 +820,7 @@ catalogRouter.get('/product/:slug', (req: Request, res: Response) => {
   </nav>
 
   <section class="product-hero">
+    <img src="/images/products/${product.slug}.jpg" alt="${product.name}" class="product-primary-image">
     <h1>${product.name}</h1>
     <div class="product-badges">
       ${badges}
