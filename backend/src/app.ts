@@ -14,6 +14,7 @@ export function createApp(): Application {
   app.use('/api/upgrade', upgradeRouter);
   app.use('/api/journeys', journeysRouter);
   app.use('/api/market-context', marketContextRouter);
+  app.use('/api/market-config', marketContextRouter);
   app.use('/api/catalog', catalogRouter);
   return app;
 }

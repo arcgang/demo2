@@ -1,13 +1,25 @@
 import { Router, Request, Response } from 'express';
 import { buildStatusResponse } from '../modules/activation/statusScenarios';
 import { issueEsim } from '../modules/activation/activationOrchestrationService';
-import { validateCreateOrderInput, createOrder } from '../modules/order/orderService';
+import { validateCreateOrderInput, createOrder, CreateOrderInput } from '../modules/order/orderService';
 import { getOrderByReference } from '../modules/order/orderStore';
 import { getJourneyAuditTrail } from '../modules/consentAudit/consentAndAuditService';
+import { withTimeout, isTimeoutError, getSlowAdapterMs } from '../modules/shared/adapterTimeout';
 
 const router = Router();
 
-router.post('/', (req: Request, res: Response) => {
+const ADAPTER_TIMEOUT_MS = 1500;
+
+function createOrderAsync(input: CreateOrderInput) {
+  const delay = getSlowAdapterMs();
+  return new Promise<ReturnType<typeof createOrder>>((resolve) => {
+    setTimeout(() => {
+      resolve(createOrder(input));
+    }, delay);
+  });
+}
+
+router.post('/', async (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
 
   const errors = validateCreateOrderInput(body);
@@ -20,7 +32,7 @@ router.post('/', (req: Request, res: Response) => {
     return;
   }
 
-  const confirmation = createOrder({
+  const input: CreateOrderInput = {
     cartId: body.cartId as string,
     paymentAttemptId: body.paymentAttemptId as string,
     paymentStatus: body.paymentStatus as string,
@@ -31,9 +43,23 @@ router.post('/', (req: Request, res: Response) => {
     onceOffTotal: body.onceOffTotal as number,
     monthlyTotal: body.monthlyTotal as number,
     consents: body.consents as Array<{ purpose: string; granted: boolean }> | undefined,
-  });
+  };
 
-  res.status(201).json(confirmation);
+  try {
+    const confirmation = await withTimeout(() => createOrderAsync(input), ADAPTER_TIMEOUT_MS);
+    res.status(201).json(confirmation);
+  } catch (err) {
+    if (isTimeoutError(err)) {
+      res.status(200).json({
+        status: 'pending',
+        cartId: input.cartId,
+        correlationId: input.paymentAttemptId,
+        message: 'Order processing is taking longer than expected. Check back shortly.',
+      });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.post('/:id/esim/issue', (req: Request, res: Response) => {
@@ -84,7 +110,6 @@ router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
     return;
   }
 
-  // Audit events are keyed by orderReference (the public ref)
   const events = await getJourneyAuditTrail(order.orderReference);
   res.status(200).json({
     orderId: order.orderReference,

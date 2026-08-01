@@ -3,14 +3,17 @@ import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
 import { getFinancingQuotes } from '../modules/upgrade/financingAdapter';
 import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
 import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
+import { withTimeout, isTimeoutError } from '../modules/shared/adapterTimeout';
 
 const router = Router();
+
+const ADAPTER_TIMEOUT_MS = 1500;
 
 // ---------------------------------------------------------------------------
 // POST /api/upgrade/eligibility
 // ---------------------------------------------------------------------------
 
-router.post('/eligibility', (req: Request, res: Response) => {
+router.post('/eligibility', async (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
   const errors: Array<{ field: string; message: string }> = [];
 
@@ -26,21 +29,47 @@ router.post('/eligibility', (req: Request, res: Response) => {
     return;
   }
 
-  const result = checkEligibility(
-    body.customerId as string,
-    body.lineId as string,
-    body.marketCode as string,
-  );
-
-  res.status(200).json(result);
+  try {
+    const result = await withTimeout(
+      () => checkEligibility(
+        body.customerId as string,
+        body.lineId as string,
+        body.marketCode as string,
+      ),
+      ADAPTER_TIMEOUT_MS,
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    if (isTimeoutError(err)) {
+      res.status(200).json({
+        status: 'pending',
+        partialData: {
+          upgradeWindowOpen: null,
+          currentPlan: null,
+          availableDevices: [],
+        },
+      });
+      return;
+    }
+    throw err;
+  }
 });
 
 // ---------------------------------------------------------------------------
 // GET /api/upgrade/financing
 // ---------------------------------------------------------------------------
 
-router.get('/financing', (_req: Request, res: Response) => {
-  res.status(200).json(getFinancingQuotes());
+router.get('/financing', async (_req: Request, res: Response) => {
+  try {
+    const quotes = await withTimeout(() => getFinancingQuotes(), ADAPTER_TIMEOUT_MS);
+    res.status(200).json(quotes);
+  } catch (err) {
+    if (isTimeoutError(err)) {
+      res.status(200).json({ status: 'pending', options: [] });
+      return;
+    }
+    throw err;
+  }
 });
 
 // ---------------------------------------------------------------------------
