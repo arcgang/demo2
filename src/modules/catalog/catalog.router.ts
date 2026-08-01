@@ -97,6 +97,11 @@ const LITE_MODE_JS = `
       reloadWithLite(nowActive);
     });
   }
+  // Auto-redirect if auto-detection activates lite but URL lacks ?lite=true
+  if (isLiteActive() && !new URL(window.location.href).searchParams.get('lite')) {
+    reloadWithLite(true);
+    return;
+  }
   // On page load: navigate data-lite-href links when lite mode is active
   if (isLiteActive()) {
     document.querySelectorAll('a[data-lite-href]').forEach(function(a) {
@@ -243,7 +248,7 @@ catalogRouter.get('/catalog', (req: Request, res: Response) => {
 
   const productCards = products.map(p => {
     const badges = p.badges.map(b => `<span class="badge">${b}</span>`).join('');
-    const productHref = `/product/${p.slug}`;
+    const productHref = liteMode ? `/product/${p.slug}?lite=true` : `/product/${p.slug}`;
     const cta = p.isPurchasable
       ? `<a href="${productHref}" class="btn-view-details">View Details</a><button class="btn-add-to-cart" data-slug="${p.slug}">Add to Cart</button>`
       : `<a href="${productHref}" class="btn-view-details">View Details</a>`;
@@ -373,6 +378,7 @@ function renderUpsellPanel(offers: PrepaidUpsellOffer[]): string {
 catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const { slug } = req.params;
   const context = (req.query['context'] as string) ?? '';
+  const liteMode = req.query.lite === 'true' || req.headers['save-data'] === 'on';
   const offers = context ? getUpsellOffersByContext(context) : [];
   const upsellPanel = renderUpsellPanel(offers);
 
@@ -429,13 +435,14 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const productSlugForBreadcrumb = slug;
   const productUrl = `/product/${productSlugForBreadcrumb}`;
 
+  const bodyAttr = liteMode ? ' data-lite-mode="true"' : '';
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Configure Your Bundle - Vodacom Shop</title>
 </head>
-<body>
+<body${bodyAttr}>
   <header class="header">
     <a href="/">Vodacom</a>
     <nav>
@@ -444,6 +451,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
+    <button class="btn-lite lite-toggle" data-action="toggle-lite" id="lite-mode-toggle">Lite Mode</button>
     <button>Account</button>
     <button>3</button>
   </header>
@@ -604,10 +612,11 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
           cart.push(cartItem);
           localStorage.setItem('cart', JSON.stringify(cart));
         } catch (e) {}
-        window.location.href = '/cart';
+        window.location.href = '/cart' + (${liteMode ? 'true' : 'false'} ? '?lite=true' : '');
       });
     })();
   </script>
+  <script>${LITE_MODE_JS}</script>
 </body>
 </html>`;
 
