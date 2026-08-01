@@ -351,4 +351,9 @@ describe('POST /api/carts/:cartId/items — eligibility gate', () => {
     const result = body as { eligibility: EligibilityResult };
     expect(result.eligibility.status).toBe('CONDITIONALLY_ELIGIBLE');
   });
+
+  it('returns HTTP 401 when no Authorization header is provided with an UPGRADE_OFFER line', async () => {
+    const { status } = await addCartItem(app, 'cart_demo_001', 'offer_upgrade_only_001', null);
+    expect(status).toBe(401);
+  });
 });

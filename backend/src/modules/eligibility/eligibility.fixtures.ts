@@ -46,6 +46,7 @@ export function buildEligibilityResult(token: string): EligibilityResult | null 
   if (!seed) return null;
 
   const plan = PLAN_BY_TOKEN[token];
+  if (!plan) return null;
   const days = daysUntil(seed.contractEndDate);
 
   if (days < 0) {
