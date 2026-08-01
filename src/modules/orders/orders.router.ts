@@ -568,17 +568,121 @@ ordersRouter.get('/:id', (req: Request, res: Response) => {
   </footer>
 
   <script>
-    // Fetch audit-trail from /api/orders/:ref/audit-trail and update timeline on load
     (function () {
-      var orderRef = '${orderRef}';
+      var orderRef = ${JSON.stringify(orderRef)};
+
+      var MILESTONE_LABELS = {
+        order_placed: 'Order Placed',
+        order_created: 'Order Placed',
+        payment_confirmed: 'Payment Confirmed',
+        payment_outcome: 'Payment Confirmed',
+        verification_complete: 'Verification Complete',
+        verification_outcome: 'Verification Complete',
+        esim_issued: 'eSIM Issued',
+        activation_status_change: 'eSIM Issued',
+        activation_complete: 'Activation Complete',
+      };
+
+      var AUDIT_EVENT_ORDER = [
+        'order_created', 'order_placed',
+        'payment_outcome', 'payment_confirmed',
+        'verification_outcome', 'verification_complete',
+        'activation_status_change', 'esim_issued',
+        'activation_complete',
+      ];
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatTs(iso) {
+        var d = new Date(iso);
+        return d.toLocaleString('en-ZA', {
+          day: 'numeric', month: 'long', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC',
+        });
+      }
+
+      function payloadSummary(type, payload) {
+        if (type === 'payment_outcome' || type === 'payment_confirmed') {
+          var amt = payload.amount;
+          var method = payload.method;
+          if (amt !== undefined) {
+            var fmt = 'R ' + Number(amt).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return method ? 'Payment of ' + fmt + ' successfully processed via ' + method
+                          : 'Payment of ' + fmt + ' successfully processed';
+          }
+        }
+        if (type === 'verification_outcome' || type === 'verification_complete') {
+          return payload.result === 'PASSED'
+            ? 'Identity verification and RICA compliance completed successfully'
+            : 'Identity verification and RICA compliance completed';
+        }
+        if (type === 'activation_status_change' || type === 'esim_issued') {
+          return 'Your eSIM profile has been generated and is ready for activation';
+        }
+        if (type === 'activation_complete') {
+          return 'Your eSIM is now active and connected to the Vodacom network';
+        }
+        if (type === 'order_created' || type === 'order_placed') {
+          return 'Your order has been received and confirmed';
+        }
+        return '';
+      }
+
+      var MILESTONE_DIV_CLASS = ['milestone', 'milestone--completed'].join(' ');
+
+      function renderMilestone(e) {
+        var label = MILESTONE_LABELS[e.eventType] || e.eventType;
+        var summary = payloadSummary(e.eventType, e.payload || {});
+        var tsHtml = '<span class="milestone__timestamp">' + escapeHtml(formatTs(e.occurredAt)) + '</span>';
+        var sumHtml = summary ? '<p class="milestone__summary">' + escapeHtml(summary) + '</p>' : '';
+        return '<div class="' + MILESTONE_DIV_CLASS + '" data-step="' + escapeHtml(e.eventType) + '">'
+          + '<span class="milestone__icon" aria-hidden="true">&#10003;</span>'
+          + '<div class="milestone__body">'
+          + '<span class="milestone__label">' + escapeHtml(label) + '</span>'
+          + tsHtml + sumHtml
+          + '</div></div>';
+      }
+
       fetch('/api/orders/' + orderRef + '/audit-trail', {
         headers: { 'X-Session-Token': 'frontend-session' }
       }).then(function (r) {
         if (!r.ok) return null;
         return r.json();
       }).then(function (data) {
-        if (!data || !data.events) return;
-        // Timeline is already server-rendered; update is progressive enhancement
+        if (!data || !Array.isArray(data.events) || data.events.length === 0) return;
+
+        var seenLabels = {};
+        var milestones = [];
+        var sorted = data.events.slice().sort(function (a, b) {
+          var ai = AUDIT_EVENT_ORDER.indexOf(a.eventType);
+          var bi = AUDIT_EVENT_ORDER.indexOf(b.eventType);
+          if (ai !== bi) return ai - bi;
+          return new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
+        });
+        for (var i = 0; i < sorted.length; i++) {
+          var e = sorted[i];
+          var label = MILESTONE_LABELS[e.eventType] || e.eventType;
+          if (!seenLabels[label]) {
+            seenLabels[label] = true;
+            milestones.push(e);
+          }
+        }
+
+        var section = document.querySelector('.order-status-timeline');
+        if (!section) return;
+        var h2 = section.querySelector('h2');
+        section.innerHTML = '';
+        if (h2) section.appendChild(h2);
+        var fragment = document.createDocumentFragment();
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = milestones.map(renderMilestone).join('');
+        while (wrapper.firstChild) fragment.appendChild(wrapper.firstChild);
+        section.appendChild(fragment);
       }).catch(function () {});
     })();
   </script>

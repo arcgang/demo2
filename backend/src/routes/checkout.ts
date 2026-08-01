@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { createOrder, validateCreateOrderInput } from '../modules/order/orderService';
-import { insertAuditEvent } from '../modules/consentAudit/consentAuditStore';
+import { insertAuditEvent, insertConsentRecord } from '../modules/consentAudit/consentAuditStore';
 
 const router = Router();
 
@@ -40,6 +40,23 @@ router.post('/place-order', (req: Request, res: Response) => {
   });
 
   const marketingAccepted = typeof consent.marketing === 'boolean' ? consent.marketing : false;
+  const sessionId = (req.headers['x-session-token'] as string | undefined) ?? 'checkout-session';
+
+  insertConsentRecord({
+    orderId: confirmation.orderReference,
+    sessionId,
+    purpose: 'terms',
+    accepted: true,
+    ipAddress: req.ip,
+  });
+
+  insertConsentRecord({
+    orderId: confirmation.orderReference,
+    sessionId,
+    purpose: 'marketing',
+    accepted: marketingAccepted,
+    ipAddress: req.ip,
+  });
 
   insertAuditEvent({
     eventType: 'consent_capture',
