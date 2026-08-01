@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
+import { getCartCount } from '../cart/cart.store';
 
 export const catalogRouter = Router();
 
@@ -121,11 +122,52 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
+// Plans sourced from recommendations API seed for iphone-15-pro (prod_za_iphone15pro_256)
+const PRODUCT_PLANS = [
+  { id: 'plan_red_5gb',      name: 'Vodacom Red 5GB',      desc: '5GB Data + Unlimited Calls &amp; SMS',  monthly: 299 },
+  { id: 'plan_unlimited_20gb', name: 'Vodacom Unlimited 20GB', desc: '20GB Data + Unlimited Calls &amp; SMS', monthly: 799 },
+  { id: 'plan_red_premium',  name: 'Vodacom Red Premium',  desc: '50GB Data + Unlimited Calls &amp; SMS', monthly: 1299 },
+];
+
+const PRODUCT_ACCESSORIES = [
+  { id: 'acc_airpods_pro',        name: 'AirPods Pro (2nd Gen)',     price: 4999 },
+  { id: 'acc_iphone15pro_case',   name: 'iPhone 15 Pro Case',        price: 799 },
+  { id: 'acc_20w_usbc_adapter',   name: '20W USB-C Power Adapter',   price: 399 },
+  { id: 'acc_screen_protector',   name: 'Screen Protector',          price: 299 },
+];
+
+function formatPrice(amount: number): string {
+  return 'R ' + amount.toLocaleString('en-US');
+}
+
 catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   const context = (req.query['context'] as string) ?? '';
   const offers = context ? getUpsellOffersByContext(context) : [];
 
   const upsellPanel = renderUpsellPanel(offers);
+  const cartCount = getCartCount(req);
+
+  const planCardsHtml = PRODUCT_PLANS.map((plan, idx) => {
+    const isSelected = idx === 0;
+    const selectedAttr = isSelected ? 'data-selected="true"' : 'data-selected="false"';
+    const selectedClass = isSelected ? ' selected' : '';
+    return `
+      <div class="plan-card${selectedClass} plan-required" ${selectedAttr} data-plan-id="${plan.id}">
+        <span class="badge badge-required required-label">Required</span>
+        <h4>${plan.name}</h4>
+        <p>${plan.desc}</p>
+        <p class="plan-price">${formatPrice(plan.monthly)}/month</p>
+        <button class="btn-select-plan btn-add-to-cart" data-item-id="${plan.id}" data-item-type="PLAN">Select Plan</button>
+      </div>`;
+  }).join('\n');
+
+  const accessoryCardsHtml = PRODUCT_ACCESSORIES.map(acc => `
+      <div class="accessory-card">
+        <div class="image-placeholder accessory-image"></div>
+        <h4>${acc.name}</h4>
+        <p class="accessory-price">${formatPrice(acc.price)}</p>
+        <button class="btn-add-to-cart" data-item-id="${acc.id}" data-item-type="ACCESSORY">Add to Cart</button>
+      </div>`).join('\n');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -142,6 +184,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
+    <button class="cart-badge" data-cart-count="${cartCount}">${cartCount}</button>
   </header>
 
   <nav class="breadcrumb">
@@ -178,7 +221,7 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <input type="number" value="1" min="1">
     </div>
 
-    <button class="btn-add-to-cart">Add to Cart</button>
+    <button class="btn-add-to-cart" data-item-id="prod_za_iphone15pro_256" data-item-type="DEVICE">Add to Cart</button>
     <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
   </section>
 
@@ -188,29 +231,29 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
     ${upsellPanel}
 
     <div class="base-plan-list">
-      <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
-        <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-        <h4>Vodacom Unlimited 20GB</h4>
-        <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_red_premium">
-        <h4>Vodacom Red Premium</h4>
-        <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
+      ${planCardsHtml}
     </div>
   </section>
 
   <section class="product-details">
+    <h2>Specifications</h2>
+    <dl>
+      <dt>Display</dt><dd>6.1-inch Super Retina XDR display</dd>
+      <dt>Processor</dt><dd>A17 Pro chip with 6-core CPU</dd>
+      <dt>Camera</dt><dd>48MP Main + 12MP Ultra Wide + 12MP Telephoto</dd>
+      <dt>Storage</dt><dd>256GB</dd>
+      <dt>Battery</dt><dd>Up to 23 hours video playback</dd>
+      <dt>Connectivity</dt><dd>5G, Wi-Fi 6E, Bluetooth 5.3</dd>
+      <dt>SIM</dt><dd>Dual SIM (nano-SIM and eSIM)</dd>
+      <dt>Operating System</dt><dd>iOS 17</dd>
+    </dl>
+  </section>
+
+  <section class="recommendations">
     <h2>Complete your purchase</h2>
+    <div class="accessory-grid">
+      ${accessoryCardsHtml}
+    </div>
   </section>
 </body>
 </html>`;
