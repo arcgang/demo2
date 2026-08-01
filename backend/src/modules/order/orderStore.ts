@@ -1,5 +1,13 @@
 import { randomBytes } from 'crypto';
 
+export interface PersistedTimelineEvent {
+  eventType: string;
+  label: string;
+  description: string;
+  timestamp: string | null;
+  isCurrent: boolean;
+}
+
 export interface StoredOrder {
   orderId: string;
   orderReference: string;
@@ -14,6 +22,7 @@ export interface StoredOrder {
   monthlyTotal: number;
   activationState: string;
   createdAt: string;
+  timelineEvents: PersistedTimelineEvent[];
 }
 
 export interface OrderAuditEvent {
@@ -48,6 +57,23 @@ export function generateOrderReference(): string {
 
 export function persistOrder(order: StoredOrder): void {
   ordersStore.push(order);
+}
+
+export function persistTimelineEventsForOrder(orderId: string, events: PersistedTimelineEvent[]): void {
+  const order = ordersStore.find((o) => o.orderId === orderId);
+  if (order) {
+    order.timelineEvents = [...events];
+  }
+}
+
+export function getPersistedTimelineEvents(orderId: string): PersistedTimelineEvent[] {
+  const order = ordersStore.find((o) => o.orderId === orderId || o.orderReference === orderId);
+  return order?.timelineEvents ?? [];
+}
+
+export function hasPersistedTimelineEvents(orderId: string): boolean {
+  const events = getPersistedTimelineEvents(orderId);
+  return events.length > 0;
 }
 
 export function persistOrderAuditEvent(event: OrderAuditEvent): void {

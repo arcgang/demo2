@@ -3,9 +3,12 @@ import {
   generateOrderReference,
   persistOrder,
   persistOrderAuditEvent,
+  persistTimelineEventsForOrder,
 } from './orderStore';
 import { seedOrder } from '../activation/activationStore';
 import { insertAuditEvent } from '../consentAudit/consentAuditStore';
+import { buildTimeline, type TimelineInput } from '../statusTimeline/timelineService';
+import { seedTimelineEvents } from '../statusTimeline/timelineStore';
 
 export interface LineItemInput {
   name: string;
@@ -72,6 +75,39 @@ export function createOrder(input: CreateOrderInput): OrderConfirmation {
   const orderReference = generateOrderReference();
   const createdAt = new Date().toISOString();
 
+  // Map incoming paymentStatus to state-machine token
+  const paymentStatusToken = (() => {
+    const s = input.paymentStatus?.toLowerCase();
+    if (s === 'confirmed' || s === 'payment_confirmed') return 'payment_confirmed';
+    if (s === 'failed' || s === 'payment_failed') return 'payment_failed';
+    return 'payment_pending';
+  })();
+
+  const verificationStatusToken = (() => {
+    const s = input.verificationStatus?.toLowerCase();
+    if (s === 'completed' || s === 'verified' || s === 'verification_complete') return 'verification_complete';
+    if (s === 'failed' || s === 'verification_failed') return 'verification_failed';
+    return null;
+  })();
+
+  // Build and persist initial timeline
+  const timelineInput: TimelineInput = {
+    orderId,
+    paymentStatus: paymentStatusToken,
+    verificationStatus: verificationStatusToken,
+    activationStatus: null,
+    timestamps: {
+      order_placed: createdAt,
+      ...(paymentStatusToken === 'payment_confirmed' ? { payment_confirmed: createdAt } : {}),
+      ...(paymentStatusToken === 'payment_pending' ? { payment_pending: createdAt } : {}),
+      ...(paymentStatusToken === 'payment_failed' ? { payment_failed: createdAt } : {}),
+    },
+  };
+  const initialTimeline = buildTimeline(timelineInput);
+
+  // Persist to in-memory timeline store (polled by background loop & served on GET /status)
+  seedTimelineEvents(orderId, initialTimeline);
+
   persistOrder({
     orderId,
     orderReference,
@@ -86,7 +122,11 @@ export function createOrder(input: CreateOrderInput): OrderConfirmation {
     monthlyTotal: input.monthlyTotal,
     activationState: 'pending',
     createdAt,
+    timelineEvents: initialTimeline,
   });
+
+  // Keep DB record in sync after persist (so timelineEvents is stored on the row)
+  persistTimelineEventsForOrder(orderId, initialTimeline);
 
   // Register with activation store so eSIM issuance gating works
   seedOrder(orderId, {
