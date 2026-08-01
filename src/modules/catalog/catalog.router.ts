@@ -3,6 +3,7 @@ import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
 import { getJourneyFields, FieldDefinition } from '../../../backend/src/modules/journeyFields/journeyFieldsRegistry';
+import { getFinancingQuotesByProductId, FinancingQuote } from '../../../backend/src/modules/upgrade/financingAdapter';
 
 export const catalogRouter = Router();
 
@@ -307,8 +308,6 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const offers = context ? getUpsellOffersByContext(context) : [];
   const upsellPanel = renderUpsellPanel(offers);
 
-  // Fetch recommendations from the device recommendations data layer
-  // (equivalent to GET /api/devices/:id/recommendations in the backend)
   const rec = getRecommendationsBySlug(slug);
   if (!rec) {
     res.status(404).type('text/html').send(`<h1>Device not found</h1>`);
@@ -318,7 +317,6 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   const plans = rec.attachments.filter(a => a.type === 'PLAN');
   const addons = rec.attachments.filter(a => a.type === 'ADDON');
 
-  // Pre-select the plan marked as defaultChecked, or the first plan
   const defaultPlan = plans.find(p => p.defaultChecked) ?? plans[0];
 
   function fmtPrice(n: number): string {
@@ -339,15 +337,23 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
         ${a.name} &mdash; ${a.description} &mdash; + R ${a.monthly}/month
       </label>`).join('');
 
-  // Initial recurring charges section: show selected plan + default-checked add-ons
   const defaultPlanMonthly = defaultPlan ? defaultPlan.monthly : 0;
   const defaultAddons = addons.filter(a => a.defaultChecked);
   const defaultAddonMonthly = defaultAddons.reduce((s, a) => s + a.monthly, 0);
-  const initialTotalMonthly = defaultPlanMonthly + defaultAddonMonthly;
 
   const devicePrice = rec.devicePrice;
-  const vat = parseFloat((devicePrice * 0.15).toFixed(2));
-  const totalOnceOff = parseFloat((devicePrice + vat).toFixed(2));
+
+  // Load server-side financing quotes for SSR of financing panel cards
+  const financingQuotes: FinancingQuote[] = getFinancingQuotesByProductId(slug) ?? [];
+  const defaultQuote: FinancingQuote | undefined = financingQuotes[0];
+
+  const initialDeposit = 0;
+  const initialActivationFee = rec.activationFee;
+  const initialInstallment = 0;
+  const initialOnceOffSubtotal = devicePrice + initialDeposit;
+  const initialOnceOffVat = parseFloat((initialOnceOffSubtotal * 0.15).toFixed(2));
+  const initialTotalOnceOff = parseFloat((initialOnceOffSubtotal + initialOnceOffVat).toFixed(2));
+  const initialTotalMonthly = defaultPlanMonthly + defaultAddonMonthly + initialInstallment;
 
   const initialPlanRow = defaultPlan
     ? `<dt id="selected-plan-name">${defaultPlan.name}</dt><dd id="selected-plan-price">${fmtPrice(defaultPlanMonthly)}</dd>`
@@ -357,8 +363,19 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
     `<dt class="addon-row" data-addon-id="${a.checkboxName ?? a.id}">${a.name}</dt><dd class="addon-row" data-addon-id="${a.checkboxName ?? a.id}">${fmtPrice(a.monthly)}</dd>`
   ).join('\n      ');
 
-  const productSlugForBreadcrumb = slug;
-  const productUrl = `/product/${productSlugForBreadcrumb}`;
+  const financingCards = financingQuotes.map(q => `
+        <label class="financing-card financing-option">
+          <input type="radio" name="financing-term" value="${q.termMonths}"
+            data-term-months="${q.termMonths}"
+            data-monthly-amount="${q.monthlyAmount}"
+            data-deposit="${q.onceOffDeposit}"
+            data-activation-fee="${q.activationFee}">
+          <span class="term-label">${q.termMonths} months</span>
+          <span class="monthly-label">${fmtPrice(q.monthlyAmount)}/month</span>
+          <span class="rate-label">${q.interestRate}% p.a.</span>
+        </label>`).join('');
+
+  const productUrl = `/product/${slug}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -409,27 +426,38 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
       <p class="optional-label">Optional</p>
       ${addonCheckboxes}
     </section>
+
+    <section class="financing-options" id="financing-options" data-product-id="${slug}">
+      <h2>Financing Options</h2>
+      <p>Spread the cost of your device with flexible payment plans.</p>
+      <fieldset class="financing-fieldset">
+        <legend>Choose a financing term</legend>
+        ${financingCards}
+      </fieldset>
+    </section>
   </main>
 
   <aside class="pricing-summary">
     <h3>Pricing Summary</h3>
 
     <h4>Once-Off Charges</h4>
-    <dl>
-      <dt>${rec.deviceName}</dt><dd>${fmtPrice(devicePrice)}</dd>
-      <dt>Activation Fee</dt><dd>${fmtPrice(rec.activationFee)}</dd>
+    <dl id="once-off-charges">
+      <dt>${rec.deviceName}</dt><dd id="device-price-row">${fmtPrice(devicePrice)}</dd>
+      <dt>Deposit</dt><dd id="deposit-row">${fmtPrice(initialDeposit)}</dd>
+      <dt>Activation Fee</dt><dd id="activation-fee-row">${fmtPrice(initialActivationFee)}</dd>
     </dl>
 
     <h4>Recurring Charges</h4>
     <dl id="recurring-charges">
       ${initialPlanRow}
       ${initialAddonRows}
+      <dt id="installment-label">Monthly Installment</dt><dd id="installment-row">${fmtPrice(initialInstallment)}</dd>
     </dl>
 
     <dl class="pricing-totals">
-      <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">${fmtPrice(devicePrice)}</dd>
-      <dt>VAT (15%)</dt><dd id="vat-amount">${fmtPrice(vat)}</dd>
-      <dt>Total Once-Off</dt><dd id="total-once-off">${fmtPrice(totalOnceOff)}</dd>
+      <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">${fmtPrice(initialOnceOffSubtotal)}</dd>
+      <dt>VAT (15%)</dt><dd id="vat-amount">${fmtPrice(initialOnceOffVat)}</dd>
+      <dt>Total Once-Off</dt><dd id="total-once-off">${fmtPrice(initialTotalOnceOff)}</dd>
       <dt>Total Monthly</dt><dd id="total-monthly">${fmtPrice(initialTotalMonthly)}</dd>
     </dl>
 
@@ -440,6 +468,7 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
     (function () {
       var DEVICE_PRICE = ${devicePrice};
       var DEVICE_ID = '${rec.deviceId}';
+      var PRODUCT_ID = '${slug}';
       var DEVICE_NAME = '${rec.deviceName}';
       var VAT_RATE = 0.15;
 
@@ -447,14 +476,29 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
         return 'R ' + n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
       }
 
+      function getSelectedFinancing() {
+        var sel = document.querySelector('input[name="financing-term"]:checked');
+        if (!sel) return { monthlyAmount: 0, deposit: 0, activationFee: 0 };
+        return {
+          monthlyAmount: parseInt(sel.getAttribute('data-monthly-amount') || '0', 10),
+          deposit: parseInt(sel.getAttribute('data-deposit') || '0', 10),
+          activationFee: parseInt(sel.getAttribute('data-activation-fee') || '0', 10),
+        };
+      }
+
+      function fetchFinancingOptions(productId, planId) {
+        var url = '/api/upgrade/financing?productId=' + encodeURIComponent(productId);
+        if (planId) url += '&planId=' + encodeURIComponent(planId);
+        return fetch(url).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; });
+      }
+
       function update() {
         var sel = document.querySelector('input[name="plan"]:checked');
         var planMonthly = sel ? parseInt(sel.getAttribute('data-monthly') || '0', 10) : 0;
+        var financing = getSelectedFinancing();
 
-        // Rebuild recurring-charges dl dynamically
         var recurringDl = document.getElementById('recurring-charges');
 
-        // Update or clear the plan row
         var planNameDt = document.getElementById('selected-plan-name');
         var planPriceDd = document.getElementById('selected-plan-price');
         if (sel) {
@@ -467,12 +511,10 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
           planPriceDd.textContent = '';
         }
 
-        // Remove all existing add-on rows
         recurringDl.querySelectorAll('[data-addon-id]').forEach(function (el) {
           el.parentNode.removeChild(el);
         });
 
-        // Add a row for each checked add-on
         var addonMonthly = 0;
         document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
           var monthly = parseInt(cb.getAttribute('data-monthly') || '0', 10);
@@ -493,12 +535,17 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
           }
         });
 
-        var vat = parseFloat((DEVICE_PRICE * VAT_RATE).toFixed(2));
-        var totalOnceOff = parseFloat((DEVICE_PRICE + vat).toFixed(2));
-        var totalMonthly = planMonthly + addonMonthly;
+        document.getElementById('installment-row').textContent = fmt(financing.monthlyAmount);
+        document.getElementById('deposit-row').textContent = fmt(financing.deposit);
+        document.getElementById('activation-fee-row').textContent = fmt(financing.activationFee);
 
-        document.getElementById('once-off-subtotal').textContent = fmt(DEVICE_PRICE);
-        document.getElementById('vat-amount').textContent = fmt(vat);
+        var onceOffSubtotal = DEVICE_PRICE + financing.deposit;
+        var vatAmount = parseFloat((onceOffSubtotal * VAT_RATE).toFixed(2));
+        var totalOnceOff = parseFloat((onceOffSubtotal + vatAmount).toFixed(2));
+        var totalMonthly = planMonthly + addonMonthly + financing.monthlyAmount;
+
+        document.getElementById('once-off-subtotal').textContent = fmt(onceOffSubtotal);
+        document.getElementById('vat-amount').textContent = fmt(vatAmount);
         document.getElementById('total-once-off').textContent = fmt(totalOnceOff);
         document.getElementById('total-monthly').textContent = fmt(totalMonthly);
 
@@ -509,26 +556,71 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
         }
       }
 
+      function onPlanChange() {
+        var sel = document.querySelector('input[name="plan"]:checked');
+        var planId = sel ? sel.value : '';
+        fetchFinancingOptions(PRODUCT_ID, planId).then(function (quotes) {
+          if (!quotes || !quotes.length) return;
+          var fieldset = document.querySelector('.financing-fieldset');
+          if (!fieldset) return;
+          fieldset.innerHTML = '<legend>Choose a financing term</legend>';
+          quotes.forEach(function (q, i) {
+            var label = document.createElement('label');
+            label.className = 'financing-card financing-option';
+            var input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'financing-term';
+            input.value = String(q.termMonths);
+            input.setAttribute('data-term-months', String(q.termMonths));
+            input.setAttribute('data-monthly-amount', String(q.monthlyAmount));
+            input.setAttribute('data-deposit', String(q.onceOffDeposit));
+            input.setAttribute('data-activation-fee', String(q.activationFee));
+            if (i === 0) input.checked = true;
+            input.addEventListener('change', update);
+            label.appendChild(input);
+            var termSpan = document.createElement('span');
+            termSpan.className = 'term-label';
+            termSpan.textContent = q.termMonths + ' months';
+            label.appendChild(termSpan);
+            var monthlySpan = document.createElement('span');
+            monthlySpan.className = 'monthly-label';
+            monthlySpan.textContent = fmt(q.monthlyAmount) + '/month';
+            label.appendChild(monthlySpan);
+            fieldset.appendChild(label);
+          });
+          update();
+        });
+      }
+
       document.querySelectorAll('input[name="plan"]').forEach(function (r) {
-        r.addEventListener('change', update);
+        r.addEventListener('change', function () {
+          onPlanChange();
+          update();
+        });
       });
       document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
         cb.addEventListener('change', update);
+      });
+      document.querySelectorAll('input[name="financing-term"]').forEach(function (r) {
+        r.addEventListener('change', update);
       });
 
       document.getElementById('continue-to-cart').addEventListener('click', function () {
         var sel = document.querySelector('input[name="plan"]:checked');
         if (!sel) return;
+        var planId = sel.value;
         var addons = [];
         document.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
           addons.push(cb.name);
         });
+        var financing = getSelectedFinancing();
         var cartItem = {
           productId: DEVICE_ID,
           productName: DEVICE_NAME,
-          planId: sel.value,
+          planId: planId,
           addons: addons,
-          devicePrice: DEVICE_PRICE
+          devicePrice: DEVICE_PRICE,
+          financing: financing,
         };
         try {
           var cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -545,17 +637,230 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
-catalogRouter.get('/product/:id', (req: Request, res: Response) => {
-  const context = (req.query['context'] as string) ?? '';
-  const offers = context ? getUpsellOffersByContext(context) : [];
+// ─── Product detail page data ─────────────────────────────────────────────────
 
-  const upsellPanel = renderUpsellPanel(offers);
+interface ProductDetail {
+  slug: string;
+  name: string;
+  price: number;
+  monthlyFrom: number;
+  badges: string[];
+  availability: 'In Stock' | 'Pre-Order';
+  isPurchasable: boolean;
+  colors: Array<{ name: string; price: number }>;
+  storages: Array<{ name: string; price: number }>;
+  specs: Array<{ label: string; value: string }>;
+  esimCompatible: boolean;
+}
 
+const PRODUCT_DETAIL_MAP: Record<string, ProductDetail> = {
+  'iphone-15-pro': {
+    slug: 'iphone-15-pro',
+    name: 'iPhone 15 Pro 256GB',
+    price: 24999,
+    monthlyFrom: 899,
+    badges: ['5G', 'Trade-In Eligible', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Natural Titanium', price: 24999 },
+      { name: 'Blue Titanium', price: 24999 },
+      { name: 'White Titanium', price: 24999 },
+      { name: 'Black Titanium', price: 24999 },
+    ],
+    storages: [
+      { name: '128GB', price: 21999 },
+      { name: '256GB', price: 24999 },
+      { name: '512GB', price: 28999 },
+      { name: '1TB', price: 34999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.1-inch Super Retina XDR display' },
+      { label: 'Processor', value: 'A17 Pro chip with 6-core CPU' },
+      { label: 'Camera', value: '48MP Main + 12MP Ultra Wide + 12MP Telephoto' },
+      { label: 'Storage', value: '256GB' },
+      { label: 'Battery', value: 'Up to 23 hours video playback' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6E, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'iOS 17' },
+    ],
+    esimCompatible: true,
+  },
+  'iphone-15': {
+    slug: 'iphone-15',
+    name: 'iPhone 15 128GB',
+    price: 18999,
+    monthlyFrom: 699,
+    badges: ['5G', 'Trade-In Eligible', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Pink', price: 18999 },
+      { name: 'Yellow', price: 18999 },
+      { name: 'Blue', price: 18999 },
+      { name: 'Black', price: 18999 },
+    ],
+    storages: [
+      { name: '128GB', price: 18999 },
+      { name: '256GB', price: 21999 },
+      { name: '512GB', price: 25999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.1-inch Super Retina XDR display' },
+      { label: 'Processor', value: 'A16 Bionic chip' },
+      { label: 'Camera', value: '48MP Main + 12MP Ultra Wide' },
+      { label: 'Storage', value: '128GB' },
+      { label: 'Battery', value: 'Up to 20 hours video playback' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'iOS 17' },
+    ],
+    esimCompatible: true,
+  },
+  'iphone-14': {
+    slug: 'iphone-14',
+    name: 'iPhone 14 128GB',
+    price: 15999,
+    monthlyFrom: 579,
+    badges: ['5G', 'Trade-In Eligible', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: false,
+    colors: [
+      { name: 'Midnight', price: 15999 },
+      { name: 'Starlight', price: 15999 },
+      { name: 'Red', price: 15999 },
+      { name: 'Blue', price: 15999 },
+    ],
+    storages: [
+      { name: '128GB', price: 15999 },
+      { name: '256GB', price: 18999 },
+      { name: '512GB', price: 22999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.1-inch Super Retina XDR display' },
+      { label: 'Processor', value: 'A15 Bionic chip' },
+      { label: 'Camera', value: '12MP Main + 12MP Ultra Wide' },
+      { label: 'Storage', value: '128GB' },
+      { label: 'Battery', value: 'Up to 20 hours video playback' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'iOS 16' },
+    ],
+    esimCompatible: true,
+  },
+  'samsung-s24-ultra': {
+    slug: 'samsung-s24-ultra',
+    name: 'Samsung Galaxy S24 Ultra 256GB',
+    price: 22999,
+    monthlyFrom: 799,
+    badges: ['5G', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Titanium Black', price: 22999 },
+      { name: 'Titanium Gray', price: 22999 },
+      { name: 'Titanium Violet', price: 22999 },
+      { name: 'Titanium Yellow', price: 22999 },
+    ],
+    storages: [
+      { name: '256GB', price: 22999 },
+      { name: '512GB', price: 26999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.8-inch Dynamic AMOLED 2X' },
+      { label: 'Processor', value: 'Snapdragon 8 Gen 3' },
+      { label: 'Camera', value: '200MP Main + 12MP Ultra Wide + 10MP Telephoto' },
+      { label: 'Storage', value: '256GB' },
+      { label: 'Battery', value: '5000mAh' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 7, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'Android 14' },
+    ],
+    esimCompatible: false,
+  },
+  'samsung-s24': {
+    slug: 'samsung-s24',
+    name: 'Samsung Galaxy S24 256GB',
+    price: 16999,
+    monthlyFrom: 599,
+    badges: ['5G', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Cobalt Violet', price: 16999 },
+      { name: 'Marble Gray', price: 16999 },
+      { name: 'Onyx Black', price: 16999 },
+      { name: 'Jade Green', price: 16999 },
+    ],
+    storages: [
+      { name: '128GB', price: 14999 },
+      { name: '256GB', price: 16999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.2-inch Dynamic AMOLED 2X' },
+      { label: 'Processor', value: 'Snapdragon 8 Gen 3' },
+      { label: 'Camera', value: '50MP Main + 12MP Ultra Wide + 10MP Telephoto' },
+      { label: 'Storage', value: '256GB' },
+      { label: 'Battery', value: '4000mAh' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 7, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'Android 14' },
+    ],
+    esimCompatible: false,
+  },
+  'samsung-a54': {
+    slug: 'samsung-a54',
+    name: 'Samsung Galaxy A54 128GB',
+    price: 8999,
+    monthlyFrom: 349,
+    badges: ['5G', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Awesome White', price: 8999 },
+      { name: 'Awesome Black', price: 8999 },
+      { name: 'Awesome Violet', price: 8999 },
+      { name: 'Awesome Lime', price: 8999 },
+    ],
+    storages: [
+      { name: '128GB', price: 8999 },
+      { name: '256GB', price: 10999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.4-inch Super AMOLED' },
+      { label: 'Processor', value: 'Exynos 1380' },
+      { label: 'Camera', value: '50MP Main + 12MP Ultra Wide + 5MP Macro' },
+      { label: 'Storage', value: '128GB' },
+      { label: 'Battery', value: '5000mAh' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM)' },
+      { label: 'Operating System', value: 'Android 13' },
+    ],
+    esimCompatible: false,
+  },
+};
+
+const ZA_PLANS_DISPLAY = [
+  { id: 'plan_za_red_5gb', name: 'Vodacom Red 5GB', description: '5GB Data + Unlimited Calls &amp; SMS', monthly: 299 },
+  { id: 'plan_za_unlimited_20gb', name: 'Vodacom Unlimited 20GB', description: '20GB Data + Unlimited Calls &amp; SMS', monthly: 799 },
+  { id: 'plan_za_red_premium', name: 'Vodacom Red Premium', description: '50GB Data + Unlimited Calls &amp; SMS', monthly: 1299 },
+];
+
+const ACCESSORIES_DISPLAY = [
+  { name: 'AirPods Pro (2nd Gen)', price: 4999 },
+  { name: 'iPhone 15 Pro Case', price: 799 },
+  { name: '20W USB-C Power Adapter', price: 399 },
+  { name: 'Screen Protector', price: 299 },
+];
+
+// ─── Upgrade eligibility result page (Screen 4) ──────────────────────────────
+
+catalogRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
+  <title>Your Upgrade Eligibility - Vodacom Shop</title>
 </head>
 <body>
   <header class="header">
@@ -566,80 +871,249 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
+    <button>Account</button>
+    <button>0</button>
   </header>
 
   <nav class="breadcrumb">
     <a href="/">Home</a> &rsaquo;
-    <a href="/catalog">Devices</a> &rsaquo;
-    <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
-    iPhone 15 Pro 256GB
+    <a href="/account">Account</a> &rsaquo;
+    Upgrade Eligibility
   </nav>
 
-  <section class="product-hero">
-    <h1>iPhone 15 Pro 256GB</h1>
-    <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
+  <main>
+    <h1>Your Upgrade Eligibility</h1>
 
-    <div class="color-selector">
-      <span>Color</span>
-      <button>Natural Titanium</button>
-      <button>Blue Titanium</button>
-      <button>White Titanium</button>
-      <button>Black Titanium</button>
-    </div>
+    <section class="eligibility-result">
+      <h2>You're eligible for an upgrade!</h2>
+      <p>Your contract has reached the upgrade window. Choose from our latest devices and plans.</p>
+    </section>
 
-    <div class="storage-selector">
-      <span>Storage</span>
-      <button>128GB</button>
-      <button>256GB</button>
-      <button>512GB</button>
-      <button>1TB</button>
-    </div>
+    <section class="current-plan">
+      <h2>Your Current Plan</h2>
+      <dl>
+        <dt>Plan Name</dt><dd>Vodacom Red 10GB</dd>
+        <dt>Monthly Cost</dt><dd>R 499.00</dd>
+        <dt>Contract End Date</dt><dd>31 Dec 2026</dd>
+      </dl>
+    </section>
 
-    <div class="quantity-selector">
-      <label>Quantity</label>
-      <input type="number" value="1" min="1">
-    </div>
-
-    <button class="btn-add-to-cart">Add to Cart</button>
-    <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
-  </section>
-
-  <section class="plan-attach-panel">
-    <h2>Add a plan or bundle</h2>
-
-    ${upsellPanel}
-
-    <div class="base-plan-list">
-      <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
-        <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
+    <section class="upgrade-options">
+      <div class="financing-option-card">
+        <h3>Explore Financing Options</h3>
+        <p>Spread the cost of your new device with flexible payment plans</p>
+        <a href="/product/iphone-15-pro/configure?financing=true&amp;productId=iphone-15-pro">Get a Quote</a>
       </div>
-      <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-        <h4>Vodacom Unlimited 20GB</h4>
-        <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_red_premium">
-        <h4>Vodacom Red Premium</h4>
-        <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-    </div>
-  </section>
 
-  <section class="product-details">
-    <h2>Complete your purchase</h2>
-  </section>
+      <div class="trade-in-card">
+        <h3>Trade In Your Current Device</h3>
+        <p>Get up to R 5,000 credit towards your upgrade</p>
+        <a href="/upgrade/trade-in">Get a Valuation</a>
+      </div>
+    </section>
+
+    <section class="next-steps">
+      <h2>Available Upgrade Devices</h2>
+      <div class="device-card">
+        <h3>iPhone 15 Pro 256GB</h3>
+        <p>R 24,999</p>
+        <a href="/product/iphone-15-pro">View Details</a>
+      </div>
+      <div class="device-card">
+        <h3>Samsung Galaxy S24 Ultra</h3>
+        <p>R 22,999</p>
+        <a href="/product/samsung-s24-ultra">View Details</a>
+      </div>
+      <div class="device-card">
+        <h3>iPhone 15 128GB</h3>
+        <p>R 18,999</p>
+        <a href="/product/iphone-15">View Details</a>
+      </div>
+
+      <h2>Ready to Upgrade?</h2>
+      <p>Choose a device and configure your new plan</p>
+      <a href="/catalog">Continue Shopping</a>
+      <a href="/support">Contact Support</a>
+    </section>
+  </main>
 </body>
 </html>`;
 
   res.status(200).type('text/html').send(html);
+});
+
+// /upgrade/configure redirects to the device configure page with financing pre-loaded
+catalogRouter.get('/upgrade/configure', (req: Request, res: Response) => {
+  const productId = (req.query['productId'] as string) || 'iphone-15-pro';
+  res.redirect(302, `/product/${productId}/configure?financing=true`);
+});
+
+// ─── Product detail page (Screen 7: wireframe_product_detail.html) ────────────
+
+catalogRouter.get('/product/:slug', (req: Request, res: Response) => {
+  const { slug } = req.params;
+  const context = (req.query['context'] as string) ?? '';
+  const upsellOffers = context ? getUpsellOffersByContext(context) : [];
+  const upsellPanel = renderUpsellPanel(upsellOffers);
+  const product = PRODUCT_DETAIL_MAP[slug];
+  if (!product) {
+    res.status(404).type('text/html').send(renderPage('Not Found - Vodacom Shop', '<h1>Product not found</h1>'));
+    return;
+  }
+
+  function fmtPrice(n: number): string {
+    return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  const badges = product.badges.map(b => `<span class="badge">${b}</span>`).join('\n      ');
+
+  const colorButtons = product.colors.map(c =>
+    `<button class="btn-color-selector" data-color="${c.name}" data-price="${c.price}">${c.name}</button>`
+  ).join('\n        ');
+
+  const storageButtons = product.storages.map(s =>
+    `<button class="btn-storage-selector" data-storage="${s.name}" data-price="${s.price}">${s.name}</button>`
+  ).join('\n        ');
+
+  const addToCartBtn = product.isPurchasable
+    ? `<button class="btn-add-to-cart" id="main-add-to-cart">Add to Cart</button>`
+    : `<button class="btn-add-to-cart" id="main-add-to-cart" disabled>Add to Cart</button>`;
+
+  const esimNote = product.esimCompatible
+    ? `<p class="esim-note">This device supports eSIM and is compatible with Vodacom 5G network</p>`
+    : `<p class="esim-note">This device is compatible with Vodacom 5G network</p>`;
+
+  const planCards = ZA_PLANS_DISPLAY.map(p => `
+      <div class="plan-card" data-plan-id="${p.id}">
+        <h4>${p.name}</h4>
+        <p>${p.description}</p>
+        <p class="plan-price">R ${p.monthly}/month</p>
+        <button class="btn-select-plan" data-plan-id="${p.id}">Select Plan</button>
+      </div>`).join('\n');
+
+  const specRows = product.specs.map(s =>
+    `<dt>${s.label}</dt><dd>${s.value}</dd>`
+  ).join('\n        ');
+
+  const accessoryCards = ACCESSORIES_DISPLAY.map(a => `
+      <div class="accessory-card">
+        <h4>${a.name}</h4>
+        <p class="product-price">${fmtStorefrontPrice(a.price)}</p>
+        <button class="btn-add-to-cart" data-accessory="${a.name}">Add to Cart</button>
+      </div>`).join('\n');
+
+  const body = `
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo;
+    <a href="/catalog">Devices</a> &rsaquo;
+    <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
+    <span>${product.name}</span>
+  </nav>
+
+  <section class="product-hero">
+    <h1>${product.name}</h1>
+    <div class="product-badges">
+      ${badges}
+    </div>
+    <p class="product-price" id="hero-price">${fmtPrice(product.price)}</p>
+    <p class="product-instalment">or from R ${product.monthlyFrom}/month with a plan</p>
+
+    <div class="color-selector">
+      <span>Color</span>
+      ${colorButtons}
+    </div>
+
+    <div class="storage-selector">
+      <span>Storage</span>
+      ${storageButtons}
+    </div>
+
+    <div class="quantity-selector">
+      <label for="quantity">Quantity</label>
+      <input type="number" id="quantity" value="1" min="1">
+    </div>
+
+    ${addToCartBtn}
+    ${esimNote}
+  </section>
+
+  <section class="plan-attach-panel">
+    <h2>Add a plan or bundle</h2>
+    ${upsellPanel}
+    <div class="base-plan-list">
+      ${planCards}
+    </div>
+  </section>
+
+  <section class="product-details">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="specs">Specifications</button>
+      <button class="tab-btn" data-tab="features">Features</button>
+      <button class="tab-btn" data-tab="box">What's in the Box</button>
+    </div>
+    <div class="tab-panel" id="tab-specs">
+      <dl class="spec-list">
+        ${specRows}
+      </dl>
+    </div>
+    <div class="tab-panel" id="tab-features" hidden>
+      <ul class="features-list">
+        <li>Dynamic Island</li>
+        <li>Always-On display</li>
+        <li>Action Button</li>
+        <li>Titanium design</li>
+        <li>USB 3 speeds with USB-C</li>
+      </ul>
+    </div>
+    <div class="tab-panel" id="tab-box" hidden>
+      <ul class="inbox-list">
+        <li>iPhone with iOS 17</li>
+        <li>USB-C Charge Cable (1 m)</li>
+        <li>Documentation</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="recommendations">
+    <h2>Complete your purchase</h2>
+    <div class="recommendation-row">
+      ${accessoryCards}
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var priceEl = document.getElementById('hero-price');
+      function updatePrice(price) {
+        priceEl.textContent = 'R ' + price.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+      }
+      document.querySelectorAll('.btn-storage-selector').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var price = parseInt(btn.getAttribute('data-price') || '0', 10);
+          updatePrice(price);
+          document.querySelectorAll('.btn-storage-selector').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+      });
+      document.querySelectorAll('.btn-color-selector').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.btn-color-selector').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+      });
+      document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+          document.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = true; });
+          btn.classList.add('active');
+          var panel = document.getElementById('tab-' + btn.getAttribute('data-tab'));
+          if (panel) panel.hidden = false;
+        });
+      });
+    })();
+  </script>`;
+
+  res.status(200).type('text/html').send(renderPage(product.name + ' - Vodacom Shop', body));
 });
 
 // ---------------------------------------------------------------------------
