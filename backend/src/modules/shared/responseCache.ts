@@ -35,6 +35,7 @@ export function computeEtag(body: unknown): string {
 export function getCached(key: string): CacheEntry | undefined {
   const entry = store.get(key);
   if (!entry) return undefined;
+  // Intentional mutation-on-read: evict expired entries lazily rather than via a background sweep timer.
   if (Date.now() - entry.storedAt > entry.maxAgeMs) {
     store.delete(key);
     return undefined;

@@ -54,7 +54,7 @@ router.post('/', async (req: Request, res: Response) => {
         status: 'pending',
         cartId: input.cartId,
         correlationId: input.paymentAttemptId,
-        message: 'Order processing is taking longer than expected. Check back shortly.',
+        message: 'Order processing is taking longer than expected. Retrieve the order using the correlationId via GET /api/orders/:ref once processing completes.',
       });
       return;
     }

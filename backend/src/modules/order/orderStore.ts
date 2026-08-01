@@ -59,7 +59,9 @@ export function getAllOrders(): StoredOrder[] {
 }
 
 export function getOrderByReference(ref: string): StoredOrder | undefined {
-  return ordersStore.find((o) => o.orderReference === ref || o.orderId === ref);
+  return ordersStore.find(
+    (o) => o.orderReference === ref || o.orderId === ref || o.paymentAttemptId === ref,
+  );
 }
 
 export function getOrderAuditEvents(): OrderAuditEvent[] {
