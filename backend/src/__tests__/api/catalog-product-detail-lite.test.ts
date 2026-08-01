@@ -257,6 +257,10 @@ describe('GET /api/catalog/products/:id — AC-DL4 lite detail omits non-essenti
   it('omits onboardingRequirements', () => {
     expect(Object.prototype.hasOwnProperty.call(detail, 'onboardingRequirements')).toBe(false);
   });
+
+  it('omits isPurchasable', () => {
+    expect(Object.prototype.hasOwnProperty.call(detail, 'isPurchasable')).toBe(false);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
