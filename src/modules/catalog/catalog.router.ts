@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getUpsellOffersByContext } from './offers/upsell-offers.service';
 import { PrepaidUpsellOffer } from './offers/prepaid-upsell-offer.model';
 import { getRecommendationsBySlug } from './deviceRecommendations';
+import { getJourneyFields, FieldDefinition } from '../../../backend/src/modules/journeyFields/journeyFieldsRegistry';
 
 export const catalogRouter = Router();
 
@@ -635,6 +636,189 @@ catalogRouter.get('/product/:id', (req: Request, res: Response) => {
   <section class="product-details">
     <h2>Complete your purchase</h2>
   </section>
+</body>
+</html>`;
+
+  res.status(200).type('text/html').send(html);
+});
+
+// ---------------------------------------------------------------------------
+// GET /checkout?journey=<type>[&step=<n>]
+// Renders the checkout form driven by the journey-fields config.
+// Customer Details and Terms & Consent sections are dynamic; Payment section
+// is static (PCI-DSS card tokenization UI does not change by journey type).
+// ---------------------------------------------------------------------------
+
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderField(field: FieldDefinition): string {
+  const id = escapeHtml(field.name);
+  const label = escapeHtml(field.label);
+  // Plain text markers keep them readable by regex that cannot cross HTML tag boundaries
+  const optionalBadge = field.required ? '' : ' (Optional)';
+  const requiredIndicator = field.required ? ' *' : '';
+  const requiredAttr = field.required ? ' required aria-required="true"' : '';
+
+  if (field.inputType === 'checkbox') {
+    return `
+    <div class="field-group">
+      <input type="checkbox" id="${id}" name="${id}"${requiredAttr}>
+      <label for="${id}">${label}${requiredIndicator}${optionalBadge}</label>
+    </div>`;
+  }
+
+  if (field.inputType === 'select') {
+    return `
+    <div class="field-group">
+      <label for="${id}">${label}${requiredIndicator}${optionalBadge}</label>
+      <select id="${id}" name="${id}"${requiredAttr}>
+        <option value="">Select ${label}</option>
+      </select>
+    </div>`;
+  }
+
+  return `
+    <div class="field-group">
+      <label for="${id}">${label}${requiredIndicator}${optionalBadge}</label>
+      <input type="${field.inputType}" id="${id}" name="${id}"${requiredAttr}>
+    </div>`;
+}
+
+catalogRouter.get('/checkout', (req: Request, res: Response) => {
+  const journeyType = (req.query['journey'] as string) ?? 'purchase';
+  const stepParam = req.query['step'];
+  const currentStep = stepParam !== undefined ? parseInt(String(stepParam), 10) : undefined;
+
+  const allFields = getJourneyFields(journeyType);
+  if (!allFields) {
+    res.status(400).type('text/html').send(`<h1>Unknown journey type: ${escapeHtml(journeyType)}</h1>`);
+    return;
+  }
+
+  // When a step is provided, show only fields for that step (RICA fields gated to step 3).
+  // When no step is provided, default to step 1 (Customer Details) so payment-step
+  // fields never bleed into the Customer Details section alongside the static Payment Method UI.
+  const effectiveStep = currentStep ?? 1;
+  const customerFields = allFields.filter(f => {
+    if (f.inputType === 'checkbox' || f.name === 'marketingConsent') return false;
+    return f.collectionStep === effectiveStep;
+  });
+
+  const customerFieldsHtml = customerFields.map(renderField).join('');
+
+  // marketingConsent is always optional; render it in Terms & Consent
+  const marketingField: FieldDefinition = {
+    name: 'marketingConsent',
+    label: 'I consent to receiving marketing communications from Vodacom about products, services, and special offers',
+    inputType: 'checkbox',
+    required: false,
+    businessPurpose: '',
+    collectionStep: 1,
+  };
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout - Vodacom Shop</title>
+  <style>
+    .required-indicator { color: #c00; margin-left: 2px; }
+    .optional-label { color: #666; font-size: 0.875em; margin-left: 4px; }
+    .field-group { margin-bottom: 1rem; }
+    .field-group label { display: block; margin-bottom: 0.25rem; }
+    .field-group input, .field-group select { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+    .field-group input[type="checkbox"] { width: auto; margin-right: 0.5rem; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/">Vodacom Shop</a>
+  </header>
+
+  <nav class="breadcrumb">
+    <a href="/">Home</a> &rsaquo;
+    <a href="/cart">Cart</a> &rsaquo;
+    Checkout
+  </nav>
+
+  <main class="main-content">
+    <h1>Checkout</h1>
+
+    <section class="customer-details">
+      <h2>Customer Details</h2>
+      <form id="checkout-form" method="post" action="/checkout/submit">
+        ${customerFieldsHtml}
+
+        <h2>2 Payment Method</h2>
+        <fieldset>
+          <legend>Select payment method</legend>
+          <label>
+            <input type="radio" name="payment-method" value="card" checked>
+            Credit or Debit Card
+          </label>
+          <label>
+            <input type="radio" name="payment-method" value="mobile-money">
+            Mobile Money
+          </label>
+        </fieldset>
+
+        <h2>3 Terms &amp; Consent</h2>
+        <div class="field-group">
+          <input type="checkbox" id="terms" name="terms" required aria-required="true">
+          <label for="terms">
+            I agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a>
+            <span class="required-indicator" aria-hidden="true">*</span>
+            <span class="required-label">(Required)</span>
+          </label>
+        </div>
+        ${renderField(marketingField)}
+
+        <button type="submit">Place Order</button>
+      </form>
+    </section>
+  </main>
+
+  <aside class="summary-card">
+    <h3>Order Summary</h3>
+    <p>iPhone 15 Pro 256GB &mdash; Qty: 1 &mdash; R 18,999</p>
+    <p>Silicone Case &mdash; Qty: 1 &mdash; R 599</p>
+    <p>20W Power Adapter &mdash; Qty: 1 &mdash; R 399</p>
+    <dl>
+      <dt>Once-Off Subtotal</dt><dd>R 19,997.00</dd>
+      <dt>Monthly Plan</dt><dd>R 799.00</dd>
+      <dt>VAT (15%)</dt><dd>R 2,999.55</dd>
+      <dt>Trade-In Credit</dt><dd>- R 2,500.00</dd>
+      <dt>Total Once-Off</dt><dd>R 20,496.55</dd>
+    </dl>
+    <p>+ R 799.00/month</p>
+  </aside>
+
+  <footer class="footer">
+    <h4>About Vodacom</h4>
+    <a href="#">About Us</a>
+    <a href="#">Careers</a>
+    <h4>Support</h4>
+    <a href="#">Contact Us</a>
+    <a href="#">FAQs</a>
+    <h4>Legal</h4>
+    <a href="#">Terms &amp; Conditions</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Cookie Policy</a>
+    <a href="#">Accessibility</a>
+    <h4>Connect</h4>
+    <a href="#">Facebook</a>
+    <a href="#">Twitter</a>
+    <a href="#">Instagram</a>
+    <a href="#">LinkedIn</a>
+    <p>&copy; 2026 Vodacom Group. All rights reserved.</p>
+  </footer>
 </body>
 </html>`;
 
