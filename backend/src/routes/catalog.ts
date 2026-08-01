@@ -129,6 +129,19 @@ router.get('/products/:id', (req: Request, res: Response) => {
     return;
   }
 
+  const cacheKey = makeCacheKey('catalog:product', { id, market: product.marketCode });
+  const cached = getCached(cacheKey);
+  if (cached) {
+    res.set('Cache-Control', cached.cacheControl);
+    res.set('ETag', cached.etag);
+    if (req.headers['if-none-match'] === cached.etag) {
+      res.status(304).end();
+      return;
+    }
+    res.status(200).json(cached.body);
+    return;
+  }
+
   const market = getMarket(product.marketCode);
   const currency = market ? market.currency : 'ZAR';
   const vatRate = market ? market.vatRate : 0.15;
@@ -149,7 +162,7 @@ router.get('/products/:id', (req: Request, res: Response) => {
 
   const tax = computeTax(product.priceOnceOff, product.priceRecurring, vatRate, taxLabel);
 
-  res.status(200).json({
+  const body = {
     productId: product.productId,
     productType: product.productType,
     name: product.name,
@@ -171,7 +184,16 @@ router.get('/products/:id', (req: Request, res: Response) => {
     recommendedAccessories: [],
     isPurchasable: isPurchasable(product, paymentMethods),
     badges: product.badges,
-  });
+  };
+
+  const entry = setCached(cacheKey, body, CATALOG_CACHE_CONTROL);
+  res.set('Cache-Control', entry.cacheControl);
+  res.set('ETag', entry.etag);
+  if (req.headers['if-none-match'] === entry.etag) {
+    res.status(304).end();
+    return;
+  }
+  res.status(200).json(body);
 });
 
 export default router;

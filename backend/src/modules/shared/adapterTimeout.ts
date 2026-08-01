@@ -5,18 +5,30 @@ export function withTimeout<T>(
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
+    let settled = false;
+
     const timer = setTimeout(() => {
+      settled = true;
       reject(new Error(`ADAPTER_TIMEOUT: exceeded ${timeoutMs}ms`));
     }, timeoutMs);
 
     fn().then(
       (result) => {
         clearTimeout(timer);
-        resolve(result);
+        if (!settled) {
+          settled = true;
+          resolve(result);
+        }
       },
       (err: unknown) => {
         clearTimeout(timer);
-        reject(err);
+        if (!settled) {
+          settled = true;
+          reject(err);
+        } else {
+          // Adapter rejected after the timeout already fired; log for observability.
+          console.error('[adapterTimeout] late adapter error (already timed out):', err);
+        }
       },
     );
   });
