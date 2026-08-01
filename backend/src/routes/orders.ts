@@ -15,6 +15,7 @@ startPolling(() => {
     paymentStatus: o.paymentStatus ?? null,
     verificationStatus: o.verificationStatus ?? null,
     activationStatus: o.activationState ?? null,
+    createdAt: o.createdAt,
   }));
 });
 

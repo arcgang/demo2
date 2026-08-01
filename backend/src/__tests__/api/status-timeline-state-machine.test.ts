@@ -21,6 +21,9 @@ import {
   type TimelineEvent,
   applyActivationStatusUpdate,
   applyVerificationUpdate,
+  pollBoundaries,
+  startPolling,
+  stopPolling,
 } from '../../modules/statusTimeline/timelineService';
 
 import {
@@ -28,6 +31,12 @@ import {
   seedTimelineEvents,
   getTimelineEvents,
 } from '../../modules/statusTimeline/timelineStore';
+
+import {
+  clearAll as clearOrderStore,
+  persistOrder,
+  updateOrderActivationState,
+} from '../../modules/order/orderStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -362,6 +371,56 @@ describe('StatusTimelineService — polling window (60-second rule)', () => {
     if (!Array.isArray(result) && typeof (result as Record<string, unknown>).nextPollMs === 'number') {
       expect((result as Record<string, unknown>).nextPollMs as number).toBeLessThanOrEqual(60_000);
     }
+  });
+
+  it('pollBoundaries end-to-end: activation_failed appears in timeline within one poll cycle (60-second window)', () => {
+    // AC-SM-3: seed an order with activationState=pending, mutate to failed,
+    // trigger pollBoundaries directly, assert activation_failed is in the timeline.
+    clearOrderStore();
+    clearTimelineStore();
+
+    const orderId = 'ord_e2e_poll_001';
+    const createdAt = '2026-07-28T09:00:00Z';
+
+    persistOrder({
+      orderId,
+      orderReference: 'ORD-E2E01',
+      cartId: 'cart_e2e_01',
+      paymentAttemptId: 'pay_e2e_01',
+      paymentStatus: 'payment_confirmed',
+      verificationStatus: 'verification_complete',
+      activationState: 'activation_pending',
+      createdAt,
+      lineItems: [],
+      onceOffTotal: 0,
+      monthlyTotal: 0,
+      timelineEvents: [],
+    });
+
+    // Register fetcher so pollBoundaries can read order snapshots
+    startPolling(() => {
+      const { getAllOrders } = require('../../modules/order/orderStore') as typeof import('../../modules/order/orderStore');
+      return getAllOrders().map((o) => ({
+        orderId: o.orderId,
+        paymentStatus: o.paymentStatus ?? null,
+        verificationStatus: o.verificationStatus ?? null,
+        activationStatus: o.activationState ?? null,
+        createdAt: o.createdAt,
+      }));
+    });
+
+    // Simulate the activation boundary reporting a failure
+    updateOrderActivationState(orderId, 'activation_failed');
+
+    // Trigger one poll cycle (the operation that must complete within 60 s)
+    pollBoundaries();
+
+    const timeline = getTimelineEvents(orderId);
+    const failedEvent = timeline.find((e: TimelineEvent) => e.eventType === 'activation_failed');
+    expect(failedEvent).toBeDefined();
+    expect(failedEvent?.isCurrent).toBe(true);
+
+    stopPolling();
   });
 });
 

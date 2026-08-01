@@ -5,6 +5,10 @@ import {
   seedTimelineEvents,
   getTimelineEvents,
 } from './timelineStore';
+import {
+  updateOrderActivationState,
+  updateOrderVerificationStatus,
+} from '../order/orderStore';
 
 export type { TimelineEvent };
 
@@ -179,6 +183,9 @@ export function applyActivationStatusUpdate(
   const eventType = eventTypeMap[update.activationState];
   if (!eventType) return;
 
+  // Keep the order record in sync so GET /status won't overwrite this push
+  updateOrderActivationState(orderId, update.activationState);
+
   const { label, description } = EVENT_META[eventType];
   appendTimelineEvent(orderId, {
     eventType,
@@ -207,6 +214,9 @@ export function applyVerificationUpdate(
   const eventType = eventTypeMap[update.verificationStatus];
   if (!eventType) return;
 
+  // Keep the order record in sync so GET /status won't overwrite this push
+  updateOrderVerificationStatus(orderId, update.verificationStatus);
+
   const { label, description } = EVENT_META[eventType];
   appendTimelineEvent(orderId, {
     eventType,
@@ -224,6 +234,7 @@ export interface OrderStateSnapshot {
   paymentStatus: string | null;
   verificationStatus: string | null;
   activationStatus: string | null;
+  createdAt: string;
 }
 
 type OrderStateFetcher = () => OrderStateSnapshot[];
@@ -231,10 +242,9 @@ type OrderStateFetcher = () => OrderStateSnapshot[];
 let _fetcher: OrderStateFetcher | null = null;
 let _pollTimer: ReturnType<typeof setInterval> | null = null;
 
-function pollBoundaries(): void {
+export function pollBoundaries(): void {
   if (!_fetcher) return;
   const snapshots = _fetcher();
-  const now = new Date().toISOString();
 
   for (const snap of snapshots) {
     const current = getTimelineEvents(snap.orderId);
@@ -267,13 +277,13 @@ function pollBoundaries(): void {
       return 'payment_pending';
     })();
 
-    // Rebuild timeline from live state and persist
+    // Rebuild timeline from live state using the real order-creation timestamp
     const updated = buildTimeline({
       orderId: snap.orderId,
       paymentStatus: payment,
       verificationStatus: verification,
       activationStatus: activation,
-      timestamps: { order_placed: now },
+      timestamps: { order_placed: snap.createdAt },
     });
 
     seedTimelineEvents(snap.orderId, updated);

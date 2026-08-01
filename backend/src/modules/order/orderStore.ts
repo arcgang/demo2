@@ -91,3 +91,13 @@ export function getOrderByReference(ref: string): StoredOrder | undefined {
 export function getOrderAuditEvents(): OrderAuditEvent[] {
   return [...auditEventsStore];
 }
+
+export function updateOrderActivationState(orderId: string, state: string): void {
+  const order = ordersStore.find((o) => o.orderId === orderId);
+  if (order) order.activationState = state;
+}
+
+export function updateOrderVerificationStatus(orderId: string, status: string): void {
+  const order = ordersStore.find((o) => o.orderId === orderId);
+  if (order) order.verificationStatus = status;
+}
