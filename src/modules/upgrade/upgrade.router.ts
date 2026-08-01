@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
+import { getFinancingQuotesByProductId } from '../../../backend/src/modules/upgrade/financingAdapter';
 
 export const upgradeRouter = Router();
 
@@ -160,8 +161,18 @@ upgradeRouter.post('/api/upgrade/trade-in/valuation', (req: Request, res: Respon
 
 // ── GET /api/upgrade/financing ───────────────────────────────────────────────
 
-upgradeRouter.get('/api/upgrade/financing', (_req: Request, res: Response) => {
-  res.status(200).json({ asyncPending: true });
+upgradeRouter.get('/api/upgrade/financing', (req: Request, res: Response) => {
+  const productId = req.query.productId as string | undefined;
+  if (!productId || !productId.trim()) {
+    res.status(400).json({ errorCode: 'PRODUCT_ID_REQUIRED', message: 'Query parameter productId is required.' });
+    return;
+  }
+  const quotes = getFinancingQuotesByProductId(productId);
+  if (quotes === null) {
+    res.status(404).json({ errorCode: 'PRODUCT_NOT_FOUND', message: `No financing options found for product "${productId}".` });
+    return;
+  }
+  res.status(200).json(quotes);
 });
 
 // ── GET /upgrade/eligibility (Screen 4) ──────────────────────────────────────
@@ -211,7 +222,8 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
       <h3>Explore Financing Options</h3>
       <p>Spread the cost of your new device with flexible payment plans</p>
       <span id="financing-pending-notice" class="pending-notice">Your financing quote is pending review. We will notify you once it is confirmed.</span>
-      <a href="/upgrade/financing">Get a Quote</a>
+      <a id="get-a-quote-cta" href="/product/iphone-15-pro/configure?financing=true&amp;productId=iphone-15-pro">Get a Quote</a>
+      <a href="/upgrade/financing" class="secondary-link">View Financing Details</a>
     </div>
 
     <div class="cta-card trade-in-cta">
@@ -224,20 +236,23 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
   <section class="upgrade-options">
     <h2>Available Upgrade Devices</h2>
     <div class="device-grid">
-      <div class="device-card">
+      <div class="device-card" data-slug="iphone-15-pro">
         <h3>iPhone 15 Pro 256GB</h3>
         <p>R 24,999</p>
         <a href="/product/iphone-15-pro">View Details</a>
+        <a href="/product/iphone-15-pro/configure?financing=true&amp;productId=iphone-15-pro" class="get-a-quote-device-cta">Get a Quote</a>
       </div>
-      <div class="device-card">
+      <div class="device-card" data-slug="samsung-s24-ultra">
         <h3>Samsung Galaxy S24 Ultra</h3>
         <p>R 22,999</p>
         <a href="/product/samsung-s24-ultra">View Details</a>
+        <a href="/product/samsung-s24-ultra/configure?financing=true&amp;productId=samsung-s24-ultra" class="get-a-quote-device-cta">Get a Quote</a>
       </div>
-      <div class="device-card">
+      <div class="device-card" data-slug="iphone-15">
         <h3>iPhone 15 128GB</h3>
         <p>R 18,999</p>
         <a href="/product/iphone-15">View Details</a>
+        <a href="/product/iphone-15/configure?financing=true&amp;productId=iphone-15" class="get-a-quote-device-cta">Get a Quote</a>
       </div>
     </div>
   </section>
@@ -253,7 +268,18 @@ upgradeRouter.get('/upgrade/eligibility', (_req: Request, res: Response) => {
     // On mount, call GET /api/upgrade/session to rehydrate previously entered values
     fetch('/api/upgrade/session').catch(function() {});
 
-    // Notice is rendered server-side when asyncPending is true (always the case).
+    // Wire the top-level 'Get a Quote' CTA to the most recently selected device card.
+    // Clicking any device card updates the href to that device's financing configure URL.
+    (function () {
+      var topCta = document.getElementById('get-a-quote-cta');
+      document.querySelectorAll('.device-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          var slug = card.getAttribute('data-slug');
+          if (!slug || !topCta) return;
+          topCta.href = '/product/' + slug + '/configure?financing=true&productId=' + encodeURIComponent(slug);
+        });
+      });
+    }());
   </script>
 </body>
 </html>`;

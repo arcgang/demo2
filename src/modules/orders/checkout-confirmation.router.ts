@@ -16,11 +16,11 @@ function fmtAmount(n: number): string {
   return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-// GET /checkout — Screen 3 (static wireframe; defers to catalogRouter when ?journey= is present)
+// GET /checkout — Screen 3 static checkout (served only when no ?journey param is present;
+// journey-aware rendering is handled by catalogRouter when ?journey is supplied)
 checkoutConfirmationRouter.get('/checkout', (req: Request, res: Response, next) => {
   if (req.query['journey'] !== undefined) {
-    next();
-    return;
+    return next();
   }
   const html = `<!DOCTYPE html>
 <html lang="en">
