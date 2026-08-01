@@ -46,8 +46,12 @@ ${options}
 }
 
 /**
- * Renders the full market selector widget (button + hidden dropdown).
- * JavaScript in the page handles open/close, keyboard nav, and form submission.
+ * Renders the full market selector widget (button + hidden dropdown) with an
+ * inline script that drives WCAG 2.1 AA keyboard accessibility:
+ *   - toggles aria-expanded and shows/hides the container on click / Enter / Space
+ *   - ArrowDown/ArrowUp move focus within the listbox
+ *   - Enter/Space on an option submits the market-switch form
+ *   - Escape closes the dropdown and returns focus to the button
  */
 export function renderMarketSelector(markets: Market[], currentMarket: Market): string {
   return `<div class="market-selector" data-current-market="${currentMarket.code}">
@@ -58,5 +62,71 @@ export function renderMarketSelector(markets: Market[], currentMarket: Market): 
   <form id="market-switch-form" method="POST" action="/market/select" style="display:none">
     <input type="hidden" name="marketCode" id="market-switch-input" value="${currentMarket.code}" />
   </form>
+  <script>
+  (function () {
+    var btn = document.getElementById('market-selector-btn');
+    var container = btn && btn.nextElementSibling;
+    var form = document.getElementById('market-switch-form');
+    var input = document.getElementById('market-switch-input');
+    if (!btn || !container || !form || !input) return;
+
+    function open() {
+      container.removeAttribute('hidden');
+      container.removeAttribute('aria-hidden');
+      btn.setAttribute('aria-expanded', 'true');
+      var first = container.querySelector('[role="option"][tabindex="0"], [role="option"]');
+      if (first) first.focus();
+    }
+
+    function close() {
+      container.setAttribute('hidden', '');
+      container.setAttribute('aria-hidden', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.focus();
+    }
+
+    function selectOption(opt) {
+      input.value = opt.getAttribute('data-market-code');
+      form.submit();
+    }
+
+    btn.addEventListener('click', function () {
+      btn.getAttribute('aria-expanded') === 'true' ? close() : open();
+    });
+
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        open();
+      }
+    });
+
+    container.addEventListener('keydown', function (e) {
+      var opts = Array.prototype.slice.call(container.querySelectorAll('[role="option"]'));
+      var idx = opts.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (idx < opts.length - 1) opts[idx + 1].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) opts[idx - 1].focus(); else close();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (idx >= 0) selectOption(opts[idx]);
+      } else if (e.key === 'Escape') {
+        close();
+      }
+    });
+
+    container.addEventListener('click', function (e) {
+      var opt = e.target.closest('[role="option"]');
+      if (opt) selectOption(opt);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!btn.closest('.market-selector').contains(e.target)) close();
+    });
+  })();
+  </script>
 </div>`;
 }

@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import { upsellOffersRouter } from './modules/catalog/offers/upsell-offers.router';
 import { marketRouter } from './modules/market/market.router';
 import { catalogRouter } from './modules/catalog/catalog.router';
@@ -9,6 +10,7 @@ export const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 app.use('/api/offers', upsellOffersRouter);
 app.use('/api/markets', marketRouter);

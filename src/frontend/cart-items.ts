@@ -17,10 +17,11 @@ export interface CartItemData {
  * An ineligible item renders a warning banner and disables the checkout flow.
  */
 export function renderCartItem(item: CartItemData, market: Market): string {
-  const warningHtml = !item.eligible && item.warning
+  const msg = item.warning ?? 'This item is not available in your market.';
+  const warningHtml = !item.eligible
     ? `<div class="cart-item-warning" role="alert" aria-live="polite">
       <span class="warning-icon" aria-hidden="true">⚠</span>
-      ${item.warning} <strong>Not available in your market.</strong>
+      ${msg}
     </div>`
     : '';
 
