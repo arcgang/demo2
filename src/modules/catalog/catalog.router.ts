@@ -51,6 +51,8 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
       <a href="/accessories">Accessories</a>
       <a href="/support">Support</a>
     </nav>
+    <button>Account</button>
+    <button>3</button>
   </header>
 
   <nav class="breadcrumb">
@@ -68,53 +70,144 @@ catalogRouter.get('/product/:id/configure', (req: Request, res: Response) => {
 
     <section class="plan-selection">
       <h2>Select a Plan</h2>
+      <span class="required-badge">Required</span>
 
       ${upsellPanel}
 
-      <div class="base-plan-list">
-        <div class="plan-card" data-plan-id="plan_red_5gb">
-          <h4>Vodacom Red 5GB</h4>
-          <p>5GB Data + Unlimited Calls &amp; SMS</p>
-          <p class="plan-price">R 299/month</p>
-          <button class="btn-select-plan">Select Plan</button>
-        </div>
-        <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-          <h4>Vodacom Unlimited 20GB</h4>
-          <p>20GB Data + Unlimited Calls &amp; SMS</p>
-          <p class="plan-price">R 799/month</p>
-          <button class="btn-select-plan">Select Plan</button>
-        </div>
-        <div class="plan-card" data-plan-id="plan_red_premium">
-          <h4>Vodacom Red Premium</h4>
-          <p>50GB Data + Unlimited Calls &amp; SMS</p>
-          <p class="plan-price">R 1,299/month</p>
-          <button class="btn-select-plan">Select Plan</button>
-        </div>
-      </div>
+      <fieldset>
+        <legend>Choose your plan</legend>
+        <label class="plan-option">
+          <input type="radio" name="plan" value="plan_za_red_5gb" data-monthly="299" required>
+          <span class="plan-name">Vodacom Red 5GB</span>
+          <span class="plan-desc">5GB Data + Unlimited Calls &amp; SMS</span>
+          <span class="plan-price">R 299/month</span>
+        </label>
+        <label class="plan-option">
+          <input type="radio" name="plan" value="plan_za_unlimited_20gb" data-monthly="799">
+          <span class="plan-name">Vodacom Unlimited 20GB</span>
+          <span class="plan-desc">20GB Data + Unlimited Calls &amp; SMS</span>
+          <span class="plan-price">R 799/month</span>
+        </label>
+        <label class="plan-option">
+          <input type="radio" name="plan" value="plan_za_red_premium" data-monthly="1299">
+          <span class="plan-name">Vodacom Red Premium</span>
+          <span class="plan-desc">50GB Data + Unlimited Calls &amp; SMS</span>
+          <span class="plan-price">R 1,299/month</span>
+        </label>
+      </fieldset>
     </section>
 
     <section class="bundle-addons">
       <h2>Optional Add-Ons</h2>
-      <label><input type="checkbox" name="addon-data"> Extra 10GB Data &mdash; + R 199/month</label>
-      <label><input type="checkbox" name="addon-international" checked> International Calling &mdash; + R 149/month</label>
-      <label><input type="checkbox" name="addon-roaming"> Roaming Bundle &mdash; + R 299/month</label>
+      <p class="optional-label">Optional</p>
+      <label class="addon-option">
+        <input type="checkbox" name="addon-data" data-monthly="199">
+        Extra 10GB Data &mdash; Additional data for streaming and browsing &mdash; + R 199/month
+      </label>
+      <label class="addon-option">
+        <input type="checkbox" name="addon-international" checked data-monthly="149">
+        International Calling &mdash; 100 minutes to selected countries &mdash; + R 149/month
+      </label>
+      <label class="addon-option">
+        <input type="checkbox" name="addon-roaming" data-monthly="299">
+        Roaming Bundle &mdash; 5GB data for use in Africa &mdash; + R 299/month
+      </label>
     </section>
   </main>
 
   <aside class="pricing-summary">
     <h3>Pricing Summary</h3>
+
+    <h4>Once-Off Charges</h4>
     <dl>
       <dt>iPhone 15 Pro 256GB</dt><dd>R 24,999.00</dd>
       <dt>Activation Fee</dt><dd>R 0.00</dd>
-      <dt>Vodacom Unlimited 20GB</dt><dd>R 799.00</dd>
-      <dt>International Calling</dt><dd>R 149.00</dd>
     </dl>
-    <p>Once-Off Subtotal: R 24,999.00</p>
-    <p>VAT (15%): R 3,749.85</p>
-    <p>Total Once-Off: R 28,748.85</p>
-    <p>Total Monthly: R 948.00</p>
-    <button>Continue to Cart</button>
+
+    <h4>Recurring Charges</h4>
+    <dl id="recurring-charges">
+      <dt id="selected-plan-name">Vodacom Unlimited 20GB</dt><dd id="selected-plan-price">R 799.00</dd>
+      <dt id="intl-calling-label">International Calling</dt><dd id="intl-calling-price">R 149.00</dd>
+    </dl>
+
+    <dl class="pricing-totals">
+      <dt>Once-Off Subtotal</dt><dd id="once-off-subtotal">R 24,999.00</dd>
+      <dt>VAT (15%)</dt><dd id="vat-amount">R 3,749.85</dd>
+      <dt>Total Once-Off</dt><dd id="total-once-off">R 28,748.85</dd>
+      <dt>Total Monthly</dt><dd id="total-monthly">R 948.00</dd>
+    </dl>
+
+    <button id="continue-to-cart" disabled data-requires-plan="true">Continue to Cart</button>
   </aside>
+
+  <script>
+    (function () {
+      var DEVICE_PRICE = 24999;
+      var VAT_RATE = 0.15;
+
+      function fmt(n) {
+        return 'R ' + n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+      }
+
+      function update() {
+        var sel = document.querySelector('input[name="plan"]:checked');
+        var planMonthly = sel ? parseInt(sel.getAttribute('data-monthly') || '0', 10) : 0;
+
+        var addonMonthly = 0;
+        document.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+          addonMonthly += parseInt(cb.getAttribute('data-monthly') || '0', 10);
+        });
+
+        var vat = parseFloat((DEVICE_PRICE * VAT_RATE).toFixed(2));
+        var totalOnceOff = parseFloat((DEVICE_PRICE + vat).toFixed(2));
+        var totalMonthly = planMonthly + addonMonthly;
+
+        document.getElementById('once-off-subtotal').textContent = fmt(DEVICE_PRICE);
+        document.getElementById('vat-amount').textContent = fmt(vat);
+        document.getElementById('total-once-off').textContent = fmt(totalOnceOff);
+        document.getElementById('total-monthly').textContent = fmt(totalMonthly);
+
+        if (sel) {
+          var planOpt = sel.closest('.plan-option');
+          var nameEl = planOpt ? planOpt.querySelector('.plan-name') : null;
+          document.getElementById('selected-plan-name').textContent = nameEl ? nameEl.textContent : '';
+          document.getElementById('selected-plan-price').textContent = fmt(planMonthly);
+          document.getElementById('continue-to-cart').removeAttribute('disabled');
+        } else {
+          document.getElementById('continue-to-cart').setAttribute('disabled', '');
+        }
+      }
+
+      document.querySelectorAll('input[name="plan"]').forEach(function (r) {
+        r.addEventListener('change', update);
+      });
+      document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+        cb.addEventListener('change', update);
+      });
+
+      document.getElementById('continue-to-cart').addEventListener('click', function () {
+        var sel = document.querySelector('input[name="plan"]:checked');
+        if (!sel) return;
+        var addons = [];
+        document.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+          addons.push(cb.name);
+        });
+        var cartItem = {
+          productId: 'prod_za_iphone15pro_256',
+          productName: 'iPhone 15 Pro 256GB',
+          planId: sel.value,
+          addons: addons,
+          devicePrice: DEVICE_PRICE
+        };
+        try {
+          var cart = JSON.parse(localStorage.getItem('cart') || '[]');
+          cart.push(cartItem);
+          localStorage.setItem('cart', JSON.stringify(cart));
+        } catch (e) {}
+        window.location.href = '/cart';
+      });
+    })();
+  </script>
 </body>
 </html>`;
 
