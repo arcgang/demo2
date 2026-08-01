@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Cart - Vodacom Shop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; display: flex; flex-direction: column; min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    .header { background: #e60000; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 24px; height: 56px; }
+    .header-brand { font-size: 20px; font-weight: 700; }
+    .nav-main { display: flex; gap: 0; margin-right: auto; }
+    .nav-main a { color: #fff; padding: 0 14px; font-size: 14px; line-height: 56px; }
+    .header-actions { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+    .header-actions button { background: transparent; border: 1px solid #fff; color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+
+    /* Breadcrumb */
+    .breadcrumb { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 10px 24px; font-size: 13px; color: #666; }
+    .breadcrumb a { color: #e60000; }
+    .breadcrumb span + span::before { content: ' › '; margin: 0 4px; }
+
+    /* Checkout steps */
+    .checkout-steps { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 10px 24px; display: flex; gap: 24px; font-size: 13px; color: #999; }
+    .checkout-steps .active { color: #e60000; font-weight: 600; }
+
+    /* Layout */
+    .main-content { flex: 1; max-width: 1100px; margin: 24px auto; padding: 0 24px; width: 100%; display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+
+    /* Page title */
+    .page-title { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #666; margin-bottom: 20px; }
+
+    /* Cart items */
+    .cart-items { background: #fff; border-radius: 8px; border: 1px solid #e5e5e5; overflow: hidden; }
+    .cart-item { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; gap: 16px; align-items: flex-start; }
+    .cart-item:last-child { border-bottom: none; }
+    .item-info { flex: 1; }
+    .item-name { font-size: 15px; font-weight: 600; }
+    .item-meta { font-size: 13px; color: #666; margin-top: 2px; }
+    .item-plan { font-size: 12px; color: #e60000; margin-top: 4px; }
+    .item-qty { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .qty-btn { width: 28px; height: 28px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    .qty-input { width: 36px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; padding: 2px 4px; }
+    .remove-link { font-size: 12px; color: #e60000; cursor: pointer; margin-left: 8px; }
+    .item-price { text-align: right; min-width: 90px; }
+    .item-price-main { font-size: 16px; font-weight: 700; }
+    .item-price-monthly { font-size: 12px; color: #666; margin-top: 2px; }
+
+    /* Promo */
+    .promo-row { padding: 16px 20px; background: #fff; border-top: 1px solid #f0f0f0; display: flex; gap: 8px; }
+    .promo-input { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 8px 12px; font-size: 14px; }
+    .promo-input:focus { outline: none; border-color: #e60000; }
+    .btn-outline { border: 2px solid #e60000; color: #e60000; background: transparent; padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-outline:hover { background: #fff0f0; }
+
+    /* Summary card */
+    .summary-card { background: #fff; border-radius: 8px; border: 1px solid #e5e5e5; padding: 20px; position: sticky; top: 24px; }
+    .summary-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    .summary-section-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 10px 0 6px; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+    .summary-row.credit { color: #2e7d32; }
+    .summary-divider { border: none; border-top: 1px solid #e5e5e5; margin: 10px 0; }
+    .summary-total { font-weight: 700; font-size: 15px; }
+    .btn-primary { display: block; width: 100%; background: #e60000; color: #fff; border: none; padding: 13px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; margin-top: 14px; }
+    .btn-primary:hover { background: #cc0000; }
+    .btn-secondary { display: block; width: 100%; background: #fff; color: #e60000; border: 2px solid #e60000; padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; margin-top: 8px; }
+    .secure-note { font-size: 11px; color: #999; text-align: center; margin-top: 10px; }
+
+    /* Restore notice */
+    .restore-notice { display: none; align-items: center; gap: 10px; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 10px 14px; font-size: 14px; color: #2e7d32; margin-bottom: 16px; }
+    .restore-notice.visible { display: flex; }
+    .restore-notice-close { margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer; color: #2e7d32; line-height: 1; }
+
+    /* Footer */
+    .footer { background: #1a1a1a; color: #ccc; padding: 40px 24px 20px; margin-top: auto; }
+    .footer-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .footer h4 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .footer a { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+    .footer a:hover { color: #fff; }
+    .footer-bottom { max-width: 1100px; margin: 20px auto 0; padding-top: 16px; border-top: 1px solid #333; font-size: 12px; color: #666; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <span class="header-brand">Vodacom Shop</span>
+  <nav class="nav-main">
+    <a href="#">Devices</a>
+    <a href="#">Plans</a>
+    <a href="#">Accessories</a>
+    <a href="#">Support</a>
+  </nav>
+  <div class="header-actions">
+    <span>South Africa - ZAR</span>
+    <button>Account</button>
+    <button>Cart</button>
+  </div>
+</header>
+
+<nav class="breadcrumb">
+  <span><a href="#">Home</a></span>
+  <span>Cart</span>
+</nav>
+
+<div class="main-content">
+  <div>
+    <div class="page-title">Your Cart</div>
+    <div class="page-subtitle">3 items</div>
+
+    <div id="restore-notice" class="restore-notice" role="alert">
+      Your selections were restored
+      <button class="restore-notice-close" id="restore-notice-close" aria-label="Dismiss">&times;</button>
+    </div>
+
+    <div class="cart-items" id="cart-items-container">
+      <div class="cart-item" data-item-id="iphone-15-pro">
+        <div class="item-info">
+          <div class="item-name">iPhone 15 Pro</div>
+          <div class="item-meta">Natural Titanium, 256GB</div>
+          <div class="item-plan">Unlimited 20GB Plan attached</div>
+          <div class="item-qty">
+            <button class="qty-btn" aria-label="Decrease quantity" data-action="dec">-</button>
+            <input class="qty-input" type="number" min="1" value="1" data-qty aria-label="Quantity" />
+            <button class="qty-btn" aria-label="Increase quantity" data-action="inc">+</button>
+            <a class="remove-link" href="#" data-remove>Remove</a>
+          </div>
+        </div>
+        <div class="item-price">
+          <div class="item-price-main">R 18,999</div>
+          <div class="item-price-monthly">+ R 799/month</div>
+        </div>
+      </div>
+      <div class="cart-item" data-item-id="silicone-case">
+        <div class="item-info">
+          <div class="item-name">iPhone 15 Pro Silicone Case</div>
+          <div class="item-meta">Storm Blue</div>
+          <div class="item-qty">
+            <button class="qty-btn" aria-label="Decrease quantity" data-action="dec">-</button>
+            <input class="qty-input" type="number" min="1" value="1" data-qty aria-label="Quantity" />
+            <button class="qty-btn" aria-label="Increase quantity" data-action="inc">+</button>
+            <a class="remove-link" href="#" data-remove>Remove</a>
+          </div>
+        </div>
+        <div class="item-price">
+          <div class="item-price-main">R 599</div>
+        </div>
+      </div>
+      <div class="cart-item" data-item-id="power-adapter">
+        <div class="item-info">
+          <div class="item-name">20W USB-C Power Adapter</div>
+          <div class="item-meta">Fast charging compatible</div>
+          <div class="item-qty">
+            <button class="qty-btn" aria-label="Decrease quantity" data-action="dec">-</button>
+            <input class="qty-input" type="number" min="1" value="1" data-qty aria-label="Quantity" />
+            <button class="qty-btn" aria-label="Increase quantity" data-action="inc">+</button>
+            <a class="remove-link" href="#" data-remove>Remove</a>
+          </div>
+        </div>
+        <div class="item-price">
+          <div class="item-price-main">R 399</div>
+        </div>
+      </div>
+      <div class="promo-row">
+        <input class="promo-input" id="promo-code" type="text" placeholder="Promo code" aria-label="Promo code" />
+        <button class="btn-outline">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="summary-card">
+    <h2>Order Summary</h2>
+    <div class="summary-section-label">Once-Off Charges</div>
+    <div class="summary-row"><span>Device</span><span>R 18,999.00</span></div>
+    <div class="summary-row"><span>Accessories</span><span>R 998.00</span></div>
+    <div class="summary-row"><span>Activation Fee</span><span>R 0.00</span></div>
+    <div class="summary-row"><span>Subtotal</span><span>R 19,997.00</span></div>
+    <div class="summary-section-label">Recurring Charges</div>
+    <div class="summary-row"><span>Unlimited 20GB Plan</span><span>R 799.00</span></div>
+    <div class="summary-row"><span>Monthly Subtotal</span><span>R 799.00</span></div>
+    <div class="summary-section-label">Taxes &amp; Credits</div>
+    <div class="summary-row"><span>VAT (15%)</span><span>R 2,999.55</span></div>
+    <div class="summary-row credit"><span>Trade-In Credit</span><span>- R 2,500.00</span></div>
+    <hr class="summary-divider" />
+    <div class="summary-row summary-total"><span>Total Once-Off</span><span>R 20,496.55</span></div>
+    <div class="summary-row summary-total"><span>+ R 799.00/month</span><span></span></div>
+    <button class="btn-primary">Proceed to Checkout</button>
+    <a class="btn-secondary" href="#">Continue Shopping</a>
+    <div class="secure-note">Secure checkout with encrypted payment</div>
+  </aside>
+</div>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h4>About Vodacom</h4>
+      <a href="#">About Us</a>
+      <a href="#">Careers</a>
+      <a href="#">Press</a>
+      <a href="#">Investors</a>
+    </div>
+    <div>
+      <h4>Support</h4>
+      <a href="#">Contact Us</a>
+      <a href="#">FAQs</a>
+      <a href="#">Store Locator</a>
+      <a href="#">Coverage Map</a>
+    </div>
+    <div>
+      <h4>Legal</h4>
+      <a href="#">Terms &amp; Conditions</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Cookie Policy</a>
+      <a href="#">Accessibility</a>
+    </div>
+    <div>
+      <h4>Connect</h4>
+      <a href="#">Facebook</a>
+      <a href="#">Twitter</a>
+      <a href="#">Instagram</a>
+      <a href="#">LinkedIn</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Vodacom Group. All rights reserved.</span>
+    <span>South Africa</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var DRAFT_KEY = 'draft:cart';
+    var EXPIRY_MS = 30 * 60 * 1000;
+    var noticeShown = false;
+
+    function collectItems() {
+      var items = [];
+      document.querySelectorAll('.cart-item[data-item-id]').forEach(function (row) {
+        var id = row.getAttribute('data-item-id');
+        var qtyEl = row.querySelector('[data-qty]');
+        if (id) items.push({ id: id, qty: qtyEl ? qtyEl.value : '1' });
+      });
+      return items;
+    }
+
+    function saveDraft() {
+      var promoEl = document.getElementById('promo-code');
+      var promoCode = promoEl ? promoEl.value : '';
+      var items = collectItems();
+      var payload = { promoCode: promoCode, items: items, timestamp: Date.now() };
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(payload)); } catch (e) {}
+    }
+
+    function restoreDraft() {
+      var raw;
+      try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return false; }
+      if (!raw) return false;
+      var draft;
+      try { draft = JSON.parse(raw); } catch (e) { return false; }
+      if (!draft || !draft.timestamp || Date.now() - draft.timestamp > EXPIRY_MS) {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        return false;
+      }
+      // Restore promo code
+      var promoEl = document.getElementById('promo-code');
+      if (promoEl && draft.promoCode != null) promoEl.value = draft.promoCode;
+      // Restore item quantities
+      if (draft.items && draft.items.length) {
+        draft.items.forEach(function (item) {
+          var row = document.querySelector('.cart-item[data-item-id="' + item.id + '"]');
+          if (row) {
+            var qtyEl = row.querySelector('[data-qty]');
+            if (qtyEl) qtyEl.value = item.qty;
+          }
+        });
+      }
+      return true;
+    }
+
+    function showNotice() {
+      var notice = document.getElementById('restore-notice');
+      if (notice) notice.classList.add('visible');
+    }
+
+    function tryRestore() {
+      if (restoreDraft() && !noticeShown) {
+        noticeShown = true;
+        showNotice();
+      }
+    }
+
+    // Quantity buttons
+    document.querySelectorAll('.qty-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var row = btn.closest('.cart-item');
+        var qtyEl = row && row.querySelector('[data-qty]');
+        if (!qtyEl) return;
+        var val = parseInt(qtyEl.value, 10) || 1;
+        if (btn.dataset.action === 'inc') qtyEl.value = val + 1;
+        else if (val > 1) qtyEl.value = val - 1;
+        saveDraft();
+      });
+    });
+
+    // Promo code input
+    var promoEl = document.getElementById('promo-code');
+    if (promoEl) promoEl.addEventListener('input', saveDraft);
+
+    // Qty direct input
+    document.querySelectorAll('[data-qty]').forEach(function (el) {
+      el.addEventListener('change', saveDraft);
+    });
+
+    // Dismiss notice
+    var closeBtn = document.getElementById('restore-notice-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () {
+        document.getElementById('restore-notice').classList.remove('visible');
+      });
+    }
+
+    // Restore on load
+    tryRestore();
+
+    // Restore on visibility change or coming back online
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') tryRestore();
+    });
+    window.addEventListener('online', tryRestore);
+  })();
+</script>
+</body>
+</html>
