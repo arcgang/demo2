@@ -544,99 +544,386 @@ catalogRouter.get('/product/:slug/configure', (req: Request, res: Response) => {
   res.status(200).type('text/html').send(html);
 });
 
-catalogRouter.get('/product/:id', (req: Request, res: Response) => {
+// ─── Product detail page data ─────────────────────────────────────────────────
+
+interface ProductDetail {
+  slug: string;
+  name: string;
+  price: number;
+  monthlyFrom: number;
+  badges: string[];
+  availability: 'In Stock' | 'Pre-Order';
+  isPurchasable: boolean;
+  colors: Array<{ name: string; price: number }>;
+  storages: Array<{ name: string; price: number }>;
+  specs: Array<{ label: string; value: string }>;
+  esimCompatible: boolean;
+}
+
+const PRODUCT_DETAIL_MAP: Record<string, ProductDetail> = {
+  'iphone-15-pro': {
+    slug: 'iphone-15-pro',
+    name: 'iPhone 15 Pro 256GB',
+    price: 24999,
+    monthlyFrom: 899,
+    badges: ['5G', 'Trade-In Eligible', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Natural Titanium', price: 24999 },
+      { name: 'Blue Titanium', price: 24999 },
+      { name: 'White Titanium', price: 24999 },
+      { name: 'Black Titanium', price: 24999 },
+    ],
+    storages: [
+      { name: '128GB', price: 21999 },
+      { name: '256GB', price: 24999 },
+      { name: '512GB', price: 28999 },
+      { name: '1TB', price: 34999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.1-inch Super Retina XDR display' },
+      { label: 'Processor', value: 'A17 Pro chip with 6-core CPU' },
+      { label: 'Camera', value: '48MP Main + 12MP Ultra Wide + 12MP Telephoto' },
+      { label: 'Storage', value: '256GB' },
+      { label: 'Battery', value: 'Up to 23 hours video playback' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6E, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'iOS 17' },
+    ],
+    esimCompatible: true,
+  },
+  'iphone-15': {
+    slug: 'iphone-15',
+    name: 'iPhone 15 128GB',
+    price: 18999,
+    monthlyFrom: 699,
+    badges: ['5G', 'Trade-In Eligible', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Pink', price: 18999 },
+      { name: 'Yellow', price: 18999 },
+      { name: 'Blue', price: 18999 },
+      { name: 'Black', price: 18999 },
+    ],
+    storages: [
+      { name: '128GB', price: 18999 },
+      { name: '256GB', price: 21999 },
+      { name: '512GB', price: 25999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.1-inch Super Retina XDR display' },
+      { label: 'Processor', value: 'A16 Bionic chip' },
+      { label: 'Camera', value: '48MP Main + 12MP Ultra Wide' },
+      { label: 'Storage', value: '128GB' },
+      { label: 'Battery', value: 'Up to 20 hours video playback' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'iOS 17' },
+    ],
+    esimCompatible: true,
+  },
+  'iphone-14': {
+    slug: 'iphone-14',
+    name: 'iPhone 14 128GB',
+    price: 15999,
+    monthlyFrom: 579,
+    badges: ['5G', 'Trade-In Eligible', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: false,
+    colors: [
+      { name: 'Midnight', price: 15999 },
+      { name: 'Starlight', price: 15999 },
+      { name: 'Red', price: 15999 },
+      { name: 'Blue', price: 15999 },
+    ],
+    storages: [
+      { name: '128GB', price: 15999 },
+      { name: '256GB', price: 18999 },
+      { name: '512GB', price: 22999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.1-inch Super Retina XDR display' },
+      { label: 'Processor', value: 'A15 Bionic chip' },
+      { label: 'Camera', value: '12MP Main + 12MP Ultra Wide' },
+      { label: 'Storage', value: '128GB' },
+      { label: 'Battery', value: 'Up to 20 hours video playback' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'iOS 16' },
+    ],
+    esimCompatible: true,
+  },
+  'samsung-s24-ultra': {
+    slug: 'samsung-s24-ultra',
+    name: 'Samsung Galaxy S24 Ultra 256GB',
+    price: 22999,
+    monthlyFrom: 799,
+    badges: ['5G', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Titanium Black', price: 22999 },
+      { name: 'Titanium Gray', price: 22999 },
+      { name: 'Titanium Violet', price: 22999 },
+      { name: 'Titanium Yellow', price: 22999 },
+    ],
+    storages: [
+      { name: '256GB', price: 22999 },
+      { name: '512GB', price: 26999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.8-inch Dynamic AMOLED 2X' },
+      { label: 'Processor', value: 'Snapdragon 8 Gen 3' },
+      { label: 'Camera', value: '200MP Main + 12MP Ultra Wide + 10MP Telephoto' },
+      { label: 'Storage', value: '256GB' },
+      { label: 'Battery', value: '5000mAh' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 7, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'Android 14' },
+    ],
+    esimCompatible: false,
+  },
+  'samsung-s24': {
+    slug: 'samsung-s24',
+    name: 'Samsung Galaxy S24 256GB',
+    price: 16999,
+    monthlyFrom: 599,
+    badges: ['5G', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Cobalt Violet', price: 16999 },
+      { name: 'Marble Gray', price: 16999 },
+      { name: 'Onyx Black', price: 16999 },
+      { name: 'Jade Green', price: 16999 },
+    ],
+    storages: [
+      { name: '128GB', price: 14999 },
+      { name: '256GB', price: 16999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.2-inch Dynamic AMOLED 2X' },
+      { label: 'Processor', value: 'Snapdragon 8 Gen 3' },
+      { label: 'Camera', value: '50MP Main + 12MP Ultra Wide + 10MP Telephoto' },
+      { label: 'Storage', value: '256GB' },
+      { label: 'Battery', value: '4000mAh' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 7, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM and eSIM)' },
+      { label: 'Operating System', value: 'Android 14' },
+    ],
+    esimCompatible: false,
+  },
+  'samsung-a54': {
+    slug: 'samsung-a54',
+    name: 'Samsung Galaxy A54 128GB',
+    price: 8999,
+    monthlyFrom: 349,
+    badges: ['5G', 'In Stock'],
+    availability: 'In Stock',
+    isPurchasable: true,
+    colors: [
+      { name: 'Awesome White', price: 8999 },
+      { name: 'Awesome Black', price: 8999 },
+      { name: 'Awesome Violet', price: 8999 },
+      { name: 'Awesome Lime', price: 8999 },
+    ],
+    storages: [
+      { name: '128GB', price: 8999 },
+      { name: '256GB', price: 10999 },
+    ],
+    specs: [
+      { label: 'Display', value: '6.4-inch Super AMOLED' },
+      { label: 'Processor', value: 'Exynos 1380' },
+      { label: 'Camera', value: '50MP Main + 12MP Ultra Wide + 5MP Macro' },
+      { label: 'Storage', value: '128GB' },
+      { label: 'Battery', value: '5000mAh' },
+      { label: 'Connectivity', value: '5G, Wi-Fi 6, Bluetooth 5.3' },
+      { label: 'SIM', value: 'Dual SIM (nano-SIM)' },
+      { label: 'Operating System', value: 'Android 13' },
+    ],
+    esimCompatible: false,
+  },
+};
+
+const ZA_PLANS_DISPLAY = [
+  { id: 'plan_za_red_5gb', name: 'Vodacom Red 5GB', description: '5GB Data + Unlimited Calls &amp; SMS', monthly: 299 },
+  { id: 'plan_za_unlimited_20gb', name: 'Vodacom Unlimited 20GB', description: '20GB Data + Unlimited Calls &amp; SMS', monthly: 799 },
+  { id: 'plan_za_red_premium', name: 'Vodacom Red Premium', description: '50GB Data + Unlimited Calls &amp; SMS', monthly: 1299 },
+];
+
+const ACCESSORIES_DISPLAY = [
+  { name: 'AirPods Pro (2nd Gen)', price: 4999 },
+  { name: 'iPhone 15 Pro Case', price: 799 },
+  { name: '20W USB-C Power Adapter', price: 399 },
+  { name: 'Screen Protector', price: 299 },
+];
+
+// ─── Product detail page (Screen 7: wireframe_product_detail.html) ────────────
+
+catalogRouter.get('/product/:slug', (req: Request, res: Response) => {
+  const { slug } = req.params;
   const context = (req.query['context'] as string) ?? '';
-  const offers = context ? getUpsellOffersByContext(context) : [];
+  const upsellOffers = context ? getUpsellOffersByContext(context) : [];
+  const upsellPanel = renderUpsellPanel(upsellOffers);
+  const product = PRODUCT_DETAIL_MAP[slug];
+  if (!product) {
+    res.status(404).type('text/html').send(renderPage('Not Found - Vodacom Shop', '<h1>Product not found</h1>'));
+    return;
+  }
 
-  const upsellPanel = renderUpsellPanel(offers);
+  function fmtPrice(n: number): string {
+    return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>iPhone 15 Pro 256GB - Vodacom Shop</title>
-</head>
-<body>
-  <header class="header">
-    <a href="/">Vodacom</a>
-    <nav>
-      <a href="/catalog">Devices</a>
-      <a href="/plans">Plans</a>
-      <a href="/accessories">Accessories</a>
-      <a href="/support">Support</a>
-    </nav>
-  </header>
+  const badges = product.badges.map(b => `<span class="badge">${b}</span>`).join('\n      ');
 
+  const colorButtons = product.colors.map(c =>
+    `<button class="btn-color-selector" data-color="${c.name}" data-price="${c.price}">${c.name}</button>`
+  ).join('\n        ');
+
+  const storageButtons = product.storages.map(s =>
+    `<button class="btn-storage-selector" data-storage="${s.name}" data-price="${s.price}">${s.name}</button>`
+  ).join('\n        ');
+
+  const addToCartBtn = product.isPurchasable
+    ? `<button class="btn-add-to-cart" id="main-add-to-cart">Add to Cart</button>`
+    : `<button class="btn-add-to-cart" id="main-add-to-cart" disabled>Add to Cart</button>`;
+
+  const esimNote = product.esimCompatible
+    ? `<p class="esim-note">This device supports eSIM and is compatible with Vodacom 5G network</p>`
+    : `<p class="esim-note">This device is compatible with Vodacom 5G network</p>`;
+
+  const planCards = ZA_PLANS_DISPLAY.map(p => `
+      <div class="plan-card" data-plan-id="${p.id}">
+        <h4>${p.name}</h4>
+        <p>${p.description}</p>
+        <p class="plan-price">R ${p.monthly}/month</p>
+        <button class="btn-select-plan" data-plan-id="${p.id}">Select Plan</button>
+      </div>`).join('\n');
+
+  const specRows = product.specs.map(s =>
+    `<dt>${s.label}</dt><dd>${s.value}</dd>`
+  ).join('\n        ');
+
+  const accessoryCards = ACCESSORIES_DISPLAY.map(a => `
+      <div class="accessory-card">
+        <h4>${a.name}</h4>
+        <p class="product-price">${fmtStorefrontPrice(a.price)}</p>
+        <button class="btn-add-to-cart" data-accessory="${a.name}">Add to Cart</button>
+      </div>`).join('\n');
+
+  const body = `
   <nav class="breadcrumb">
     <a href="/">Home</a> &rsaquo;
     <a href="/catalog">Devices</a> &rsaquo;
     <a href="/catalog?category=smartphones">Smartphones</a> &rsaquo;
-    iPhone 15 Pro 256GB
+    <span>${product.name}</span>
   </nav>
 
   <section class="product-hero">
-    <h1>iPhone 15 Pro 256GB</h1>
-    <p>5G &mdash; Trade-In Eligible &mdash; In Stock</p>
-    <p class="product-price">R 24,999.00</p>
-    <p>or from R 899/month with a plan</p>
+    <h1>${product.name}</h1>
+    <div class="product-badges">
+      ${badges}
+    </div>
+    <p class="product-price" id="hero-price">${fmtPrice(product.price)}</p>
+    <p class="product-instalment">or from R ${product.monthlyFrom}/month with a plan</p>
 
     <div class="color-selector">
       <span>Color</span>
-      <button>Natural Titanium</button>
-      <button>Blue Titanium</button>
-      <button>White Titanium</button>
-      <button>Black Titanium</button>
+      ${colorButtons}
     </div>
 
     <div class="storage-selector">
       <span>Storage</span>
-      <button>128GB</button>
-      <button>256GB</button>
-      <button>512GB</button>
-      <button>1TB</button>
+      ${storageButtons}
     </div>
 
     <div class="quantity-selector">
-      <label>Quantity</label>
-      <input type="number" value="1" min="1">
+      <label for="quantity">Quantity</label>
+      <input type="number" id="quantity" value="1" min="1">
     </div>
 
-    <button class="btn-add-to-cart">Add to Cart</button>
-    <p>This device supports eSIM and is compatible with Vodacom 5G network</p>
+    ${addToCartBtn}
+    ${esimNote}
   </section>
 
   <section class="plan-attach-panel">
     <h2>Add a plan or bundle</h2>
-
     ${upsellPanel}
-
     <div class="base-plan-list">
-      <div class="plan-card" data-plan-id="plan_red_5gb">
-        <h4>Vodacom Red 5GB</h4>
-        <p>5GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_unlimited_20gb">
-        <h4>Vodacom Unlimited 20GB</h4>
-        <p>20GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 799/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
-      <div class="plan-card" data-plan-id="plan_red_premium">
-        <h4>Vodacom Red Premium</h4>
-        <p>50GB Data + Unlimited Calls &amp; SMS</p>
-        <p class="plan-price">R 1,299/month</p>
-        <button class="btn-select-plan">Select Plan</button>
-      </div>
+      ${planCards}
     </div>
   </section>
 
   <section class="product-details">
-    <h2>Complete your purchase</h2>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="specs">Specifications</button>
+      <button class="tab-btn" data-tab="features">Features</button>
+      <button class="tab-btn" data-tab="box">What's in the Box</button>
+    </div>
+    <div class="tab-panel" id="tab-specs">
+      <dl class="spec-list">
+        ${specRows}
+      </dl>
+    </div>
+    <div class="tab-panel" id="tab-features" hidden>
+      <ul class="features-list">
+        <li>Dynamic Island</li>
+        <li>Always-On display</li>
+        <li>Action Button</li>
+        <li>Titanium design</li>
+        <li>USB 3 speeds with USB-C</li>
+      </ul>
+    </div>
+    <div class="tab-panel" id="tab-box" hidden>
+      <ul class="inbox-list">
+        <li>iPhone with iOS 17</li>
+        <li>USB-C Charge Cable (1 m)</li>
+        <li>Documentation</li>
+      </ul>
+    </div>
   </section>
-</body>
-</html>`;
 
-  res.status(200).type('text/html').send(html);
+  <section class="recommendations">
+    <h2>Complete your purchase</h2>
+    <div class="recommendation-row">
+      ${accessoryCards}
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var priceEl = document.getElementById('hero-price');
+      function updatePrice(price) {
+        priceEl.textContent = 'R ' + price.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+      }
+      document.querySelectorAll('.btn-storage-selector').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var price = parseInt(btn.getAttribute('data-price') || '0', 10);
+          updatePrice(price);
+          document.querySelectorAll('.btn-storage-selector').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+      });
+      document.querySelectorAll('.btn-color-selector').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.btn-color-selector').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+      });
+      document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+          document.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = true; });
+          btn.classList.add('active');
+          var panel = document.getElementById('tab-' + btn.getAttribute('data-tab'));
+          if (panel) panel.hidden = false;
+        });
+      });
+    })();
+  </script>`;
+
+  res.status(200).type('text/html').send(renderPage(product.name + ' - Vodacom Shop', body));
 });
