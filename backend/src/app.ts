@@ -14,7 +14,14 @@ function httpsRedirectMiddleware(req: Request, res: Response, next: NextFunction
     process.env.NODE_ENV === 'production' &&
     req.headers['x-forwarded-proto'] !== 'https'
   ) {
-    res.redirect(301, `https://${req.headers.host}${req.url}`);
+    // Use a known-good hostname from config rather than the user-supplied Host
+    // header, which can be spoofed to redirect victims to an attacker-controlled domain.
+    const host = process.env.APP_HOSTNAME;
+    if (!host) {
+      next();
+      return;
+    }
+    res.redirect(301, `https://${host}${req.url}`);
     return;
   }
   next();

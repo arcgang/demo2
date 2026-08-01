@@ -4,6 +4,7 @@ import {
   persistOrder,
   persistOrderAuditEvent,
 } from './orderStore';
+import { persistPaymentAttempt } from './paymentAttemptStore';
 import { seedOrder } from '../activation/activationStore';
 
 export interface LineItemInput {
@@ -16,6 +17,9 @@ export interface CreateOrderInput {
   cartId: string;
   paymentAttemptId: string;
   paymentStatus: string;
+  maskedCardReference?: string;
+  walletReference?: string;
+  mobileMoneyReference?: string;
   verificationCaseId?: string;
   verificationStatus?: string;
   customerId?: string;
@@ -70,6 +74,13 @@ export function createOrder(input: CreateOrderInput): OrderConfirmation {
   const orderId = randomUUID();
   const orderReference = generateOrderReference();
   const createdAt = new Date().toISOString();
+
+  persistPaymentAttempt({
+    paymentAttemptId: input.paymentAttemptId,
+    maskedCardReference: input.maskedCardReference,
+    walletReference: input.walletReference,
+    mobileMoneyReference: input.mobileMoneyReference,
+  });
 
   persistOrder({
     orderId,
