@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { checkEligibility } from '../modules/upgrade/eligibilityAdapter';
-import { getFinancingQuotes } from '../modules/upgrade/financingAdapter';
+import { getFinancingQuotesByProductId } from '../modules/upgrade/financingAdapter';
 import { getTradeInQuote, VALID_CONDITIONS } from '../modules/upgrade/tradeInAdapter';
 import { resolveSession, patchState, UpgradeSessionState } from '../modules/upgrade/sessionStore';
 
@@ -39,8 +39,29 @@ router.post('/eligibility', (req: Request, res: Response) => {
 // GET /api/upgrade/financing
 // ---------------------------------------------------------------------------
 
-router.get('/financing', (_req: Request, res: Response) => {
-  res.status(200).json(getFinancingQuotes());
+router.get('/financing', (req: Request, res: Response) => {
+  const productId = req.query.productId as string | undefined;
+  // planId is accepted but intentionally unused in the mock — quotes are product-scoped only
+  // const planId = req.query.planId as string | undefined;
+
+  if (!productId || !productId.trim()) {
+    res.status(400).json({
+      errorCode: 'PRODUCT_ID_REQUIRED',
+      message: 'Query parameter productId is required.',
+    });
+    return;
+  }
+
+  const quotes = getFinancingQuotesByProductId(productId);
+  if (quotes === null) {
+    res.status(404).json({
+      errorCode: 'PRODUCT_NOT_FOUND',
+      message: `No financing options found for product "${productId}".`,
+    });
+    return;
+  }
+
+  res.status(200).json(quotes);
 });
 
 // ---------------------------------------------------------------------------
