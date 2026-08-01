@@ -12,9 +12,13 @@ const ADAPTER_TIMEOUT_MS = 1500;
 
 function createOrderAsync(input: CreateOrderInput) {
   const delay = getSlowAdapterMs();
-  return new Promise<ReturnType<typeof createOrder>>((resolve) => {
+  return new Promise<ReturnType<typeof createOrder>>((resolve, reject) => {
     setTimeout(() => {
-      resolve(createOrder(input));
+      try {
+        resolve(createOrder(input));
+      } catch (e) {
+        reject(e);
+      }
     }, delay);
   });
 }
@@ -54,7 +58,7 @@ router.post('/', async (req: Request, res: Response) => {
         status: 'pending',
         cartId: input.cartId,
         correlationId: input.paymentAttemptId,
-        message: 'Order processing is taking longer than expected. Retrieve the order using the correlationId via GET /api/orders/:ref once processing completes.',
+        message: 'Order processing is taking longer than expected. Retrieve the order using the correlationId via GET /api/orders/:ref/summary once processing completes.',
       });
       return;
     }
@@ -93,6 +97,28 @@ router.post('/:id/esim/issue', (req: Request, res: Response) => {
       });
       return;
   }
+});
+
+router.get('/:ref/summary', (req: Request, res: Response) => {
+  const { ref } = req.params;
+  const order = getOrderByReference(ref);
+  if (!order) {
+    res.status(404).json({ errorCode: 'ORDER_NOT_FOUND', message: `No order found for reference "${ref}".` });
+    return;
+  }
+  res.status(200).json({
+    orderId: order.orderId,
+    orderReference: order.orderReference,
+    orderStatus: order.paymentStatus === 'PAID' ? 'CONFIRMED' : 'PENDING_PAYMENT',
+    paymentStatus: order.paymentStatus,
+    verificationStatus: order.verificationStatus ?? null,
+    activationStatus: order.activationState,
+    cartId: order.cartId,
+    onceOffTotal: order.onceOffTotal,
+    monthlyTotal: order.monthlyTotal,
+    lineItems: order.lineItems,
+    createdAt: order.createdAt,
+  });
 });
 
 router.get('/:ref/audit-trail', async (req: Request, res: Response) => {
