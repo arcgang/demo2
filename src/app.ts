@@ -1,5 +1,6 @@
 import express from 'express';
 import { upsellOffersRouter } from './modules/catalog/offers/upsell-offers.router';
+import { catalogProductsRouter } from './modules/catalog/products/catalog-products.router';
 import { catalogRouter } from './modules/catalog/catalog.router';
 import { ordersRouter } from './modules/orders/orders.router';
 import { upgradeRouter } from './modules/upgrade/upgrade.router';
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use('/api/offers', upsellOffersRouter);
+app.use('/api/catalog', catalogProductsRouter);
 app.use('/api/orders', apiOrdersRouter);
 app.use('/orders', ordersRouter);
 app.use('/', upgradeRouter);
